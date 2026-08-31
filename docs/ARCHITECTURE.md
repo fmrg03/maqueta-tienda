@@ -1,0 +1,178 @@
+# ARCHITECTURE.md
+## App Web — Empresa de Construcción (Inventario + Catálogo + Asesorías)
+### v2 — MVP sin pasarela de pago
+
+---
+
+## 1. Stack Tecnológico
+
+### Frontend — Next.js (React + TypeScript)
+- **Justificación:** el catálogo público necesita SEO real (clientes buscando materiales), y Next.js da SSR/ISR para esas páginas, App Router para separar limpiamente admin/catálogo/carrito/asesorías, y Server Actions/Route Handlers para llamadas simples.
+- El usuario ya tiene base en React, así que la curva de aprendizaje es baja.
+
+### Backend — NestJS (Node.js + TypeScript)
+- **Justificación:** decisión ya tomada por el usuario, coherente con TypeScript end-to-end. Arquitectura modular (módulos Nest = subdominios: `inventario`, `catalogo`, `carrito`, `asesorias`, `auth`).
+- **ORM: TypeORM** (decisión ya tomada) sobre PostgreSQL.
+
+### Base de Datos — PostgreSQL
+- **Justificación:** el catálogo complejo (variantes + combos + múltiples proveedores) necesita relaciones robustas y transacciones ACID confiables para inventario. JSONB para atributos dinámicos de variantes.
+
+### Infraestructura complementaria
+- **Redis:** cache de catálogo (lecturas públicas de alto tráfico) y cola de trabajos (BullMQ) para tareas asíncronas (envío de emails/WhatsApp de solicitudes, recordatorios de asesoría).
+- **Almacenamiento de archivos:** S3-compatible para imágenes de productos y PDFs de solicitudes.
+- **Notificación por WhatsApp:** integración vía API externa (ej. WhatsApp Business API / Twilio / proveedor similar) para enviar el "carrito" armado al área de ventas — no requiere infraestructura de mensajería propia.
+- **Contenedores:** Docker para desarrollo y producción; Docker Compose en local (Postgres + Redis + backend + frontend). Kubernetes queda para cuando el tráfico lo justifique — no es necesario en el MVP.
+- **Sin pasarela de pago:** queda explícitamente fuera de este MVP; se incorpora en la fase de ecommerce.
+
+---
+
+## 2. Modelo de Datos
+
+### Entidades principales
+
+**Usuario**
+- id, nombre, email, password_hash, rol (`admin` | `ventas` | `cliente`), telefono, created_at
+
+**Material** (producto base)
+- id, sku, nombre, descripcion, categoria_id, precio_costo, precio_venta, imagen_url, activo
+
+**VarianteMaterial**
+- id, material_id (FK), atributos (JSONB: color, tamaño, etc.), sku_variante, stock, precio_venta_override
+
+**Combo**
+- id, nombre, descripcion, precio_combo
+- **ComboItem** (tabla puente): combo_id, material_id o variante_id, cantidad
+
+**Proveedor**
+- id, nombre, contacto, condiciones_pago
+
+**MaterialProveedor** (tabla puente, N:N)
+- material_id, proveedor_id, precio_costo_proveedor, tiempo_entrega_dias
+
+**MovimientoInventario**
+- id, variante_id (FK), tipo (`entrada` | `salida`), cantidad, motivo, usuario_id, created_at
+- Base para los reportes de ingreso/salida y ganancias por período.
+
+**SolicitudCarrito** (consulta a ventas, sin pago)
+- id, cliente_nombre, cliente_telefono, cliente_email (opcional), items (relación con Material/Variante/Combo + cantidades), estado (`nueva` | `contactado` | `cerrada`), canal_envio (`whatsapp` | `email` | `formulario`), notas, created_at
+
+**Asesor**
+- id, usuario_id (FK), especialidad, activo
+
+**DisponibilidadAsesor**
+- id, asesor_id (FK), dia_semana o fecha_especifica, hora_inicio, hora_fin
+- Todas las fechas/horas se almacenan en UTC y se normalizan a `America/Caracas` (timezone del negocio) tanto al mostrarlas al cliente como al asesor — evita bugs de horario por diferencia de zona entre server y usuarios.
+- **Implementación:** columnas de tipo `timestamptz` en PostgreSQL (nunca `timestamp` sin zona). El backend (NestJS) siempre recibe/devuelve fechas en formato ISO 8601 con sufijo `Z` (ej. `2026-08-31T14:00:00Z`). La conversión a `America/Caracas` ocurre **únicamente en la capa de presentación** (frontend, con `Intl.DateTimeFormat` o `date-fns-tz`) — nunca se guarda ni se calcula lógica de negocio en hora local, solo en UTC.
+- Al confirmarse una `SolicitudAsesoria` sobre una franja, esa franja pasa a no disponible (bloqueada) para nuevas reservas — evita doble booking sobre el mismo asesor/horario. **Se implementa con un constraint único (`asesor_id` + `fecha_hora`) a nivel de base de datos, dentro de una transacción con lock (`SELECT ... FOR UPDATE`) al momento de reservar**, no solo validación en la capa de aplicación — así se evita la condición de carrera si dos clientes reservan el mismo bloque casi simultáneamente.
+
+**SolicitudAsesoria**
+- id, cliente_nombre, cliente_telefono, cliente_email, asesor_id (FK, opcional si se asigna luego), fecha_hora_llamada (franja agendada para la llamada/videollamada por WhatsApp), estado (`pendiente` | `llamada_realizada` | `visita_pactada` | `no_procede` | `cancelada`), notas_llamada
+- El sistema solo agenda la **llamada de primer contacto** (vía WhatsApp, informal). Si de esa llamada surge que la empresa puede dar el servicio, la fecha/hora de la **visita en sitio** se coordina manualmente entre asesor y cliente, fuera del sistema — no hay campos de fecha/dirección de visita en el modelo, solo el estado `visita_pactada` como registro de que ocurrió.
+
+### Relaciones clave
+- `Material` 1—N `VarianteMaterial`
+- `Material` N—N `Proveedor` (vía `MaterialProveedor`)
+- `Combo` N—N `Material`/`VarianteMaterial` (vía `ComboItem`)
+- `VarianteMaterial` 1—N `MovimientoInventario`
+- `SolicitudCarrito` 1—N items (Material/Variante/Combo + cantidad, tabla de detalle)
+- `Asesor` 1—N `DisponibilidadAsesor`
+- `Asesor` 1—N `SolicitudAsesoria`
+
+---
+
+## 3. Contratos de la API (REST)
+
+Base: `/api/v1`
+
+### Auth
+- `POST /auth/login`
+- `POST /auth/register`
+- `POST /auth/refresh`
+
+### Inventario (admin)
+- `GET /materiales` — filtros: categoria, proveedor, stock_bajo
+- `POST /materiales`
+- `PATCH /materiales/:id`
+- `POST /materiales/:id/variantes`
+- `POST /materiales/:id/movimientos` — registra entrada/salida
+- `GET /reportes/inventario?desde=&hasta=&agrupacion=semana|mes|anio`
+- `GET /reportes/ganancias?desde=&hasta=`
+
+### Catálogo (público)
+- `GET /catalogo/materiales` — paginado, con variantes y precio_venta
+- `GET /catalogo/materiales/:id`
+- `GET /catalogo/combos`
+- `GET /catalogo/categorias`
+
+### Proveedores (admin)
+- `GET /proveedores`
+- `POST /proveedores`
+- `POST /materiales/:id/proveedores` — asociar proveedor + precio_costo
+
+### Carrito / Solicitud a Ventas
+- `POST /carrito/solicitud` — recibe items armados en el catálogo + datos de contacto; genera `SolicitudCarrito` y dispara notificación (WhatsApp/email) a ventas
+- `GET /carrito/solicitudes` (admin/ventas) — listado con filtros por estado
+- `PATCH /carrito/solicitudes/:id` — actualizar estado (`contactado`, `cerrada`)
+
+### Asesorías (agenda de llamada de primer contacto)
+- `GET /asesores/disponibilidad?fecha=` — franjas horarias libres según `DisponibilidadAsesor`, para la llamada por WhatsApp
+- `POST /asesorias/solicitud` — cliente elige franja + datos de contacto → crea `SolicitudAsesoria` en estado `pendiente`, marca esa franja como no disponible en `DisponibilidadAsesor`, y dispara notificación al asesor con el horario pactado
+- `GET /asesorias/solicitudes` (admin) — listado con filtros por estado
+- `PATCH /asesorias/solicitudes/:id/registrar-llamada` — marca que la llamada por WhatsApp ocurrió, agrega notas de lo conversado
+- `PATCH /asesorias/solicitudes/:id/marcar-visita-pactada` — registra que, tras la llamada, se acordó una visita en sitio (coordinada manualmente, fuera del sistema)
+- `PATCH /asesorias/solicitudes/:id/marcar-no-procede` — la empresa no puede brindar el servicio solicitado
+- `PATCH /asesorias/solicitudes/:id/cancelar`
+
+---
+
+## 4. Estrategia de Infraestructura
+
+### Arquitectura de red conceptual (MVP)
+
+```
+[Cliente Web] ──HTTPS──> [Next.js Frontend] ──HTTPS──> [NestJS API Gateway]
+                                                              │
+                    ┌──────────────────┬──────────────────────┼──────────────────────┐
+                    │                  │                        │                      │
+             [Módulo Inventario] [Módulo Catálogo]      [Módulo Carrito]      [Módulo Asesorías]
+                    │                  │                        │                      │
+                    └──────────────────┴────────────┬───────────┴──────────────────────┘
+                                                      │
+                                              [PostgreSQL]
+                                                      │
+                                          [Redis (cache/colas)]
+                                                      │
+                                          [S3 - imágenes/PDFs]
+                                                      │
+                                    [Worker BullMQ] ──> [API WhatsApp / Email]
+```
+
+### Notas de despliegue
+- **Contenedores:** cada servicio (frontend, backend, worker de colas) en su propio contenedor Docker. `docker-compose.yml` para desarrollo local.
+- **Colas de mensajería:** BullMQ sobre Redis para: envío de notificación WhatsApp/email cuando llega una `SolicitudCarrito` o `SolicitudAsesoria`, y recordatorios de visitas pactadas.
+- **Almacenamiento de archivos:** bucket S3 separado por tipo (`/imagenes-productos`, `/solicitudes-pdf`), con URLs firmadas para acceso privado cuando aplique.
+- **Ambientes:** dev / staging / prod, con variables de entorno separadas (credenciales de API de WhatsApp).
+- **Escalado futuro:** al incorporar pasarela de pago y ecommerce completo, se agrega el módulo `pagos` sin romper lo existente (la `SolicitudCarrito` puede evolucionar a `Cotizacion`/`Orden` real). K8s entra en juego cuando el tráfico lo justifique.
+
+---
+
+## 5. Seguridad
+
+### Rate limiting
+- Endpoints públicos sin autenticación (`POST /carrito/solicitud`, `POST /asesorias/solicitud`) llevan rate limiting por IP y por número de teléfono (ej. `@nestjs/throttler` + Redis como store), para evitar spam/abuso que además generaría costos innecesarios de notificación por WhatsApp.
+- Recomendado sumar un captcha simple (ej. Cloudflare Turnstile) en ambos formularios antes de ir a producción.
+
+### Sanitización de inputs y validación
+- Toda entrada de la API se valida con DTOs + `class-validator`/`class-transformer` en NestJS (whitelist estricta de campos, rechazo de propiedades no declaradas).
+- Sanitización adicional de campos de texto libre (notas, descripciones) antes de persistir, para prevenir inyección de HTML/scripts si esos campos se renderizan en el panel admin.
+
+### Prepared statements / prevención de inyección SQL
+- TypeORM usa parámetros preparados por defecto en sus métodos (`find`, `QueryBuilder` con parámetros nombrados); **prohibido concatenar strings para construir queries crudas** — cualquier query nativa que se necesite debe ir siempre parametrizada.
+
+### Row Level Security (RLS)
+- Se habilita RLS en PostgreSQL sobre las tablas sensibles (`SolicitudCarrito`, `SolicitudAsesoria`, `Usuario`), con políticas que restringen el acceso según el rol de la conexión (ej. un asesor solo ve sus propias `SolicitudAsesoria` asignadas; ventas ve todas las `SolicitudCarrito`).
+- Esto añade una capa de defensa a nivel de base de datos, independiente de los guards de NestJS — si hay un bug en la lógica de autorización de la app, RLS sigue bloqueando el acceso indebido.
+
+### Autenticación y autorización
+- JWT con refresh tokens para sesiones de `admin`/`ventas`/`asesor`. Guards de NestJS + roles decorators para autorización por endpoint, reforzados por RLS como mencionado arriba.
+- Passwords con hash `bcrypt`/`argon2`, nunca en texto plano ni siquiera en logs.

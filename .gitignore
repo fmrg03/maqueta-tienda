@@ -1,0 +1,29 @@
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Builds
+dist/
+build/
+.next/
+out/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Tests
+coverage/
+
+# Docker
+*.pid

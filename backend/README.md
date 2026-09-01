@@ -49,6 +49,30 @@ necesitan una excepción acotada, documentada ahí).
 npm test
 ```
 
+## API interactiva (Swagger)
+
+Con el servidor corriendo (`npm run start:dev`), la documentación
+interactiva está en `http://localhost:3000/api/docs` (deshabilitada
+automáticamente cuando `NODE_ENV=production`).
+
+## Formato de errores
+
+Todas las respuestas de error de la API tienen la misma forma (ver
+`src/common/filters/all-exceptions.filter.ts`):
+
+```json
+{
+  "statusCode": 404,
+  "error": "Not Found",
+  "message": "Material abc no encontrado",
+  "path": "/api/v1/materiales/abc",
+  "timestamp": "2026-09-01T12:00:00.000Z"
+}
+```
+
+Errores de base de datos no controlados nunca exponen el mensaje crudo al
+cliente (se loguean server-side, el cliente recibe un 500 genérico).
+
 ## Módulos implementados
 
 - `usuarios/` — CRUD de usuarios, roles (`admin` | `ventas` | `asesor` | `cliente`)

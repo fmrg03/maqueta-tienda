@@ -207,3 +207,9 @@ El contexto de sesión (`app.rol`, `app.usuario_id`) se setea vía `set_config(.
 2. **El `INSERT ... RETURNING` que TypeORM genera para leer columnas autogeneradas también exige que la fila pase una política de `SELECT`**, no solo la de `INSERT` — no es suficiente con permitir el insert. El auto-registro público (`POST /auth/register`) reusa el mismo contexto `service_auth` justo antes de guardar, por la misma razón que el login.
 
 Como control adicional descubierto en el camino: el DTO de registro público aceptaba un campo `rol` arbitrario — cualquiera podía auto-asignarse `admin` vía `POST /auth/register`. Se corrigió forzando `rol: cliente` en `AuthService.register` sin importar lo que venga en el body; crear usuarios con otros roles quedó exclusivo de `POST /usuarios` (admin-only).
+
+### Manejo global de errores
+`AllExceptionsFilter` (`backend/src/common/filters/`) estandariza toda respuesta de error de la API a una única forma (`statusCode`, `error`, `message`, `path`, `timestamp`), sin importar si el error viene de una excepción de negocio (`NotFoundException`, etc.), del `ValidationPipe` (preserva el array de mensajes por campo), o de un error no controlado de TypeORM/Postgres — estos últimos nunca exponen el mensaje crudo de la base de datos al cliente (se loguean server-side, el cliente recibe un 500 genérico). Probado tanto con tests unitarios como en vivo contra la app real.
+
+### Documentación interactiva (Swagger/OpenAPI)
+Expuesta en `/api/docs` vía `@nestjs/swagger`, deshabilitada automáticamente cuando `NODE_ENV=production` (es documentación de desarrollo, no un endpoint pensado para estar público). Los controladores llevan `@ApiTags` por módulo y `@ApiBearerAuth` en los endpoints protegidos por JWT — incluyendo, a nivel de método (no de clase), los controladores mixtos que combinan endpoints públicos y protegidos (`carrito`, `asesorias`, `asesores`).

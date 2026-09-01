@@ -213,3 +213,14 @@ Como control adicional descubierto en el camino: el DTO de registro público ace
 
 ### Documentación interactiva (Swagger/OpenAPI)
 Expuesta en `/api/docs` vía `@nestjs/swagger`, deshabilitada automáticamente cuando `NODE_ENV=production` (es documentación de desarrollo, no un endpoint pensado para estar público). Los controladores llevan `@ApiTags` por módulo y `@ApiBearerAuth` en los endpoints protegidos por JWT — incluyendo, a nivel de método (no de clase), los controladores mixtos que combinan endpoints públicos y protegidos (`carrito`, `asesorias`, `asesores`).
+
+### Cuenta admin fundacional (`protegido`), en vez de un rol jerárquico nuevo
+Se evaluó agregar un rol `master`/`root` por encima de `admin` (que pudiera eliminar admins, mientras que un admin no puede eliminar a otro admin ni al master). Se descartó por ahora: la empresa va a operar con un solo admin al inicio (aunque puede haber varios admins a futuro, todos con el mismo nivel de poder entre sí) — un rol jerárquico nuevo hubiera significado tocar el enum `RolUsuario`, los guards, y las políticas de RLS en varios lugares sin que hubiera, todavía, alguien de quien proteger esa cuenta.
+
+En su lugar, se agregó un campo `protegido: boolean` (default `false`) a `Usuario`. Logra el mismo objetivo práctico sin la complejidad de un rol nuevo:
+- Solo la cuenta creada por el script `npm run seed:admin` (`backend/src/scripts/seed-admin.ts`) tiene `protegido = true` — no es alcanzable desde ningún endpoint de la API.
+- `UsuariosService.desactivar` y `UsuariosService.update` (al intentar cambiarle el rol) rechazan la operación con `403 Forbidden` sobre una cuenta protegida, **sin importar qué rol tenga quien lo pide** — ni siquiera otro admin puede tocarla.
+- El script de seed debe correr con las credenciales privilegiadas de las migraciones (no con `app_backend`): insertar un usuario con `rol='admin'` choca con las mismas políticas de RLS ya descritas — no existe todavía una sesión admin activa que lo autorice, y a propósito no se agregó una excepción tipo `service_auth` para este caso, porque crear el admin fundacional es una operación administrativa deliberadamente fuera de la app en ejecución.
+- Probado de punta a punta: seed exitoso, segundo intento de seed rechazado (ya existe una cuenta protegida), login, y un `DELETE` sobre la propia cuenta protegida devolviendo `403` con el formato de error estándar.
+
+Si en el futuro la empresa necesita jerarquía real entre varios admins (algunos pudiendo eliminar a otros admins), ahí sí se justifica un rol `master` — hoy no hay nadie a quien restringir.

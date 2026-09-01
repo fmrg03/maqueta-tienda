@@ -49,6 +49,23 @@ necesitan una excepción acotada, documentada ahí).
 npm test
 ```
 
+## Cuenta admin fundacional
+
+No hay forma de crear el primer admin vía API (POST /usuarios ya requiere
+ser admin). Se crea con un script aparte, usando las mismas credenciales
+privilegiadas que las migraciones — no con `app_backend`:
+
+```bash
+SEED_ADMIN_EMAIL=admin@empresa.com SEED_ADMIN_NOMBRE="Nombre Apellido" \
+  npm run seed:admin
+```
+
+Si no pasás `SEED_ADMIN_PASSWORD`, se genera una contraseña aleatoria y se
+imprime una sola vez en la consola. Esa cuenta queda marcada `protegido:
+true` — ningún endpoint puede desactivarla ni cambiarle el rol, ni
+siquiera otro admin. El script solo crea la primera cuenta protegida;
+admins adicionales se crean vía `POST /usuarios` (sin esa protección).
+
 ## API interactiva (Swagger)
 
 Con el servidor corriendo (`npm run start:dev`), la documentación

@@ -38,6 +38,13 @@ export class Usuario {
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 
+  // true solo en la cuenta admin fundacional (creada por el seed script,
+  // nunca vía API). Ningún endpoint puede desactivarla o eliminarla,
+  // sin importar quién lo pida — es la cuenta raíz de la que dependen
+  // todas las demás. Ver UsuariosService.desactivar y docs/ARCHITECTURE.md.
+  @Column({ type: 'boolean', default: false })
+  protegido: boolean;
+
   // timestamptz: ver ARCHITECTURE.md sección "Modelo de Datos" — todo en UTC.
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

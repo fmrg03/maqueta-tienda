@@ -15,17 +15,27 @@ import {
 import { CrearSolicitudAsesoriaDto } from './dto/crear-solicitud-asesoria.dto';
 import { RegistrarLlamadaDto } from './dto/registrar-llamada.dto';
 import { NotificacionesService } from '../../common/notificaciones/notificaciones.service';
+import { getRlsManager } from '../../common/rls/request-context';
 
 @Injectable()
 export class AsesoriasService {
   constructor(
     @InjectRepository(SolicitudAsesoria)
-    private readonly solicitudRepository: Repository<SolicitudAsesoria>,
+    private readonly solicitudRepositoryInyectado: Repository<SolicitudAsesoria>,
     @InjectRepository(Asesor)
     private readonly asesorRepository: Repository<Asesor>,
     private readonly dataSource: DataSource,
     private readonly notificacionesService: NotificacionesService,
   ) {}
+
+  // `solicitudes_asesoria` tiene RLS (ver migración AddRowLevelSecurity):
+  // admin ve todas, cada asesor solo ve las suyas.
+  private get solicitudRepository(): Repository<SolicitudAsesoria> {
+    return (
+      getRlsManager()?.getRepository(SolicitudAsesoria) ??
+      this.solicitudRepositoryInyectado
+    );
+  }
 
   /**
    * Reserva la franja de `DisponibilidadAsesor` y crea la SolicitudAsesoria

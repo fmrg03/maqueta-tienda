@@ -11,12 +11,13 @@ import { Combo } from '../inventario/entities/combo.entity';
 import { CreateSolicitudCarritoDto } from './dto/create-solicitud-carrito.dto';
 import { ActualizarEstadoCarritoDto } from './dto/actualizar-estado-carrito.dto';
 import { NotificacionesService } from '../../common/notificaciones/notificaciones.service';
+import { getRlsManager } from '../../common/rls/request-context';
 
 @Injectable()
 export class CarritoService {
   constructor(
     @InjectRepository(SolicitudCarrito)
-    private readonly solicitudRepository: Repository<SolicitudCarrito>,
+    private readonly solicitudRepositoryInyectado: Repository<SolicitudCarrito>,
     @InjectRepository(Material)
     private readonly materialRepository: Repository<Material>,
     @InjectRepository(VarianteMaterial)
@@ -25,6 +26,16 @@ export class CarritoService {
     private readonly comboRepository: Repository<Combo>,
     private readonly notificacionesService: NotificacionesService,
   ) {}
+
+  // `solicitudes_carrito` tiene RLS (ver migración AddRowLevelSecurity):
+  // solo ventas/admin pueden leer, la creación es pública. Usamos el
+  // repositorio transaccional del request cuando existe.
+  private get solicitudRepository(): Repository<SolicitudCarrito> {
+    return (
+      getRlsManager()?.getRepository(SolicitudCarrito) ??
+      this.solicitudRepositoryInyectado
+    );
+  }
 
   async crearSolicitud(dto: CreateSolicitudCarritoDto): Promise<SolicitudCarrito> {
     const items: ItemSolicitudCarrito[] = [];

@@ -68,6 +68,7 @@
 **SolicitudAsesoria**
 - id, cliente_nombre, cliente_telefono, cliente_email, asesor_id (FK, opcional si se asigna luego), fecha_hora_llamada (franja agendada para la llamada/videollamada por WhatsApp), estado (`pendiente` | `llamada_realizada` | `visita_pactada` | `no_procede` | `cancelada`), notas_llamada
 - El sistema solo agenda la **llamada de primer contacto** (vía WhatsApp, informal). Si de esa llamada surge que la empresa puede dar el servicio, la fecha/hora de la **visita en sitio** se coordina manualmente entre asesor y cliente, fuera del sistema — no hay campos de fecha/dirección de visita en el modelo, solo el estado `visita_pactada` como registro de que ocurrió.
+- **Transiciones de estado validadas en el servicio** (no cualquier estado puede pasar a cualquier otro): `pendiente → llamada_realizada → visita_pactada` o `no_procede`. `cancelada` es alcanzable desde cualquier estado. Un intento de transición inválida (ej. `pendiente → visita_pactada` sin pasar por la llamada) se rechaza — ver sección 6.
 
 ### Relaciones clave
 - `Material` 1—N `VarianteMaterial`
@@ -176,3 +177,20 @@ Base: `/api/v1`
 ### Autenticación y autorización
 - JWT con refresh tokens para sesiones de `admin`/`ventas`/`asesor`. Guards de NestJS + roles decorators para autorización por endpoint, reforzados por RLS como mencionado arriba.
 - Passwords con hash `bcrypt`/`argon2`, nunca en texto plano ni siquiera en logs.
+
+---
+
+## 6. Decisiones de Implementación (Backend)
+
+Registradas al implementar el backend en NestJS, sobre el diseño de las secciones 1-5. Aprobadas por el usuario.
+
+### Concurrencia: lock pesimista transaccional
+Todo recurso finito y reservable (stock de `VarianteMaterial`, franjas de `DisponibilidadAsesor`) se actualiza dentro de una transacción de base de datos que toma un **lock pesimista** (`SELECT ... FOR UPDATE`, vía `setLock('pessimistic_write')` de TypeORM) sobre la fila antes de leer/modificar su estado. Esto es más fuerte que solo el constraint único a nivel de DB (sección 2): el constraint evita que quede un dato inconsistente persistido, pero el lock evita que dos requests concurrentes lean el mismo estado "disponible" antes de que el primero lo cambie, lo cual daría un error de constraint confuso en vez de una respuesta clara (`409 Conflict`) al segundo cliente. Aplicado en:
+- `InventarioService.registrarMovimiento` — evita vender/descontar de un stock que ya se agotó por otra operación concurrente.
+- `AsesoriasService.crearSolicitud` — evita doble booking de la misma franja de asesor.
+
+### Notificaciones (WhatsApp/email): interfaz desacoplada desde el día uno
+Se implementó `NotificacionesService` (en `backend/src/common/notificaciones/`) como la única puerta de entrada para disparar notificaciones de nuevas solicitudes (`SolicitudCarrito`, `SolicitudAsesoria`). En el MVP actual es un stub que solo loguea — la integración real con BullMQ (cola) y la API de WhatsApp (sección 4) se conecta detrás de esta misma interfaz sin tocar `CarritoService` ni `AsesoriasService`.
+
+### Máquina de estados en `SolicitudAsesoria`
+No cualquier transición de estado es válida — se implementó una validación explícita (`AsesoriasService.transicionar`) que solo permite avanzar por el flujo definido en la sección 2 (`pendiente → llamada_realizada → visita_pactada` o `no_procede`; `cancelada` desde cualquier estado). Un intento de saltarse un paso (ej. marcar visita pactada sin haber registrado la llamada) responde `400 Bad Request` en vez de dejar datos inconsistentes.

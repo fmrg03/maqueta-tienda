@@ -9,6 +9,7 @@ import { UsuariosService } from '../usuarios/usuarios.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUsuarioDto } from '../usuarios/dto/create-usuario.dto';
 import { UsuarioResponseDto } from '../usuarios/dto/usuario-response.dto';
+import { RolUsuario } from '../usuarios/entities/usuario.entity';
 
 export interface TokensResponse {
   accessToken: string;
@@ -23,10 +24,18 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
+  // Auto-registro público: SIEMPRE crea un usuario 'cliente', sin importar
+  // qué rol venga en el DTO. Crear admin/ventas/asesor es exclusivo del
+  // endpoint administrado POST /usuarios (protegido por RolesGuard) — de
+  // lo contrario cualquiera podría auto-otorgarse un rol privilegiado
+  // desde este endpoint público.
   async register(
     dto: CreateUsuarioDto,
   ): Promise<{ usuario: UsuarioResponseDto } & TokensResponse> {
-    const usuario = await this.usuariosService.create(dto);
+    const usuario = await this.usuariosService.create(
+      { ...dto, rol: RolUsuario.CLIENTE },
+      { esRegistroPublico: true },
+    );
     const tokens = await this.generarTokens(usuario.id, usuario.email, usuario.rol);
     return { usuario: new UsuarioResponseDto(usuario), ...tokens };
   }

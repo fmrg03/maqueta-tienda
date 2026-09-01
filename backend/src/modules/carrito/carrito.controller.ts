@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CarritoService } from './carrito.service';
 import { CreateSolicitudCarritoDto } from './dto/create-solicitud-carrito.dto';
@@ -18,6 +19,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolUsuario } from '../usuarios/entities/usuario.entity';
 
+@ApiTags('Carrito')
 @Controller('api/v1/carrito')
 export class CarritoController {
   constructor(private readonly carritoService: CarritoService) {}
@@ -32,6 +34,7 @@ export class CarritoController {
   }
 
   @Get('solicitudes')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
   findAll(@Query('estado') estado?: string) {
@@ -39,6 +42,7 @@ export class CarritoController {
   }
 
   @Get('solicitudes/:id')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -46,6 +50,7 @@ export class CarritoController {
   }
 
   @Patch('solicitudes/:id')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
   actualizarEstado(

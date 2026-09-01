@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AsesoriasService } from './asesorias.service';
 import { CrearSolicitudAsesoriaDto } from './dto/crear-solicitud-asesoria.dto';
@@ -19,6 +20,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolUsuario } from '../usuarios/entities/usuario.entity';
 
+@ApiTags('Asesorias')
 @Controller('api/v1/asesorias')
 export class AsesoriasController {
   constructor(private readonly asesoriasService: AsesoriasService) {}
@@ -31,6 +33,7 @@ export class AsesoriasController {
   }
 
   @Get('solicitudes')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
   findAll(@Query('estado') estado?: EstadoSolicitudAsesoria) {
@@ -38,6 +41,7 @@ export class AsesoriasController {
   }
 
   @Get('solicitudes/:id')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -45,6 +49,7 @@ export class AsesoriasController {
   }
 
   @Patch('solicitudes/:id/registrar-llamada')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
   registrarLlamada(
@@ -55,6 +60,7 @@ export class AsesoriasController {
   }
 
   @Patch('solicitudes/:id/marcar-visita-pactada')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
   marcarVisitaPactada(@Param('id', ParseUUIDPipe) id: string) {
@@ -62,6 +68,7 @@ export class AsesoriasController {
   }
 
   @Patch('solicitudes/:id/marcar-no-procede')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
   marcarNoProcede(@Param('id', ParseUUIDPipe) id: string) {
@@ -69,6 +76,7 @@ export class AsesoriasController {
   }
 
   @Patch('solicitudes/:id/cancelar')
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
   cancelar(@Param('id', ParseUUIDPipe) id: string) {

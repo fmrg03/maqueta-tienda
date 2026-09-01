@@ -1,8 +1,10 @@
 import { Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CatalogoService } from './catalogo.service';
 
 // Endpoints públicos: sin JwtAuthGuard. El rate limiting global
 // (ThrottlerGuard en app.module.ts) sigue aplicando.
+@ApiTags('Catalogo')
 @Controller('api/v1/catalogo')
 export class CatalogoController {
   constructor(private readonly catalogoService: CatalogoService) {}

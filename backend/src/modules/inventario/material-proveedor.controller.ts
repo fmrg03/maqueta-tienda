@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MaterialProveedorService } from './material-proveedor.service';
 import { AsociarProveedorDto } from './dto/asociar-proveedor.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -8,6 +9,8 @@ import { RolUsuario } from '../usuarios/entities/usuario.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RolUsuario.ADMIN)
+@ApiTags('Materiales-Proveedores')
+@ApiBearerAuth('access-token')
 @Controller('api/v1/materiales/:id/proveedores')
 export class MaterialProveedorController {
   constructor(private readonly materialProveedorService: MaterialProveedorService) {}

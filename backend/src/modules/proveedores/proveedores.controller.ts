@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProveedoresService } from './proveedores.service';
 import { CreateProveedorDto } from './dto/create-proveedor.dto';
 import { UpdateProveedorDto } from './dto/update-proveedor.dto';
@@ -19,6 +20,8 @@ import { RolUsuario } from '../usuarios/entities/usuario.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RolUsuario.ADMIN)
+@ApiTags('Proveedores')
+@ApiBearerAuth('access-token')
 @Controller('api/v1/proveedores')
 export class ProveedoresController {
   constructor(private readonly proveedoresService: ProveedoresService) {}

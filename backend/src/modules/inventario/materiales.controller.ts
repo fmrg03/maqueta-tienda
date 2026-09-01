@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MaterialesService } from './materiales.service';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { UpdateMaterialDto } from './dto/update-material.dto';
@@ -20,6 +21,8 @@ import { RolUsuario } from '../usuarios/entities/usuario.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RolUsuario.ADMIN)
+@ApiTags('Materiales')
+@ApiBearerAuth('access-token')
 @Controller('api/v1/materiales')
 export class MaterialesController {
   constructor(private readonly materialesService: MaterialesService) {}

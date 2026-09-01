@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
@@ -22,6 +23,8 @@ import { RolUsuario } from './entities/usuario.entity';
 
 @UseInterceptors(ClassSerializerInterceptor)
 @UseGuards(JwtAuthGuard, RolesGuard)
+@ApiTags('Usuarios')
+@ApiBearerAuth('access-token')
 @Controller('api/v1/usuarios')
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}

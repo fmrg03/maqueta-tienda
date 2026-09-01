@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CombosService } from './combos.service';
 import { CreateComboDto } from './dto/create-combo.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -8,6 +9,8 @@ import { RolUsuario } from '../usuarios/entities/usuario.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RolUsuario.ADMIN)
+@ApiTags('Combos')
+@ApiBearerAuth('access-token')
 @Controller('api/v1/combos')
 export class CombosController {
   constructor(private readonly combosService: CombosService) {}

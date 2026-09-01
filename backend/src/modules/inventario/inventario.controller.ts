@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { InventarioService } from './inventario.service';
 import { CreateVarianteDto } from './dto/create-variante.dto';
 import { RegistrarMovimientoDto } from './dto/registrar-movimiento.dto';
@@ -19,6 +20,8 @@ import { RolUsuario } from '../usuarios/entities/usuario.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RolUsuario.ADMIN)
+@ApiTags('Inventario')
+@ApiBearerAuth('access-token')
 @Controller('api/v1')
 export class InventarioController {
   constructor(private readonly inventarioService: InventarioService) {}

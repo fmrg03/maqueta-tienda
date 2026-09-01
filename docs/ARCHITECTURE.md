@@ -194,3 +194,16 @@ Se implementó `NotificacionesService` (en `backend/src/common/notificaciones/`)
 
 ### Máquina de estados en `SolicitudAsesoria`
 No cualquier transición de estado es válida — se implementó una validación explícita (`AsesoriasService.transicionar`) que solo permite avanzar por el flujo definido en la sección 2 (`pendiente → llamada_realizada → visita_pactada` o `no_procede`; `cancelada` desde cualquier estado). Un intento de saltarse un paso (ej. marcar visita pactada sin haber registrado la llamada) responde `400 Bad Request` en vez de dejar datos inconsistentes.
+
+### Row Level Security (RLS), implementado y probado contra Postgres real
+La migración `AddRowLevelSecurity` crea:
+- Un rol de aplicación **`app_backend`**, sin privilegio de superusuario. Esto es un requisito duro: un superusuario de Postgres siempre bypassea RLS sin excepción, así que `DATABASE_URL` en producción debe conectar como `app_backend` — nunca como el usuario que corre las migraciones.
+- Políticas sobre `usuarios` (cada quien ve su propia fila, admin ve todas), `solicitudes_carrito` (solo `ventas`/`admin` leen, la creación es pública) y `solicitudes_asesoria` (admin ve todas, cada asesor solo las suyas — vía join con su `Asesor.usuarioId`).
+
+El contexto de sesión (`app.rol`, `app.usuario_id`) se setea vía `set_config(..., true)` — parametrizado, nunca interpolado en el SQL — desde `RlsInterceptor` (`backend/src/common/rls/`), que envuelve cada request HTTP en una transacción propia y expone el `EntityManager` transaccional vía `AsyncLocalStorage` a los tres servicios protegidos (`UsuariosService`, `CarritoService`, `AsesoriasService`), con fallback al repositorio inyectado normalmente cuando no hay contexto activo (tests unitarios).
+
+**Dos casos límite reales, encontrados solo al probar contra una app corriendo de verdad (no solo con SQL manual), documentados aquí porque no eran obvios de antemano:**
+1. **El lookup de login necesita leer `usuarios` sin sesión previa** (es exactamente el momento en que la sesión todavía no existe). Se agregó una política de `SELECT` acotada al valor especial `app.rol = 'service_auth'`, que solo `UsuariosService.findByEmailConPassword` setea, y solo para esa consulta puntual.
+2. **El `INSERT ... RETURNING` que TypeORM genera para leer columnas autogeneradas también exige que la fila pase una política de `SELECT`**, no solo la de `INSERT` — no es suficiente con permitir el insert. El auto-registro público (`POST /auth/register`) reusa el mismo contexto `service_auth` justo antes de guardar, por la misma razón que el login.
+
+Como control adicional descubierto en el camino: el DTO de registro público aceptaba un campo `rol` arbitrario — cualquiera podía auto-asignarse `admin` vía `POST /auth/register`. Se corrigió forzando `rol: cliente` en `AuthService.register` sin importar lo que venga en el body; crear usuarios con otros roles quedó exclusivo de `POST /usuarios` (admin-only).

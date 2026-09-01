@@ -5,6 +5,11 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { ProveedoresModule } from './modules/proveedores/proveedores.module';
+import { InventarioModule } from './modules/inventario/inventario.module';
+import { CatalogoModule } from './modules/catalogo/catalogo.module';
+import { CarritoModule } from './modules/carrito/carrito.module';
+import { AsesoriasModule } from './modules/asesorias/asesorias.module';
 
 @Module({
   imports: [
@@ -20,8 +25,11 @@ import { AuthModule } from './modules/auth/auth.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     UsuariosModule,
     AuthModule,
-    // Próximos módulos: InventarioModule, CatalogoModule, ProveedoresModule,
-    // CarritoModule, AsesoriasModule — se agregan incrementalmente.
+    ProveedoresModule,
+    InventarioModule,
+    CatalogoModule,
+    CarritoModule,
+    AsesoriasModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

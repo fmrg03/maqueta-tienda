@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProveedoresModule } from './modules/proveedores/proveedores.module';
@@ -10,6 +10,7 @@ import { InventarioModule } from './modules/inventario/inventario.module';
 import { CatalogoModule } from './modules/catalogo/catalogo.module';
 import { CarritoModule } from './modules/carrito/carrito.module';
 import { AsesoriasModule } from './modules/asesorias/asesorias.module';
+import { RlsInterceptor } from './common/rls/rls.interceptor';
 
 @Module({
   imports: [
@@ -31,6 +32,9 @@ import { AsesoriasModule } from './modules/asesorias/asesorias.module';
     CarritoModule,
     AsesoriasModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: RlsInterceptor },
+  ],
 })
 export class AppModule {}

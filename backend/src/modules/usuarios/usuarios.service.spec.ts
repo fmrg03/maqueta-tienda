@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UsuariosService } from './usuarios.service';
@@ -33,6 +33,7 @@ describe('UsuariosService', () => {
     rol: RolUsuario.CLIENTE,
     telefono: '+584121234567',
     activo: true,
+    protegido: false,
     createdAt: new Date('2026-01-01T00:00:00Z'),
   };
 
@@ -132,6 +133,32 @@ describe('UsuariosService', () => {
         service.update('uuid-1', { email: 'otro@example.com' }),
       ).rejects.toThrow(ConflictException);
     });
+
+    it('lanza ForbiddenException si intenta cambiar el rol de una cuenta protegida', async () => {
+      repository.findOne!.mockResolvedValue({
+        ...usuarioBase,
+        protegido: true,
+        rol: RolUsuario.ADMIN,
+      });
+
+      await expect(
+        service.update('uuid-1', { rol: RolUsuario.CLIENTE }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('permite editar otros campos de una cuenta protegida si no toca el rol', async () => {
+      repository.findOne!.mockResolvedValue({
+        ...usuarioBase,
+        protegido: true,
+        rol: RolUsuario.ADMIN,
+      });
+      repository.save!.mockImplementation((u) => Promise.resolve(u));
+
+      const resultado = await service.update('uuid-1', { nombre: 'Nuevo Nombre' });
+
+      expect(resultado.nombre).toBe('Nuevo Nombre');
+    });
   });
 
   describe('desactivar', () => {
@@ -145,6 +172,19 @@ describe('UsuariosService', () => {
       expect(repository.save).toHaveBeenCalledWith(
         expect.objectContaining({ activo: false }),
       );
+    });
+
+    it('lanza ForbiddenException si la cuenta está protegida, sin importar quién la pida', async () => {
+      repository.findOne!.mockResolvedValue({
+        ...usuarioBase,
+        protegido: true,
+        activo: true,
+      });
+
+      await expect(service.desactivar('uuid-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 });

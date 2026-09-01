@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -109,12 +110,28 @@ export class UsuariosService {
       }
     }
 
+    // Igual que con desactivar: nadie puede quitarle el rol admin a la
+    // cuenta protegida, aunque sí puede editar otros campos (nombre, etc).
+    if (usuario.protegido && dto.rol && dto.rol !== usuario.rol) {
+      throw new ForbiddenException(
+        'Esta cuenta está protegida y no puede cambiar de rol',
+      );
+    }
+
     Object.assign(usuario, dto);
     return this.repo.save(usuario);
   }
 
   async desactivar(id: string): Promise<void> {
     const usuario = await this.findOne(id);
+    // Sin excepción por rol: ni siquiera otro admin puede desactivar la
+    // cuenta protegida — es la cuenta raíz de la que dependen todas las
+    // demás (ver docs/ARCHITECTURE.md).
+    if (usuario.protegido) {
+      throw new ForbiddenException(
+        'Esta cuenta está protegida y no puede desactivarse',
+      );
+    }
     usuario.activo = false;
     await this.repo.save(usuario);
   }

@@ -25,6 +25,9 @@ export class UsuarioResponseDto {
   activo: boolean;
 
   @Expose()
+  protegido: boolean;
+
+  @Expose()
   createdAt: Date;
 
   // Asignación explícita campo por campo (no Object.assign genérico):
@@ -38,6 +41,7 @@ export class UsuarioResponseDto {
     rol: RolUsuario;
     telefono?: string;
     activo: boolean;
+    protegido: boolean;
     createdAt: Date;
   }) {
     this.id = usuario.id;
@@ -46,6 +50,7 @@ export class UsuarioResponseDto {
     this.rol = usuario.rol;
     this.telefono = usuario.telefono;
     this.activo = usuario.activo;
+    this.protegido = usuario.protegido;
     this.createdAt = usuario.createdAt;
   }
 }

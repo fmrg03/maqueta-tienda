@@ -22,6 +22,7 @@ describe('AuthService', () => {
     rol: RolUsuario.CLIENTE,
     telefono: '+584121234567',
     activo: true,
+    protegido: false,
     createdAt: new Date('2026-01-01T00:00:00Z'),
   };
 

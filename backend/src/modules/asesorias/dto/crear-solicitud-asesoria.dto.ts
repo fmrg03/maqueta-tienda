@@ -19,4 +19,10 @@ export class CrearSolicitudAsesoriaDto {
   // DisponibilidadAsesor (validado en el servicio).
   @IsDateString()
   fechaHoraLlamada: string;
+
+  // Token del widget de Cloudflare Turnstile. Solo se valida si
+  // CAPTCHA_ENABLED=true en el servidor (ver CaptchaGuard).
+  @IsString()
+  @IsOptional()
+  captchaToken?: string;
 }

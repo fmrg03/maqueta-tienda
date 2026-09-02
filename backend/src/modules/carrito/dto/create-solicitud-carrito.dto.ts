@@ -54,4 +54,11 @@ export class CreateSolicitudCarritoDto {
   @IsEnum(CanalEnvio)
   @IsOptional()
   canalEnvio?: CanalEnvio;
+
+  // Token del widget de Cloudflare Turnstile. Solo se valida si
+  // CAPTCHA_ENABLED=true en el servidor (ver CaptchaGuard) — opcional acá
+  // para no romper mientras el captcha esté deshabilitado en desarrollo.
+  @IsString()
+  @IsOptional()
+  captchaToken?: string;
 }

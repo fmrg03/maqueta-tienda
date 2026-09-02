@@ -18,6 +18,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { PhoneRateLimitGuard } from '../../common/rate-limit/phone-rate-limit.guard';
+import { CaptchaGuard } from '../../common/captcha/captcha.guard';
 
 @ApiTags('Carrito')
 @Controller('api/v1/carrito')
@@ -25,10 +27,11 @@ export class CarritoController {
   constructor(private readonly carritoService: CarritoService) {}
 
   // Público: el cliente arma su carrito en el catálogo y lo envía sin login.
-  // Rate limiting propio, más estricto que el default global, para mitigar
-  // spam (ver ARCHITECTURE.md, sección Seguridad).
+  // Rate limiting por IP (@Throttle) + por teléfono (PhoneRateLimitGuard) +
+  // captcha (CaptchaGuard, opt-in) — ver ARCHITECTURE.md sección Seguridad.
   @Post('solicitud')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(PhoneRateLimitGuard, CaptchaGuard)
   crearSolicitud(@Body() dto: CreateSolicitudCarritoDto) {
     return this.carritoService.crearSolicitud(dto);
   }

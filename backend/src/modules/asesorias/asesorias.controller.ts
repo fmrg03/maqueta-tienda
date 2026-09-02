@@ -19,6 +19,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { PhoneRateLimitGuard } from '../../common/rate-limit/phone-rate-limit.guard';
+import { CaptchaGuard } from '../../common/captcha/captcha.guard';
 
 @ApiTags('Asesorias')
 @Controller('api/v1/asesorias')
@@ -26,8 +28,11 @@ export class AsesoriasController {
   constructor(private readonly asesoriasService: AsesoriasService) {}
 
   // Público: el cliente elige franja + datos de contacto, sin login.
+  // Rate limiting por IP (@Throttle) + por teléfono (PhoneRateLimitGuard) +
+  // captcha (CaptchaGuard, opt-in) — ver ARCHITECTURE.md sección Seguridad.
   @Post('solicitud')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(PhoneRateLimitGuard, CaptchaGuard)
   crearSolicitud(@Body() dto: CrearSolicitudAsesoriaDto) {
     return this.asesoriasService.crearSolicitud(dto);
   }

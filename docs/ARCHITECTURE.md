@@ -224,3 +224,17 @@ En su lugar, se agregó un campo `protegido: boolean` (default `false`) a `Usuar
 - Probado de punta a punta: seed exitoso, segundo intento de seed rechazado (ya existe una cuenta protegida), login, y un `DELETE` sobre la propia cuenta protegida devolviendo `403` con el formato de error estándar.
 
 Si en el futuro la empresa necesita jerarquía real entre varios admins (algunos pudiendo eliminar a otros admins), ahí sí se justifica un rol `master` — hoy no hay nadie a quien restringir.
+
+### Health check, CI, y seeds de desarrollo
+- `GET /health` (sin auth, para balanceadores/orquestadores) chequea la conexión real a la base de datos vía `@nestjs/terminus`.
+- CI en GitHub Actions (`.github/workflows/backend-ci.yml`): `tsc --noEmit` + `npm test` en cada push/PR contra `main`.
+- `npm run seed:data`: categorías, un proveedor, un material con variante, un asesor con una franja de disponibilidad — idempotente (no duplica si ya existe), pensado solo para desarrollo local. Igual que `seed:admin`, necesita credenciales privilegiadas (no `app_backend`) por la misma razón de RLS.
+
+### Dos bugs más, encontrados en una corrida de arranque limpio de punta a punta (DB vacía → migraciones → seeds → app corriendo → requests reales)
+Aparecieron recién al simular el flujo completo que alguien seguiría clonando el repo por primera vez — ninguno se detectó con tests unitarios ni con SQL manual, porque ambos dependen de la app real ejecutando el camino completo:
+
+1. **`ParseIntPipe`/`ParseBoolPipe` con `{ optional: true }`** no se comportaban como documentado en la versión de Nest instalada: `GET /api/v1/catalogo/materiales` sin query params devolvía `400` en vez de usar valores por defecto. Se reemplazó por parseo manual en `CatalogoController` y `MaterialesController`.
+
+2. **El mismo problema de `INSERT ... RETURNING` + RLS que ya afectaba a `usuarios`, mordiendo también `solicitudes_asesoria` y `solicitudes_carrito`**: ambos endpoints públicos de creación (`POST /asesorias/solicitud`, `POST /carrito/solicitud`) fallaban con `500` porque ninguna de esas dos tablas tenía la excepción `service_auth` para el `SELECT` que el `RETURNING` necesita. Corregido con una migración nueva (`FixAsesoriaInsertReturning` — no se editó la migración de RLS ya pusheada) que agrega esa política a ambas tablas, más el mismo `set_config('app.rol', 'service_auth', true)` antes del insert en `AsesoriasService.crearSolicitud` y `CarritoService.crearSolicitud`.
+
+Ambos verificados con la app real corriendo como `app_backend` (no superusuario): `POST /carrito/solicitud` y `POST /asesorias/solicitud` devolviendo `201`, con la franja de asesoría quedando correctamente bloqueada (`disponible: false`) tras la reserva.

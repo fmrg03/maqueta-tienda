@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseBoolPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -35,9 +34,12 @@ export class MaterialesController {
   @Get()
   findAll(
     @Query('categoria') categoriaId?: string,
-    @Query('stock_bajo', new ParseBoolPipe({ optional: true }))
-    stockBajo?: boolean,
+    @Query('stock_bajo') stockBajoRaw?: string,
   ) {
+    // Parseo manual en vez de ParseBoolPipe({ optional: true }) — mismo
+    // motivo que en CatalogoController: esa opción no se comportó como
+    // documentado cuando el query param está ausente.
+    const stockBajo = stockBajoRaw !== undefined ? stockBajoRaw === 'true' : undefined;
     return this.materialesService.findAll({ categoriaId, stockBajo });
   }
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CatalogoService } from './catalogo.service';
 
@@ -11,9 +11,14 @@ export class CatalogoController {
 
   @Get('materiales')
   listarMateriales(
-    @Query('pagina', new ParseIntPipe({ optional: true })) pagina?: number,
-    @Query('por_pagina', new ParseIntPipe({ optional: true })) porPagina?: number,
+    @Query('pagina') paginaRaw?: string,
+    @Query('por_pagina') porPaginaRaw?: string,
   ) {
+    // Parseo manual en vez de ParseIntPipe({ optional: true }): esa opción
+    // no se comportó como está documentado cuando el query param está
+    // ausente (se detectó probando la app real, no solo con tests).
+    const pagina = paginaRaw ? parseInt(paginaRaw, 10) : undefined;
+    const porPagina = porPaginaRaw ? parseInt(porPaginaRaw, 10) : undefined;
     return this.catalogoService.listarMateriales(pagina, porPagina);
   }
 

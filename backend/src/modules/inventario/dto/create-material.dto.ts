@@ -7,6 +7,7 @@ import {
   Min,
   MaxLength,
 } from 'class-validator';
+import { SanitizedText } from '../../../common/sanitize/sanitized-text.decorator';
 
 export class CreateMaterialDto {
   @IsString()
@@ -19,6 +20,7 @@ export class CreateMaterialDto {
 
   @IsString()
   @IsOptional()
+  @SanitizedText()
   descripcion?: string;
 
   @IsUUID()

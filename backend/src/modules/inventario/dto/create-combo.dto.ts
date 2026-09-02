@@ -10,6 +10,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { SanitizedText } from '../../../common/sanitize/sanitized-text.decorator';
 
 class ComboItemInputDto {
   @IsUUID()
@@ -32,6 +33,7 @@ export class CreateComboDto {
 
   @IsString()
   @IsOptional()
+  @SanitizedText()
   descripcion?: string;
 
   @IsNumber()

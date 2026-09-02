@@ -86,6 +86,7 @@ describe('AsesoriasService', () => {
           if (entity === SolicitudAsesoria) return solicitudManagerRepo;
           return {};
         }),
+        query: jest.fn().mockResolvedValue(undefined),
         franjaManagerRepo,
         solicitudManagerRepo,
       };
@@ -151,6 +152,20 @@ describe('AsesoriasService', () => {
 
       const queryBuilder = manager.franjaManagerRepo.createQueryBuilder();
       expect(queryBuilder.setLock).toHaveBeenCalledWith('pessimistic_write');
+    });
+
+    it('setea app.rol=service_auth antes de insertar (necesario para el RETURNING con RLS)', async () => {
+      const manager = mockManager(
+        { id: 'asesor-1' },
+        { id: 'disp-1', disponible: true },
+      );
+      dataSource.transaction.mockImplementation((cb: any) => cb(manager));
+
+      await service.crearSolicitud(dtoBase as any);
+
+      expect(manager.query).toHaveBeenCalledWith(
+        `SELECT set_config('app.rol', 'service_auth', true)`,
+      );
     });
   });
 

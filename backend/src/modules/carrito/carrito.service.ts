@@ -87,6 +87,17 @@ export class CarritoService {
       items,
     });
 
+    // El INSERT de TypeORM siempre agrega RETURNING para leer columnas
+    // generadas. Postgres exige que la fila insertada también pase una
+    // política de SELECT para devolverla — no alcanza con que el INSERT
+    // esté permitido. Este endpoint es público (sin sesión), así que no
+    // hay forma de que pase la política normal (solo ventas/admin);
+    // reusamos el mismo contexto 'service_auth' que usuarios.service.ts.
+    const manager = getRlsManager();
+    if (manager) {
+      await manager.query(`SELECT set_config('app.rol', 'service_auth', true)`);
+    }
+
     const guardada = await this.solicitudRepository.save(solicitud);
     await this.notificacionesService.notificarNuevaSolicitudCarrito(guardada.id);
 

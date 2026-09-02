@@ -76,6 +76,15 @@ export class AsesoriasService {
       franja.disponible = false;
       await manager.getRepository(DisponibilidadAsesor).save(franja);
 
+      // El INSERT de TypeORM siempre agrega RETURNING para leer columnas
+      // generadas. Postgres exige que la fila insertada también pase una
+      // política de SELECT para devolverla — no alcanza con que el INSERT
+      // esté permitido. Esta solicitud viene de un endpoint público (sin
+      // sesión), así que no hay forma de que pase la política normal
+      // (admin o el propio asesor); reusamos el mismo contexto
+      // 'service_auth' que usuarios.service.ts usa para login/registro.
+      await manager.query(`SELECT set_config('app.rol', 'service_auth', true)`);
+
       const nuevaSolicitud = manager.getRepository(SolicitudAsesoria).create({
         clienteNombre: dto.clienteNombre,
         clienteTelefono: dto.clienteTelefono,

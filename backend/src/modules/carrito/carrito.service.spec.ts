@@ -10,6 +10,7 @@ import { Material } from '../inventario/entities/material.entity';
 import { VarianteMaterial } from '../inventario/entities/variante-material.entity';
 import { Combo } from '../inventario/entities/combo.entity';
 import { NotificacionesService } from '../../common/notificaciones/notificaciones.service';
+import { rlsStorage } from '../../common/rls/request-context';
 
 const createMockRepository = () => ({
   create: jest.fn(),
@@ -109,6 +110,25 @@ describe('CarritoService', () => {
       const resultado = await service.crearSolicitud(dto as any);
 
       expect(resultado.id).toBe('sol-2');
+    });
+
+    it('setea app.rol=service_auth antes de insertar cuando hay contexto RLS activo (necesario para el RETURNING)', async () => {
+      materialRepo.findOne.mockResolvedValue({ id: 'mat-1' });
+      solicitudRepo.create.mockReturnValue({ id: 'sol-3', items: [] });
+      solicitudRepo.save.mockResolvedValue({ id: 'sol-3', items: [] });
+
+      const managerFalso = {
+        query: jest.fn().mockResolvedValue(undefined),
+        getRepository: jest.fn().mockReturnValue(solicitudRepo),
+      };
+
+      await rlsStorage.run({ manager: managerFalso as any }, () =>
+        service.crearSolicitud(dtoBase as any),
+      );
+
+      expect(managerFalso.query).toHaveBeenCalledWith(
+        `SELECT set_config('app.rol', 'service_auth', true)`,
+      );
     });
   });
 

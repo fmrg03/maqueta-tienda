@@ -11,6 +11,7 @@ import { CatalogoModule } from './modules/catalogo/catalogo.module';
 import { CarritoModule } from './modules/carrito/carrito.module';
 import { AsesoriasModule } from './modules/asesorias/asesorias.module';
 import { RlsInterceptor } from './common/rls/rls.interceptor';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RlsInterceptor } from './common/rls/rls.interceptor';
     CatalogoModule,
     CarritoModule,
     AsesoriasModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

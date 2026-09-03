@@ -70,7 +70,7 @@ export class AuthService {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
 
-      const usuario = await this.usuariosService.findOne(payload.sub);
+      const usuario = await this.usuariosService.findOneParaRefresh(payload.sub);
       if (!usuario.activo) {
         throw new UnauthorizedException('Usuario inactivo');
       }

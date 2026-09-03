@@ -33,6 +33,19 @@ export class UsuariosService {
     dto: CreateUsuarioDto,
     opciones?: { esRegistroPublico?: boolean },
   ): Promise<Usuario> {
+    // Igual que en el insert más abajo: sin esto, el SELECT de este
+    // chequeo de duplicado queda bloqueado por RLS en el registro público
+    // (no hay sesión admin ni "propio id" todavía), así que `existente`
+    // daría siempre null sin importar si el email ya existe — el INSERT
+    // fallaría después con un error crudo de constraint única en vez de
+    // un 409 claro. Encontrado con un intento real de registro duplicado.
+    const manager = getRlsManager();
+    if (opciones?.esRegistroPublico && manager) {
+      await manager.query(
+        `SELECT set_config('app.rol', 'service_auth', true)`,
+      );
+    }
+
     const existente = await this.repo.findOne({
       where: { email: dto.email },
     });
@@ -53,16 +66,8 @@ export class UsuariosService {
     // El INSERT de TypeORM siempre agrega RETURNING para leer columnas
     // generadas (id, defaults). Postgres exige que la fila insertada
     // también pase las políticas de SELECT para poder devolverla — no
-    // solo las de INSERT. Un usuario recién auto-registrado no es "admin"
-    // ni "su propio id" todavía (no hay sesión), así que reusamos el
-    // mismo contexto 'service_auth' que login usa para su propio lookup.
-    const manager = getRlsManager();
-    if (opciones?.esRegistroPublico && manager) {
-      await manager.query(
-        `SELECT set_config('app.rol', 'service_auth', true)`,
-      );
-    }
-
+    // solo las de INSERT. El set_config de arriba ya cubre este caso
+    // también (dura toda la transacción, no hace falta repetirlo).
     return this.repo.save(usuario);
   }
 
@@ -96,6 +101,25 @@ export class UsuariosService {
       .addSelect('usuario.passwordHash')
       .where('usuario.email = :email', { email })
       .getOne();
+  }
+
+  // Usado exclusivamente por AuthService.refresh(). El endpoint de
+  // refresh no pasa por JwtAuthGuard (recibe el refresh token en el
+  // body, no un access token en el header), así que no hay contexto de
+  // sesión seteado — el `findOne` normal (RLS-protegido) nunca vería al
+  // usuario, sin importar si el refresh token es válido. La verificación
+  // de firma del JWT ya prueba la identidad antes de llegar acá, así que
+  // es seguro usar el mismo contexto 'service_auth' que login/registro.
+  // Encontrado con un intento real de refresh: rompía TODOS los refresh,
+  // incluso con tokens perfectamente válidos.
+  async findOneParaRefresh(id: string): Promise<Usuario> {
+    const manager = getRlsManager();
+    if (manager) {
+      await manager.query(
+        `SELECT set_config('app.rol', 'service_auth', true)`,
+      );
+    }
+    return this.findOne(id);
   }
 
   async update(id: string, dto: UpdateUsuarioDto): Promise<Usuario> {

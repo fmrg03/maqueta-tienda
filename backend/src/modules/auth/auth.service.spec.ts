@@ -30,6 +30,7 @@ describe('AuthService', () => {
     usuariosService = {
       create: jest.fn(),
       findOne: jest.fn(),
+      findOneParaRefresh: jest.fn(),
       findByEmailConPassword: jest.fn(),
     };
     jwtService = {
@@ -117,7 +118,7 @@ describe('AuthService', () => {
         email: 'juan@example.com',
         rol: RolUsuario.CLIENTE,
       });
-      usuariosService.findOne!.mockResolvedValue(usuarioConHash);
+      usuariosService.findOneParaRefresh!.mockResolvedValue(usuarioConHash);
       jwtService.signAsync!
         .mockResolvedValueOnce('nuevo-access-token')
         .mockResolvedValueOnce('nuevo-refresh-token');
@@ -142,7 +143,7 @@ describe('AuthService', () => {
         email: 'juan@example.com',
         rol: RolUsuario.CLIENTE,
       });
-      usuariosService.findOne!.mockResolvedValue({
+      usuariosService.findOneParaRefresh!.mockResolvedValue({
         ...usuarioConHash,
         activo: false,
       });

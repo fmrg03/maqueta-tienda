@@ -84,6 +84,19 @@ describe('AllExceptionsFilter', () => {
     expect(cuerpoEnviado.message).not.toContain('INSERT INTO');
   });
 
+  it('respeta el statusCode de errores 4xx crudos de middleware (ej. PayloadTooLargeError)', () => {
+    const errorPayloadGrande = new Error('request entity too large') as Error & {
+      status: number;
+    };
+    errorPayloadGrande.status = 413;
+
+    filter.catch(errorPayloadGrande, host);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(413);
+    const cuerpoEnviado = mockResponse.json.mock.calls[0][0];
+    expect(cuerpoEnviado.message).toBe('request entity too large');
+  });
+
   it('devuelve 500 genérico para cualquier error no controlado', () => {
     filter.catch(new Error('algo inesperado en runtime'), host);
 

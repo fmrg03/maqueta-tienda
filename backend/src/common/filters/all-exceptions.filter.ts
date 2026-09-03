@@ -100,10 +100,33 @@ export class AllExceptionsFilter implements ExceptionFilter {
       };
     }
 
+    // Errores 4xx crudos de middlewares de Express/body-parser que no son
+    // instancias de HttpException (ej. PayloadTooLargeError con un body
+    // que excede el límite configurado) — sin esto, un 413 legítimo se
+    // enmascaraba como 500 genérico. Encontrado probando un payload de
+    // 10MB contra un endpoint público.
+    if (this.esErrorHttpCrudoDeCliente(exception)) {
+      return {
+        statusCode: exception.status ?? exception.statusCode!,
+        error: HttpStatus[exception.status ?? exception.statusCode!] ?? 'Error',
+        message: exception.message ?? 'Solicitud inválida',
+      };
+    }
+
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'Internal Server Error',
       message: 'Ocurrió un error inesperado',
     };
+  }
+
+  private esErrorHttpCrudoDeCliente(
+    exception: unknown,
+  ): exception is Error & { status?: number; statusCode?: number } {
+    if (!(exception instanceof Error)) {
+      return false;
+    }
+    const status = (exception as any).status ?? (exception as any).statusCode;
+    return typeof status === 'number' && status >= 400 && status < 500;
   }
 }

@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "scripts": {
     "test": "jest",
+    "build": "nest build",
+    "start": "node dist/main",
+    "start:dev": "nest start --watch",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts",
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
@@ -39,6 +42,7 @@
   },
   "devDependencies": {
     "@nestjs/testing": "^10.4.0",
+    "@nestjs/cli": "^10.4.5",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.14.0",
     "@types/bcrypt": "^5.0.2",

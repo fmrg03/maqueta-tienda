@@ -88,6 +88,22 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
+    it('corre bcrypt.compare incluso si el usuario no existe (mitiga timing attack de enumeración)', async () => {
+      usuariosService.findByEmailConPassword!.mockResolvedValue(null);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.login({ email: 'noexiste@example.com', password: 'x' }),
+      ).rejects.toThrow(UnauthorizedException);
+
+      // Sin esto, "usuario no existe" respondería mucho más rápido que
+      // "usuario existe, password incorrecto" (bcrypt.compare tarda
+      // ~250-280ms) — una diferencia medible que permite enumerar
+      // emails registrados. Confirmado con una medición real: ver
+      // ARCHITECTURE.md sección 6.
+      expect(bcrypt.compare).toHaveBeenCalled();
+    });
+
     it('lanza UnauthorizedException si el usuario está inactivo', async () => {
       usuariosService.findByEmailConPassword!.mockResolvedValue({
         ...usuarioConHash,

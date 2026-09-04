@@ -5,11 +5,14 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUsuarioDto } from '../usuarios/dto/create-usuario.dto';
 import { UsuarioResponseDto } from '../usuarios/dto/usuario-response.dto';
 import { RolUsuario } from '../usuarios/entities/usuario.entity';
+
+const BCRYPT_SALT_ROUNDS = 12;
 
 export interface TokensResponse {
   accessToken: string;
@@ -23,6 +26,16 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  // Hash bcrypt de una password que nadie va a escribir jamás — se usa
+  // únicamente para que bcrypt.compare() tarde lo mismo cuando el
+  // usuario NO existe que cuando SÍ existe (ver abajo). Generarlo una
+  // sola vez al cargar el módulo evita el costo de un hash nuevo en cada
+  // login fallido.
+  private readonly hashDummyParaTimingConstante = bcrypt.hashSync(
+    crypto.randomUUID(),
+    BCRYPT_SALT_ROUNDS,
+  );
 
   // Auto-registro público: SIEMPRE crea un usuario 'cliente', sin importar
   // qué rol venga en el DTO. Crear admin/ventas/asesor es exclusivo del
@@ -47,16 +60,20 @@ export class AuthService {
       dto.email,
     );
 
-    // Mensaje deliberadamente genérico: no revelar si el email existe o no.
-    if (!usuario || !usuario.activo) {
-      throw new UnauthorizedException('Credenciales inválidas');
-    }
-
+    // Timing attack real, encontrado midiendo tiempos de respuesta: sin
+    // esto, "usuario no existe" respondía en ~3ms (corta antes de
+    // bcrypt.compare) contra ~280ms cuando sí existe (corre
+    // bcrypt.compare) — una diferencia de ~277ms, trivial de detectar y
+    // suficiente para enumerar qué emails están registrados. Corremos
+    // bcrypt.compare() SIEMPRE, contra un hash dummy si el usuario no
+    // existe, para que el tiempo sea equivalente en ambos casos.
     const passwordValido = await bcrypt.compare(
       dto.password,
-      usuario.passwordHash,
+      usuario?.passwordHash ?? this.hashDummyParaTimingConstante,
     );
-    if (!passwordValido) {
+
+    // Mensaje deliberadamente genérico: no revelar si el email existe o no.
+    if (!usuario || !usuario.activo || !passwordValido) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 

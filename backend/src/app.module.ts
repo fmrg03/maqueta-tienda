@@ -22,9 +22,15 @@ import { RedisModule } from './common/redis/redis.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
-      // synchronize solo en desarrollo — en producción se maneja con
-      // migraciones explícitas de TypeORM.
-      synchronize: process.env.NODE_ENV !== 'production',
+      // synchronize siempre en false, incluso en desarrollo: la app corre
+      // como `app_backend` (rol restringido para que RLS aplique de
+      // verdad), que NO es dueño de las tablas — TypeORM no tiene
+      // permisos para auto-alterar el esquema con esa conexión. El único
+      // camino es migraciones explícitas (`npm run migration:run`),
+      // corridas con las credenciales privilegiadas. Encontrado en vivo:
+      // con synchronize:true la app fallaba al arrancar con "must be
+      // owner of table material_proveedor".
+      synchronize: false,
     }),
     // Storage en Redis (no en memoria): con más de una instancia del
     // backend corriendo, un store en memoria haría que cada instancia

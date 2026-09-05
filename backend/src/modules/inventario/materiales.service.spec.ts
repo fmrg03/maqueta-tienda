@@ -27,8 +27,6 @@ describe('MaterialesService', () => {
     sku: 'CEM-001',
     nombre: 'Cemento Portland',
     descripcion: 'Bolsa 25kg',
-    precioCosto: 5,
-    precioVenta: 8,
     imagenUrl: undefined,
     activo: true,
     variantes: [],
@@ -58,8 +56,6 @@ describe('MaterialesService', () => {
     const dto = {
       sku: 'CEM-001',
       nombre: 'Cemento Portland',
-      precioCosto: 5,
-      precioVenta: 8,
     };
 
     it('crea un material cuando el SKU no existe', async () => {

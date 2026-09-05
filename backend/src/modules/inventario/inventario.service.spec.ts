@@ -33,7 +33,8 @@ describe('InventarioService', () => {
     atributos: { tamano: '25kg' },
     skuVariante: 'CEM-001-25KG',
     stock: 50,
-    precioVentaOverride: undefined,
+    precioVenta: 8,
+    precioCosto: 5,
   };
 
   beforeEach(async () => {
@@ -70,6 +71,8 @@ describe('InventarioService', () => {
       const resultado = await service.crearVariante('uuid-mat-1', {
         skuVariante: 'CEM-001-25KG',
         stock: 50,
+        precioVenta: 8,
+        precioCosto: 5,
       });
 
       expect(resultado).toEqual(varianteBase);
@@ -79,7 +82,11 @@ describe('InventarioService', () => {
       materialRepo.findOne!.mockResolvedValue(null);
 
       await expect(
-        service.crearVariante('no-existe', { skuVariante: 'X' }),
+        service.crearVariante('no-existe', {
+          skuVariante: 'X',
+          precioVenta: 8,
+          precioCosto: 5,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });

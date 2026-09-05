@@ -56,7 +56,7 @@ async function seedData(): Promise<void> {
       console.log('✅ Proveedor creado: Distribuidora Central C.A.');
     }
 
-    // --- Material + variante ---
+    // --- Material (sin precio propio) + variantes con precio propio ---
     const materialRepo = dataSource.getRepository(Material);
     let material = await materialRepo.findOne({ where: { sku: 'CEM-001' } });
     if (!material) {
@@ -64,10 +64,8 @@ async function seedData(): Promise<void> {
         materialRepo.create({
           sku: 'CEM-001',
           nombre: 'Cemento Portland Gris',
-          descripcion: 'Bolsa de 25kg, uso general',
+          descripcion: 'Bolsa de cemento gris, uso general',
           categoria: categorias[0],
-          precioCosto: 5,
-          precioVenta: 8,
           activo: true,
         }),
       );
@@ -75,35 +73,57 @@ async function seedData(): Promise<void> {
     }
 
     const varianteRepo = dataSource.getRepository(VarianteMaterial);
-    let variante = await varianteRepo.findOne({
+
+    // Dos presentaciones con precio y costo propios — ni el costo del
+    // proveedor ni el precio de venta son iguales entre ellas.
+    let variante25kg = await varianteRepo.findOne({
       where: { skuVariante: 'CEM-001-25KG' },
     });
-    if (!variante) {
-      variante = await varianteRepo.save(
+    if (!variante25kg) {
+      variante25kg = await varianteRepo.save(
         varianteRepo.create({
           material,
           skuVariante: 'CEM-001-25KG',
           atributos: { presentacion: '25kg' },
           stock: 100,
+          precioVenta: 8,
+          precioCosto: 5,
         }),
       );
-      console.log('✅ Variante creada: CEM-001-25KG (stock inicial: 100)');
+      console.log('✅ Variante creada: CEM-001-25KG (stock: 100, venta: $8, costo: $5)');
+    }
+
+    let variante50kg = await varianteRepo.findOne({
+      where: { skuVariante: 'CEM-001-50KG' },
+    });
+    if (!variante50kg) {
+      variante50kg = await varianteRepo.save(
+        varianteRepo.create({
+          material,
+          skuVariante: 'CEM-001-50KG',
+          atributos: { presentacion: '50kg' },
+          stock: 40,
+          precioVenta: 15,
+          precioCosto: 9.5,
+        }),
+      );
+      console.log('✅ Variante creada: CEM-001-50KG (stock: 40, venta: $15, costo: $9.50)');
     }
 
     const materialProveedorRepo = dataSource.getRepository(MaterialProveedor);
     const asociacionExistente = await materialProveedorRepo.findOne({
-      where: { material: { id: material.id }, proveedor: { id: proveedor.id } },
+      where: { variante: { id: variante25kg.id }, proveedor: { id: proveedor.id } },
     });
     if (!asociacionExistente) {
       await materialProveedorRepo.save(
         materialProveedorRepo.create({
-          material,
+          variante: variante25kg,
           proveedor,
           precioCostoProveedor: 4.5,
           tiempoEntregaDias: 3,
         }),
       );
-      console.log('✅ Material vinculado al proveedor');
+      console.log('✅ Variante 25kg vinculada al proveedor');
     }
 
     // --- Usuario asesor + Asesor + disponibilidad de ejemplo ---

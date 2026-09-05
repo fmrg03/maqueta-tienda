@@ -28,6 +28,13 @@ export class VarianteMaterial {
   @Column({ type: 'int', default: 0 })
   stock: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
-  precioVentaOverride?: number;
+  // Precio de venta y costo viven acá, no en Material: dos presentaciones
+  // del mismo producto (ej. cemento 25kg vs 50kg) casi nunca cuestan lo
+  // mismo, ni al comprarlo ni al venderlo — el precio es un atributo de
+  // la presentación específica, no del "producto en general".
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  precioVenta: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  precioCosto: number;
 }

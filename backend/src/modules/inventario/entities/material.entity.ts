@@ -28,12 +28,6 @@ export class Material {
   @ManyToOne(() => Categoria, { nullable: true, eager: true })
   categoria?: Categoria;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2 })
-  precioCosto: number;
-
-  @Column({ type: 'decimal', precision: 12, scale: 2 })
-  precioVenta: number;
-
   @Column({ type: 'varchar', length: 500, nullable: true })
   imagenUrl?: string;
 

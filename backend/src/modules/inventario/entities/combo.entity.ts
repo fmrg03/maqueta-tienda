@@ -5,7 +5,6 @@ import {
   ManyToOne,
   OneToMany,
 } from 'typeorm';
-import { Material } from './material.entity';
 import { VarianteMaterial } from './variante-material.entity';
 
 @Entity('combos')
@@ -37,13 +36,13 @@ export class ComboItem {
   @ManyToOne(() => Combo, (combo) => combo.items, { onDelete: 'CASCADE' })
   combo: Combo;
 
-  // Un item de combo referencia un Material base O una VarianteMaterial
-  // específica — se valida en el servicio que exactamente uno esté presente.
-  @ManyToOne(() => Material, { nullable: true, eager: true })
-  material?: Material;
-
-  @ManyToOne(() => VarianteMaterial, { nullable: true, eager: true })
-  variante?: VarianteMaterial;
+  // Siempre una variante específica, nunca el Material genérico: el
+  // combo lo arma la tienda y necesita saber exactamente qué presentación
+  // (y a qué costo/stock) está empaquetando — a diferencia del carrito de
+  // consulta del cliente, donde sí se permite dejarlo ambiguo porque
+  // ventas lo aclara después por WhatsApp.
+  @ManyToOne(() => VarianteMaterial, { eager: true })
+  variante: VarianteMaterial;
 
   @Column({ type: 'int' })
   cantidad: number;

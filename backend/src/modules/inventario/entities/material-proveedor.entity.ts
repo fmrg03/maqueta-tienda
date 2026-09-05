@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { Material } from './material.entity';
+import { VarianteMaterial } from './variante-material.entity';
 import { Proveedor } from '../../proveedores/entities/proveedor.entity';
 
 @Entity('material_proveedor')
@@ -7,8 +7,12 @@ export class MaterialProveedor {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Material, { onDelete: 'CASCADE' })
-  material: Material;
+  // Antes apuntaba a Material — se movió a VarianteMaterial porque el
+  // costo del proveedor también varía por presentación (una bolsa de
+  // 25kg y una de 50kg tienen costos de proveedor distintos), igual que
+  // el precio de venta.
+  @ManyToOne(() => VarianteMaterial, { onDelete: 'CASCADE' })
+  variante: VarianteMaterial;
 
   @ManyToOne(() => Proveedor, { eager: true, onDelete: 'CASCADE' })
   proveedor: Proveedor;

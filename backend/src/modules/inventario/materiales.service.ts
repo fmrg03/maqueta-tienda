@@ -27,8 +27,6 @@ export class MaterialesService {
       sku: dto.sku,
       nombre: dto.nombre,
       descripcion: dto.descripcion,
-      precioCosto: dto.precioCosto,
-      precioVenta: dto.precioVenta,
       imagenUrl: dto.imagenUrl,
       activo: dto.activo ?? true,
     });

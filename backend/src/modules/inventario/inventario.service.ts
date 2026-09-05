@@ -52,7 +52,8 @@ export class InventarioService {
       skuVariante: dto.skuVariante,
       atributos: dto.atributos ?? {},
       stock: dto.stock ?? 0,
-      precioVentaOverride: dto.precioVentaOverride,
+      precioVenta: dto.precioVenta,
+      precioCosto: dto.precioCosto,
     });
 
     return this.varianteRepository.save(variante);

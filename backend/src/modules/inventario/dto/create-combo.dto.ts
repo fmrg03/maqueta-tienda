@@ -13,13 +13,10 @@ import { Type } from 'class-transformer';
 import { SanitizedText } from '../../../common/sanitize/sanitized-text.decorator';
 
 class ComboItemInputDto {
+  // Siempre una variante específica — ver el comentario en la entidad
+  // ComboItem sobre por qué ya no se acepta un materialId genérico.
   @IsUUID()
-  @IsOptional()
-  materialId?: string;
-
-  @IsUUID()
-  @IsOptional()
-  varianteId?: string;
+  varianteId: string;
 
   @IsNumber()
   @Min(1)

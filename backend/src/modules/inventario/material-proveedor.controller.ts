@@ -11,20 +11,20 @@ import { RolUsuario } from '../usuarios/entities/usuario.entity';
 @Roles(RolUsuario.ADMIN)
 @ApiTags('Materiales-Proveedores')
 @ApiBearerAuth('access-token')
-@Controller('api/v1/materiales/:id/proveedores')
+@Controller('api/v1/variantes/:id/proveedores')
 export class MaterialProveedorController {
   constructor(private readonly materialProveedorService: MaterialProveedorService) {}
 
   @Post()
   asociar(
-    @Param('id', ParseUUIDPipe) materialId: string,
+    @Param('id', ParseUUIDPipe) varianteId: string,
     @Body() dto: AsociarProveedorDto,
   ) {
-    return this.materialProveedorService.asociar(materialId, dto);
+    return this.materialProveedorService.asociar(varianteId, dto);
   }
 
   @Get()
-  listar(@Param('id', ParseUUIDPipe) materialId: string) {
-    return this.materialProveedorService.listarPorMaterial(materialId);
+  listar(@Param('id', ParseUUIDPipe) varianteId: string) {
+    return this.materialProveedorService.listarPorVariante(varianteId);
   }
 }

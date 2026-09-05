@@ -70,13 +70,12 @@ export class ReportesService {
     const fila = await this.movimientoRepository
       .createQueryBuilder('movimiento')
       .leftJoin('movimiento.variante', 'variante')
-      .leftJoin('variante.material', 'material')
       .select(
-        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * COALESCE(variante.precioVentaOverride, material.precioVenta) ELSE 0 END)`,
+        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * variante.precioVenta ELSE 0 END)`,
         'totalVentas',
       )
       .addSelect(
-        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * material.precioCosto ELSE 0 END)`,
+        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * variante.precioCosto ELSE 0 END)`,
         'totalCosto',
       )
       .where('movimiento.createdAt BETWEEN :desde AND :hasta', { desde, hasta })

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MaterialProveedor } from './entities/material-proveedor.entity';
-import { Material } from './entities/material.entity';
+import { VarianteMaterial } from './entities/variante-material.entity';
 import { Proveedor } from '../proveedores/entities/proveedor.entity';
 import { AsociarProveedorDto } from './dto/asociar-proveedor.dto';
 
@@ -11,21 +11,21 @@ export class MaterialProveedorService {
   constructor(
     @InjectRepository(MaterialProveedor)
     private readonly materialProveedorRepository: Repository<MaterialProveedor>,
-    @InjectRepository(Material)
-    private readonly materialRepository: Repository<Material>,
+    @InjectRepository(VarianteMaterial)
+    private readonly varianteRepository: Repository<VarianteMaterial>,
     @InjectRepository(Proveedor)
     private readonly proveedorRepository: Repository<Proveedor>,
   ) {}
 
   async asociar(
-    materialId: string,
+    varianteId: string,
     dto: AsociarProveedorDto,
   ): Promise<MaterialProveedor> {
-    const material = await this.materialRepository.findOne({
-      where: { id: materialId },
+    const variante = await this.varianteRepository.findOne({
+      where: { id: varianteId },
     });
-    if (!material) {
-      throw new NotFoundException(`Material ${materialId} no encontrado`);
+    if (!variante) {
+      throw new NotFoundException(`Variante ${varianteId} no encontrada`);
     }
 
     const proveedor = await this.proveedorRepository.findOne({
@@ -36,7 +36,7 @@ export class MaterialProveedorService {
     }
 
     const asociacion = this.materialProveedorRepository.create({
-      material,
+      variante,
       proveedor,
       precioCostoProveedor: dto.precioCostoProveedor,
       tiempoEntregaDias: dto.tiempoEntregaDias,
@@ -45,9 +45,9 @@ export class MaterialProveedorService {
     return this.materialProveedorRepository.save(asociacion);
   }
 
-  async listarPorMaterial(materialId: string): Promise<MaterialProveedor[]> {
+  async listarPorVariante(varianteId: string): Promise<MaterialProveedor[]> {
     return this.materialProveedorRepository.find({
-      where: { material: { id: materialId } },
+      where: { variante: { id: varianteId } },
     });
   }
 }

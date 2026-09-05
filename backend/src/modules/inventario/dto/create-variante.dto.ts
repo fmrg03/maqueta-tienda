@@ -21,8 +21,13 @@ export class CreateVarianteDto {
   @IsOptional()
   stock?: number;
 
+  // Requerido: cada presentación (25kg, 50kg, etc.) tiene su propio
+  // precio, no hereda uno del material padre.
   @IsNumber()
   @Min(0)
-  @IsOptional()
-  precioVentaOverride?: number;
+  precioVenta: number;
+
+  @IsNumber()
+  @Min(0)
+  precioCosto: number;
 }

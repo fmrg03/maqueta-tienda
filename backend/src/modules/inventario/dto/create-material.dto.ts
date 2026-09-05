@@ -1,10 +1,8 @@
 import {
   IsBoolean,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  Min,
   MaxLength,
 } from 'class-validator';
 import { SanitizedText } from '../../../common/sanitize/sanitized-text.decorator';
@@ -26,14 +24,6 @@ export class CreateMaterialDto {
   @IsUUID()
   @IsOptional()
   categoriaId?: string;
-
-  @IsNumber()
-  @Min(0)
-  precioCosto: number;
-
-  @IsNumber()
-  @Min(0)
-  precioVenta: number;
 
   @IsString()
   @IsOptional()

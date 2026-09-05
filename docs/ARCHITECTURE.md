@@ -33,21 +33,23 @@
 **Usuario**
 - id, nombre, email, password_hash, rol (`admin` | `ventas` | `cliente`), telefono, created_at
 
-**Material** (producto base)
-- id, sku, nombre, descripcion, categoria_id, precio_costo, precio_venta, imagen_url, activo
+**Material** (producto base — solo datos descriptivos, sin precio)
+- id, sku, nombre, descripcion, categoria_id, imagen_url, activo
+- **El precio NO vive acá.** Dos presentaciones del mismo producto (ej. cemento 25kg vs 50kg) casi nunca cuestan lo mismo, ni al comprarlo del proveedor ni al venderlo — corregido tras una revisión del modelo original, donde el precio vivía en `Material` y la variante solo podía "pisarlo" opcionalmente (`precio_venta_override`), como si fuera la excepción en vez de la norma.
 
 **VarianteMaterial**
-- id, material_id (FK), atributos (JSONB: color, tamaño, etc.), sku_variante, stock, precio_venta_override
+- id, material_id (FK), atributos (JSONB: color, tamaño, etc.), sku_variante, stock, **precio_venta, precio_costo** (ambos requeridos — viven acá, no en Material)
 
 **Combo**
 - id, nombre, descripcion, precio_combo
-- **ComboItem** (tabla puente): combo_id, material_id o variante_id, cantidad
+- **ComboItem** (tabla puente): combo_id, **variante_id** (siempre una variante específica, nunca el Material genérico — la tienda arma el combo y necesita saber exactamente qué presentación y a qué costo/stock está empaquetando), cantidad
 
 **Proveedor**
 - id, nombre, contacto, condiciones_pago
 
-**MaterialProveedor** (tabla puente, N:N)
-- material_id, proveedor_id, precio_costo_proveedor, tiempo_entrega_dias
+**MaterialProveedor** (tabla puente, N:N — pese al nombre, ahora asocia Proveedor con **VarianteMaterial**, no con Material)
+- variante_id, proveedor_id, precio_costo_proveedor, tiempo_entrega_dias
+- Mismo razonamiento que el precio de venta: el costo del proveedor también varía por presentación.
 
 **MovimientoInventario**
 - id, variante_id (FK), tipo (`entrada` | `salida`), cantidad, motivo, usuario_id, created_at
@@ -55,6 +57,7 @@
 
 **SolicitudCarrito** (consulta a ventas, sin pago)
 - id, cliente_nombre, cliente_telefono, cliente_email (opcional), items (relación con Material/Variante/Combo + cantidades), estado (`nueva` | `contactado` | `cerrada`), canal_envio (`whatsapp` | `email` | `formulario`), notas, created_at
+- **Acá sí se permite referenciar el Material genérico, sin especificar variante** (a diferencia de `ComboItem`): es un pedido informal que el cliente arma en el catálogo, y ventas aclara la presentación exacta después por WhatsApp — no hace falta que el cliente la especifique de antemano.
 
 **Asesor**
 - id, usuario_id (FK), especialidad, activo
@@ -72,8 +75,8 @@
 
 ### Relaciones clave
 - `Material` 1—N `VarianteMaterial`
-- `Material` N—N `Proveedor` (vía `MaterialProveedor`)
-- `Combo` N—N `Material`/`VarianteMaterial` (vía `ComboItem`)
+- `VarianteMaterial` N—N `Proveedor` (vía `MaterialProveedor`)
+- `Combo` N—N `VarianteMaterial` (vía `ComboItem`)
 - `VarianteMaterial` 1—N `MovimientoInventario`
 - `SolicitudCarrito` 1—N items (Material/Variante/Combo + cantidad, tabla de detalle)
 - `Asesor` 1—N `DisponibilidadAsesor`
@@ -278,3 +281,20 @@ A pedido explícito de revisar si quedaba algo más de seguridad pendiente, se h
 - **`bcrypt@5.x`** dependía de una versión vulnerable de `tar` (severidad **crítica** — path traversal en extracción de archivos). La exposición real era acotada (`tar` solo se usa al instalar dependencias, para bajar el binario nativo precompilado de bcrypt, no en tiempo de ejecución), pero se actualizó a `bcrypt@6.0.0` de todos modos. La API (`hash`/`compare`) es idéntica entre versiones — confirmado que hashes generados con la v5 (cuentas ya existentes) siguen verificándose correctamente con la v6.
 
 **Quedan 15 vulnerabilidades transitivas de menor severidad** (`qs`, `lodash`, `js-yaml`, `multer`, `file-type`, `uuid`, entre otras) — todas dependencias internas de NestJS/herramientas de desarrollo (Swagger, Terminus, Config), no código propio. La mayoría requeriría subir versiones mayores del propio NestJS (riesgo de romper cosas mayor que el beneficio dado que ninguna es explotable directamente desde nuestro código), o afectan rutas no usadas (ej. `uuid` con `buf` propio — nunca llamamos a esa librería directamente, dejamos que Postgres genere los UUIDs). Se dejan documentadas para revisar cuando actualicemos el framework, no urgentes ahora.
+
+### Corrección de modelo: el precio vive en la variante, no en el material padre
+Señalado por el dueño del negocio al revisar el catálogo en Swagger: dos presentaciones del mismo producto (ej. cemento 25kg vs 50kg) casi nunca cuestan lo mismo, ni al comprarlo del proveedor ni al venderlo. El modelo original tenía el precio "al revés" — vivía en `Material` (el padre), y la variante solo podía opcionalmente pisarlo (`precioVentaOverride`), como si fuera la excepción en vez de la norma.
+
+**Se evaluó explícitamente la alternativa de aplanar el modelo** (un SKU independiente por cada presentación, sin relación padre/variante) — se descartó: es el patrón que usa cualquier plataforma de e-commerce seria (Shopify, WooCommerce) precisamente porque resuelve este problema sin perder la agrupación de catálogo (una sola ficha de producto con selector de presentación) ni duplicar descripción/categoría/imagen por cada tamaño.
+
+**Cambios aplicados:**
+- `precioVenta`/`precioCosto` se movieron de `Material` a `VarianteMaterial`, ahora requeridos (no opcionales/override).
+- `MaterialProveedor` pasó de asociarse a `Material` a asociarse a `VarianteMaterial` — mismo razonamiento, el costo del proveedor también varía por presentación.
+- `ComboItem` ya no acepta un `Material` genérico como alternativa a una variante — siempre debe referenciar una variante específica (la tienda arma el combo y necesita saber exactamente qué presentación está empaquetando). `ItemSolicitudCarrito` (el carrito de consulta del cliente) sí se dejó como estaba, permitiendo referenciar el material genérico sin especificar presentación — es un pedido informal que ventas aclara después por WhatsApp, a propósito menos estricto que un combo armado por la tienda.
+- Nueva migración (`MoverPrecioAVariante`) que hace el backfill de datos existentes (probada `up`/`down`/`up` contra Postgres real, con los datos de desarrollo ya cargados — el precio del material migró correctamente a su variante).
+
+**Dos bugs adicionales encontrados en el camino, ninguno relacionado directamente con el cambio de precio en sí:**
+1. **`synchronize: true` en desarrollo es incompatible con RLS.** La app corre como `app_backend` (rol restringido a propósito para que RLS aplique), que no es dueño de las tablas — TypeORM no tiene permisos para auto-alterar el esquema con esa conexión. Encontrado en vivo: la app fallaba al arrancar con `must be owner of table material_proveedor` al intentar sincronizar el esquema tras el cambio de entidades. Se desactivó `synchronize` completamente (antes solo se desactivaba en producción) — de ahora en más, migraciones son el único camino, incluso en desarrollo.
+2. **Swagger no mostraba el body de los endpoints** (ej. login sin schema visible) porque nunca se configuró el plugin de `@nestjs/swagger` en `nest-cli.json`, que es el que infiere automáticamente la forma de los DTOs a partir de los tipos de TypeScript. Agregado (`"plugins": ["@nestjs/swagger"]`) y confirmado en vivo que `LoginDto` ahora se ve completo en el schema de Swagger, con sus validaciones (`minLength`).
+
+Se aprovechó también para agregar los scripts `start`, `start:dev`, `build` y `@nestjs/cli` a `package.json` — el `README.md` los mencionaba desde el principio, pero nunca habían sido agregados (encontrado porque el usuario intentó levantar el proyecto siguiendo la guía y `npm run start:dev` no existía).

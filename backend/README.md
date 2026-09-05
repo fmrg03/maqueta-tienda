@@ -15,8 +15,13 @@ npm run start:dev
 
 ## Migraciones
 
-TypeORM con migraciones explícitas — `synchronize` solo está activo en
-desarrollo (`app.module.ts`), **nunca en producción**.
+TypeORM con migraciones explícitas. `synchronize` está **siempre**
+desactivado, incluso en desarrollo — no solo en producción. La app corre
+como `app_backend` (rol restringido para que RLS aplique), que no es
+dueño de las tablas, así que TypeORM no tiene permisos para
+auto-sincronizar el esquema con esa conexión. El único camino es
+`npm run migration:run`, corrido con las credenciales privilegiadas
+(ver sección de RLS más abajo).
 
 ```bash
 npm run migration:generate -- src/migrations/NombreDescriptivo   # tras cambiar una entidad

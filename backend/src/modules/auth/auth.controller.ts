@@ -29,4 +29,14 @@ export class AuthController {
   async refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto.refreshToken);
   }
+
+  // No requiere estar autenticado con el access token — el refresh token
+  // en sí mismo es prueba suficiente de identidad para cerrar SU sesión.
+  // Siempre responde 200, exista o no el token todavía (ver AuthService).
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Body() dto: RefreshTokenDto) {
+    await this.authService.logout(dto.refreshToken);
+    return { mensaje: 'Sesión cerrada' };
+  }
 }

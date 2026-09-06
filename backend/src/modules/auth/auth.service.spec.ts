@@ -6,6 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { RolUsuario, Usuario } from '../usuarios/entities/usuario.entity';
+import { REDIS_CLIENT } from '../../common/redis/redis.module';
 
 jest.mock('bcrypt');
 
@@ -13,6 +14,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let usuariosService: Partial<Record<keyof UsuariosService, jest.Mock>>;
   let jwtService: Partial<Record<keyof JwtService, jest.Mock>>;
+  let redis: { get: jest.Mock; set: jest.Mock; del: jest.Mock; ttl: jest.Mock };
 
   const usuarioConHash: Usuario = {
     id: 'uuid-1',
@@ -37,6 +39,12 @@ describe('AuthService', () => {
       signAsync: jest.fn(),
       verifyAsync: jest.fn(),
     };
+    redis = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      ttl: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -47,6 +55,7 @@ describe('AuthService', () => {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue('secret-de-prueba') },
         },
+        { provide: REDIS_CLIENT, useValue: redis },
       ],
     }).compile();
 
@@ -59,7 +68,7 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('retorna tokens y usuario cuando las credenciales son válidas', async () => {
+    it('retorna tokens y usuario cuando las credenciales son válidas, y registra la sesión en Redis', async () => {
       usuariosService.findByEmailConPassword!.mockResolvedValue(
         usuarioConHash,
       );
@@ -76,8 +85,13 @@ describe('AuthService', () => {
       expect(resultado.accessToken).toBe('access-token');
       expect(resultado.refreshToken).toBe('refresh-token');
       expect(resultado.usuario.email).toBe('juan@example.com');
-      // passwordHash nunca debe filtrarse en la respuesta
       expect((resultado.usuario as any).passwordHash).toBeUndefined();
+      expect(redis.set).toHaveBeenCalledWith(
+        expect.stringContaining('refresh:familia:'),
+        expect.any(String),
+        'EX',
+        expect.any(Number),
+      );
     });
 
     it('lanza UnauthorizedException si el usuario no existe', async () => {
@@ -96,11 +110,6 @@ describe('AuthService', () => {
         service.login({ email: 'noexiste@example.com', password: 'x' }),
       ).rejects.toThrow(UnauthorizedException);
 
-      // Sin esto, "usuario no existe" respondería mucho más rápido que
-      // "usuario existe, password incorrecto" (bcrypt.compare tarda
-      // ~250-280ms) — una diferencia medible que permite enumerar
-      // emails registrados. Confirmado con una medición real: ver
-      // ARCHITECTURE.md sección 6.
       expect(bcrypt.compare).toHaveBeenCalled();
     });
 
@@ -128,12 +137,12 @@ describe('AuthService', () => {
   });
 
   describe('refresh', () => {
-    it('genera nuevos tokens si el refresh token es válido y el usuario está activo', async () => {
-      jwtService.verifyAsync!.mockResolvedValue({
-        sub: 'uuid-1',
-        email: 'juan@example.com',
-        rol: RolUsuario.CLIENTE,
-      });
+    const payloadValido = { sub: 'uuid-1', familyId: 'familia-1', jti: 'jti-1' };
+
+    it('rota el token si el jti coincide con el vigente en Redis', async () => {
+      jwtService.verifyAsync!.mockResolvedValue(payloadValido);
+      redis.get.mockResolvedValue('jti-1');
+      redis.ttl.mockResolvedValue(500_000);
       usuariosService.findOneParaRefresh!.mockResolvedValue(usuarioConHash);
       jwtService.signAsync!
         .mockResolvedValueOnce('nuevo-access-token')
@@ -143,6 +152,33 @@ describe('AuthService', () => {
 
       expect(resultado.accessToken).toBe('nuevo-access-token');
       expect(resultado.refreshToken).toBe('nuevo-refresh-token');
+      expect(redis.set).toHaveBeenCalledWith(
+        'refresh:familia:familia-1',
+        expect.any(String),
+        'EX',
+        500_000,
+      );
+    });
+
+    it('detecta reuso (jti no coincide con el vigente) y revoca toda la familia', async () => {
+      jwtService.verifyAsync!.mockResolvedValue(payloadValido);
+      redis.get.mockResolvedValue('otro-jti-mas-nuevo');
+
+      await expect(service.refresh('refresh-token-viejo-reusado')).rejects.toThrow(
+        UnauthorizedException,
+      );
+
+      expect(redis.del).toHaveBeenCalledWith('refresh:familia:familia-1');
+      expect(usuariosService.findOneParaRefresh).not.toHaveBeenCalled();
+    });
+
+    it('rechaza si la familia no existe en Redis (sesión ya cerrada o expirada)', async () => {
+      jwtService.verifyAsync!.mockResolvedValue(payloadValido);
+      redis.get.mockResolvedValue(null);
+
+      await expect(service.refresh('refresh-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('lanza UnauthorizedException si el token es inválido o expiró', async () => {
@@ -153,12 +189,9 @@ describe('AuthService', () => {
       );
     });
 
-    it('lanza UnauthorizedException si el usuario del token está inactivo', async () => {
-      jwtService.verifyAsync!.mockResolvedValue({
-        sub: 'uuid-1',
-        email: 'juan@example.com',
-        rol: RolUsuario.CLIENTE,
-      });
+    it('revoca la familia si el usuario del token está inactivo', async () => {
+      jwtService.verifyAsync!.mockResolvedValue(payloadValido);
+      redis.get.mockResolvedValue('jti-1');
       usuariosService.findOneParaRefresh!.mockResolvedValue({
         ...usuarioConHash,
         activo: false,
@@ -167,6 +200,28 @@ describe('AuthService', () => {
       await expect(service.refresh('refresh-token-valido')).rejects.toThrow(
         UnauthorizedException,
       );
+      expect(redis.del).toHaveBeenCalledWith('refresh:familia:familia-1');
+    });
+  });
+
+  describe('logout', () => {
+    it('revoca la familia de sesión del token presentado', async () => {
+      jwtService.verifyAsync!.mockResolvedValue({
+        sub: 'uuid-1',
+        familyId: 'familia-1',
+        jti: 'jti-1',
+      });
+
+      await service.logout('refresh-token-valido');
+
+      expect(redis.del).toHaveBeenCalledWith('refresh:familia:familia-1');
+    });
+
+    it('no lanza error si el token ya es inválido — el objetivo (que no sirva) ya se cumple', async () => {
+      jwtService.verifyAsync!.mockRejectedValue(new Error('jwt expired'));
+
+      await expect(service.logout('token-invalido')).resolves.not.toThrow();
+      expect(redis.del).not.toHaveBeenCalled();
     });
   });
 });

@@ -298,3 +298,15 @@ Señalado por el dueño del negocio al revisar el catálogo en Swagger: dos pres
 2. **Swagger no mostraba el body de los endpoints** (ej. login sin schema visible) porque nunca se configuró el plugin de `@nestjs/swagger` en `nest-cli.json`, que es el que infiere automáticamente la forma de los DTOs a partir de los tipos de TypeScript. Agregado (`"plugins": ["@nestjs/swagger"]`) y confirmado en vivo que `LoginDto` ahora se ve completo en el schema de Swagger, con sus validaciones (`minLength`).
 
 Se aprovechó también para agregar los scripts `start`, `start:dev`, `build` y `@nestjs/cli` a `package.json` — el `README.md` los mencionaba desde el principio, pero nunca habían sido agregados (encontrado porque el usuario intentó levantar el proyecto siguiendo la guía y `npm run start:dev` no existía).
+
+### Rotación de refresh tokens + logout real
+El punto que quedó anotado desde el pentest ("el refresh token se puede reusar indefinidamente hasta expirar, sin revocación") se resolvió con el patrón estándar de la industria: **rotación de un solo uso + detección de reuso**, respaldado en Redis (`backend/src/common/redis/`).
+
+Cada refresh token lleva un `jti` (id único) y un `familyId` (identifica la sesión completa nacida de un mismo login). En Redis se guarda, por familia, cuál es el único `jti` vigente en este momento:
+- **Uso normal:** el `jti` presentado coincide con el guardado → se rota (token nuevo, el usado queda inservible para siempre), conservando el TTL restante de la sesión original (no se reinician los 7 días en cada refresh).
+- **Reuso detectado:** el `jti` presentado NO coincide con el vigente (alguien usa un token ya canjeado) → se revoca la familia completa de inmediato, incluso para quien la esté usando legítimamente en ese momento. Es la señal clásica de que un refresh token fue robado.
+- **`POST /auth/logout`** (nuevo): revoca la familia del lado del servidor — a diferencia de simplemente borrar el token en el cliente, un refresh token ya deslogueado deja de servir aunque alguien lo tenga guardado.
+
+**Limitación que se deja documentada a propósito, no resuelta:** el access token en curso (JWT sin estado, 15 min) sigue siendo válido hasta su propia expiración incluso después de un logout — revocarlo antes requeriría otra capa de tracking (ej. una blacklist de jtis de access token también). Se consideró innecesario para el riesgo real: la ventana de exposición máxima quedó acotada a 15 minutos, contra los 7 días que existían antes de este cambio.
+
+Probado de punta a punta contra la app real: login → primer refresh (rota con éxito) → reintento del token viejo ya usado (`401`, familia revocada) → el token nuevo y legítimo también queda inválido (confirma que la revocación es de toda la sesión, no solo del token reusado) → escenario de logout (revoca, confirmado que el refresh posterior también da `401`).

@@ -54,7 +54,27 @@ para el porqué (tiene que ver con RLS).
 
 ## Frontend
 
-Próximamente.
+Next.js 16 (App Router) + TypeScript + Tailwind v4. Identidad visual real
+de Revestimiento Élite RY — ver `docs/diseno/fase1-ux-ui.md` para la
+guía de estilos completa y `docs/diseno/mockups-v2.html` para los
+mockups de las 5 pantallas clave.
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local   # apuntando al backend local
+npm run dev
+```
+
+**Auth:** JWT con rotación de refresh tokens (no cookies). El cliente
+HTTP (`lib/api/client.ts`) serializa los refresh para evitar disparar
+la detección de reuso del backend si dos requests fallan a la vez —
+ver el comentario en ese archivo antes de tocar la lógica de refresh.
+
+**Cache Components de Next 16:** desactivado a propósito (ver
+`next.config.ts`) — nuestra auth es client-side, no cookie-based, así
+que el modelo de caching "previo" (fetch con `no-store` explícito) es
+más simple para este proyecto.
 
 ## Infraestructura
 

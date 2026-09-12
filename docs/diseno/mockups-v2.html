@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockups v2 — Revestimiento Élite RY</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --negro: #0A0A0A;
+    --negro-suave: #171512;
+    --piedra: #F0EBE1;
+    --piedra-oscura: #E3DCCC;
+    --dorado: #D4AF37;
+    --dorado-claro: #F2C94C;
+    --dorado-oscuro: #B8860B;
+    --gradiente-dorado: linear-gradient(135deg, var(--dorado-claro), var(--dorado-oscuro));
+    --vino: #7A2E2E;
+    --esmeralda: #2F6E52;
+    --texto-claro: #EDE8DD;
+    --texto-secundario: #B9AF9C;
+
+    --serif: 'Playfair Display', serif;
+    --sans: 'Poppins', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    background: var(--piedra);
+    color: var(--negro);
+    line-height: 1.5;
+  }
+
+  a { color: inherit; }
+
+  .nav-mockups {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--negro); color: var(--texto-claro);
+    padding: 12px 24px; font-size: 13px; display: flex; gap: 20px; flex-wrap: wrap;
+    font-family: var(--mono);
+    border-bottom: 1px solid var(--dorado-oscuro);
+  }
+  .nav-mockups a { text-decoration: none; color: var(--texto-secundario); }
+  .nav-mockups a:hover, .nav-mockups a:focus-visible { color: var(--dorado-claro); }
+
+  .pantalla { padding: 48px 24px 80px; max-width: 1100px; margin: 0 auto; border-bottom: 1px dashed var(--piedra-oscura); }
+  .pantalla-etiqueta { font-family: var(--mono); font-size: 12px; color: var(--dorado-oscuro); margin-bottom: 8px; }
+
+  h1, h2, h3 { font-family: var(--serif); margin: 0; font-weight: 600; }
+  .linea-dorada { width: 46px; height: 2px; background: var(--gradiente-dorado); margin: 14px 0 18px; border: none; }
+
+  button, .btn {
+    font-family: var(--sans); font-weight: 500; font-size: 15px;
+    border: none; cursor: pointer; border-radius: 2px; padding: 13px 24px;
+  }
+  button:focus-visible, a:focus-visible, input:focus-visible, .btn:focus-visible {
+    outline: 2px solid var(--dorado); outline-offset: 2px;
+  }
+  .btn-primario { background: var(--gradiente-dorado); color: var(--negro); font-weight: 600; letter-spacing: 0.3px; }
+  .btn-primario:hover { filter: brightness(1.08); }
+  .btn-secundario { background: transparent; color: var(--negro); border: 1.5px solid var(--negro); }
+  .btn-secundario:hover { background: var(--negro); color: var(--texto-claro); }
+
+  /* ============ 1. HOME (fondo negro, tono de marca real) ============ */
+  #home { background: var(--negro); color: var(--texto-claro); }
+  .home-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 32px; margin-bottom: 40px; border-bottom: 1px solid #2A2620;
+  }
+  .home-header .logo { font-family: var(--serif); font-weight: 700; font-size: 20px; color: var(--dorado-claro); letter-spacing: 0.5px; }
+  .home-header nav { display: flex; gap: 28px; font-size: 15px; }
+  .home-header nav a { text-decoration: none; color: var(--texto-secundario); }
+  .home-header nav a:hover { color: var(--dorado-claro); }
+
+  .hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; }
+  .hero h1 { font-size: 40px; line-height: 1.2; max-width: 480px; color: var(--texto-claro); }
+  .hero p { font-size: 16px; color: var(--texto-secundario); max-width: 420px; margin: 0 0 28px; }
+  .hero-ctas { display: flex; gap: 14px; }
+  .foto-placeholder {
+    background: repeating-linear-gradient(135deg, #211E19, #211E19 10px, #33302A 10px, #33302A 11px);
+    border: 1px solid var(--dorado-oscuro);
+    aspect-ratio: 4/3;
+    display: flex; align-items: flex-end; padding: 12px;
+    font-family: var(--mono); font-size: 11px; color: var(--texto-secundario);
+  }
+
+  .categorias { margin-top: 64px; }
+  .categorias h2 { font-size: 22px; margin-bottom: 20px; color: var(--texto-claro); }
+  .cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .cat-chip {
+    border: 1px solid #3A362E; padding: 18px 16px; font-size: 14px; font-weight: 500;
+    background: var(--negro-suave); color: var(--texto-claro); text-align: left;
+  }
+  .cat-chip:hover { border-color: var(--dorado); }
+
+  @media (max-width: 720px) {
+    .hero { grid-template-columns: 1fr; }
+    .cat-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ============ 2. CATALOGO (fondo claro tipo piedra/mármol) ============ */
+  .catalogo-filtros { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .catalogo-filtros select {
+    font-family: var(--sans); font-size: 14px; padding: 8px 10px; border: 1px solid var(--dorado-oscuro); background: #fff;
+  }
+  .ficha-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--piedra-oscura); }
+  .ficha { background: #fff; padding: 18px; }
+  .ficha .foto-placeholder {
+    aspect-ratio: 1; margin-bottom: 12px; padding: 8px; font-size: 10px;
+    background: repeating-linear-gradient(135deg, #EDEAE3, #EDEAE3 10px, #DCD5C4 10px, #DCD5C4 11px);
+    border: 1px solid var(--piedra-oscura); color: #7A7264;
+  }
+  .ficha h3 { font-size: 16px; margin-bottom: 4px; font-weight: 600; }
+  .ficha .sku { font-family: var(--mono); font-size: 11px; color: #8A8272; }
+  .ficha .precio { font-family: var(--mono); font-size: 17px; font-weight: 500; margin-top: 10px; color: var(--dorado-oscuro); }
+  .ficha .variantes-count { font-size: 12px; color: #8A8272; margin-top: 2px; }
+
+  @media (max-width: 720px) { .ficha-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ============ 3. FICHA DE PRODUCTO ============ */
+  .producto { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+  .producto .foto-placeholder { aspect-ratio: 1; padding: 10px;
+    background: repeating-linear-gradient(135deg, #EDEAE3, #EDEAE3 10px, #DCD5C4 10px, #DCD5C4 11px);
+    border: 1px solid var(--piedra-oscura); color: #7A7264;
+  }
+  .producto h1 { font-size: 28px; }
+  .producto .descripcion { color: #6B6252; margin: 4px 0 28px; max-width: 440px; }
+  .variantes-label { font-family: var(--sans); font-size: 13px; color: #6B6252; margin-bottom: 10px; font-weight: 500; }
+  .variante-opcion {
+    display: flex; justify-content: space-between; align-items: center;
+    border: 1.5px solid #D9D2C1; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; background: #fff;
+  }
+  .variante-opcion.seleccionada { border-color: var(--dorado); background: #FBF6E7; }
+  .variante-opcion .nombre { font-weight: 500; }
+  .variante-opcion .stock { font-size: 12px; color: var(--esmeralda); font-family: var(--mono); }
+  .variante-opcion .precio { font-family: var(--mono); font-weight: 600; font-size: 16px; color: var(--dorado-oscuro); }
+
+  .cantidad-row { display: flex; align-items: center; gap: 16px; margin: 24px 0; }
+  .cantidad-control { display: flex; align-items: center; border: 1px solid #D9D2C1; }
+  .cantidad-control button { background: #F0EBE1; padding: 8px 14px; border-radius: 0; color: var(--negro); }
+  .cantidad-control span { padding: 0 18px; font-family: var(--mono); }
+
+  @media (max-width: 720px) { .producto { grid-template-columns: 1fr; } }
+
+  /* ============ 4. DASHBOARD ADMIN ============ */
+  .admin-shell { display: grid; grid-template-columns: 220px 1fr; border: 1px solid var(--piedra-oscura); background: #fff; }
+  .admin-sidebar { background: var(--negro); color: var(--texto-claro); padding: 24px 0; }
+  .admin-sidebar .logo { font-family: var(--serif); font-weight: 700; padding: 0 20px 20px; font-size: 15px; color: var(--dorado-claro); border-bottom: 1px solid #2A2620; margin-bottom: 12px; }
+  .admin-sidebar a { display: block; padding: 10px 20px; font-size: 14px; text-decoration: none; color: var(--texto-secundario); }
+  .admin-sidebar a.activo { color: var(--dorado-claro); font-weight: 500; border-left: 3px solid var(--dorado); padding-left: 17px; }
+  .admin-sidebar a:hover { color: var(--texto-claro); }
+
+  .admin-main { padding: 28px; }
+  .kpi-row { display: flex; gap: 16px; margin-bottom: 28px; }
+  .kpi { border: 1px solid var(--piedra-oscura); padding: 16px 20px; flex: 1; }
+  .kpi .valor { font-family: var(--mono); font-size: 26px; font-weight: 500; }
+  .kpi .label { font-size: 13px; color: #8A8272; }
+  .kpi.alerta { border-color: var(--vino); }
+  .kpi.alerta .valor { color: var(--vino); }
+  .kpi.dorado .valor { color: var(--dorado-oscuro); }
+
+  .admin-panel { border: 1px solid var(--piedra-oscura); margin-bottom: 24px; }
+  .admin-panel h3 { font-family: var(--sans); font-weight: 600; font-size: 14px; padding: 14px 18px; border-bottom: 1px solid var(--piedra-oscura); background: #FAF7F0; }
+  .mini-chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 20px; }
+  .mini-chart .barra { background: #D9D2C1; width: 28px; }
+  .mini-chart .barra.actual { background: var(--gradiente-dorado); }
+
+  table.solicitudes { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.solicitudes th { text-align: left; padding: 10px 18px; font-size: 12px; color: #8A8272; border-bottom: 1px solid var(--piedra-oscura); font-weight: 500; }
+  table.solicitudes td { padding: 10px 18px; border-bottom: 1px solid #F0EBE1; }
+  .estado-pill { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 2px; }
+  .estado-nueva { background: #FBF0D6; color: #8A6D00; }
+  .estado-contactado { background: #DCEADD; color: var(--esmeralda); }
+
+  @media (max-width: 820px) {
+    .admin-shell { grid-template-columns: 1fr; }
+    .admin-sidebar { display: flex; overflow-x: auto; padding: 12px; }
+    .admin-sidebar .logo { display: none; }
+    .kpi-row { flex-direction: column; }
+  }
+
+  /* ============ 5. STEPPER ASESORIA ============ */
+  .asesoria-card { border: 1px solid var(--piedra-oscura); background: #fff; padding: 28px; }
+  .asesoria-card .cliente { font-size: 15px; margin-bottom: 24px; }
+  .asesoria-card .cliente .tel { font-family: var(--mono); color: #8A8272; font-size: 13px; }
+
+  .stepper { display: flex; align-items: center; margin-bottom: 28px; }
+  .stepper .paso { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+  .stepper .punto { width: 16px; height: 16px; border-radius: 50%; background: #D9D2C1; border: 2px solid #D9D2C1; z-index: 1; }
+  .stepper .paso.hecho .punto { background: var(--esmeralda); border-color: var(--esmeralda); }
+  .stepper .paso.actual .punto { background: var(--dorado); border-color: var(--negro); }
+  .stepper .paso span.texto { font-size: 12px; margin-top: 8px; text-align: center; color: #8A8272; max-width: 100px; }
+  .stepper .paso.hecho span.texto, .stepper .paso.actual span.texto { color: var(--negro); font-weight: 500; }
+  .stepper .linea { position: absolute; top: 7px; left: 50%; width: 100%; height: 2px; background: #D9D2C1; }
+  .stepper .paso.hecho .linea { background: var(--esmeralda); }
+  .stepper .paso:last-child .linea { display: none; }
+
+  .accion-disponible { background: #FAF7F0; border: 1px dashed var(--dorado-oscuro); padding: 16px; font-size: 14px; }
+  .accion-disponible strong { display: block; margin-bottom: 10px; font-family: var(--serif); font-size: 16px; }
+</style>
+</head>
+<body>
+
+<nav class="nav-mockups">
+  <a href="#home">1. Home</a>
+  <a href="#catalogo">2. Catálogo</a>
+  <a href="#producto">3. Ficha de producto</a>
+  <a href="#dashboard">4. Dashboard admin</a>
+  <a href="#asesoria">5. Bandeja de asesoría</a>
+</nav>
+
+<!-- ============ 1. HOME ============ -->
+<section class="pantalla" id="home">
+  <div class="pantalla-etiqueta" style="color:var(--dorado-claro);">Pantalla 1 — Home (público) · v2, paleta real de marca</div>
+  <header class="home-header">
+    <div class="logo">REVESTIMIENTO ÉLITE RY</div>
+    <nav>
+      <a href="#">Catálogo</a>
+      <a href="#">Combos</a>
+      <a href="#">Agendar asesoría</a>
+      <a href="#">Ingresar</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <h1>Del boceto a la realidad: revestimientos de alta gama para tu proyecto.</h1>
+      <hr class="linea-dorada">
+      <p>Porcelanato, cerámica, grifería y sanitarios premium. Armá tu consulta y te contactamos por WhatsApp para asesorarte con precio y disponibilidad real.</p>
+      <div class="hero-ctas">
+        <button class="btn-primario">Ver catálogo</button>
+        <button class="btn-secundario" style="border-color:#4A4638; color:var(--texto-claro);">Agendar una llamada</button>
+      </div>
+    </div>
+    <div class="foto-placeholder">foto real: baño remodelado, porcelanato + grifería negra</div>
+  </div>
+
+  <div class="categorias">
+    <h2>Categorías</h2>
+    <div class="cat-grid">
+      <button class="cat-chip">Porcelanato</button>
+      <button class="cat-chip">Sanitarios</button>
+      <button class="cat-chip">Grifería</button>
+      <button class="cat-chip">Combos</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. CATALOGO ============ -->
+<section class="pantalla" id="catalogo">
+  <div class="pantalla-etiqueta">Pantalla 2 — Catálogo (público)</div>
+  <h1 style="font-size:26px; margin-bottom:6px;">Catálogo</h1>
+  <hr class="linea-dorada">
+
+  <div class="catalogo-filtros">
+    <label for="cat-select" style="font-size:14px;">Categoría:</label>
+    <select id="cat-select">
+      <option>Todas</option>
+      <option>Porcelanato</option>
+      <option>Sanitarios</option>
+    </select>
+  </div>
+
+  <div class="ficha-grid">
+    <div class="ficha">
+      <div class="foto-placeholder">foto: porcelanato tipo madera</div>
+      <h3>Porcelanato Tipo Madera</h3>
+      <div class="sku">POR-014</div>
+      <div class="precio">Desde $24.00</div>
+      <div class="variantes-count">Formato 120x20cm — 2 acabados</div>
+    </div>
+    <div class="ficha">
+      <div class="foto-placeholder">foto: sanitario Zeus</div>
+      <h3>Sanitario Zeus 1 pieza</h3>
+      <div class="sku">SAN-007</div>
+      <div class="precio">$189.00</div>
+      <div class="variantes-count">1 presentación</div>
+    </div>
+    <div class="ficha">
+      <div class="foto-placeholder">foto: hidroducha black</div>
+      <h3>Hidroducha Black</h3>
+      <div class="sku">GRI-031</div>
+      <div class="precio">$210.00</div>
+      <div class="variantes-count">1 presentación</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. FICHA DE PRODUCTO ============ -->
+<section class="pantalla" id="producto">
+  <div class="pantalla-etiqueta">Pantalla 3 — Ficha de producto (público)</div>
+
+  <div class="producto">
+    <div class="foto-placeholder">foto grande: porcelanato tipo madera, ambiente terraza</div>
+    <div>
+      <h1>Porcelanato Tipo Madera</h1>
+      <p class="descripcion">Elegancia natural y seguridad en cada paso. Acabado antirresbalante, ideal para terrazas y salas.</p>
+
+      <div class="variantes-label">Elegí una presentación</div>
+
+      <div class="variante-opcion seleccionada">
+        <div>
+          <div class="nombre">Caja 1.92m² (8 piezas)</div>
+          <div class="stock">32 cajas disponibles</div>
+        </div>
+        <div class="precio">$24.00</div>
+      </div>
+      <div class="variante-opcion">
+        <div>
+          <div class="nombre">Pieza suelta</div>
+          <div class="stock">120 disponibles</div>
+        </div>
+        <div class="precio">$3.20</div>
+      </div>
+
+      <div class="cantidad-row">
+        <span style="font-size:14px;">Cantidad</span>
+        <div class="cantidad-control">
+          <button aria-label="Restar">−</button>
+          <span>1</span>
+          <button aria-label="Sumar">+</button>
+        </div>
+      </div>
+
+      <button class="btn-primario" style="width:100%;">Agregar a mi consulta</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. DASHBOARD ADMIN ============ -->
+<section class="pantalla" id="dashboard">
+  <div class="pantalla-etiqueta">Pantalla 4 — Dashboard (panel interno, rol admin)</div>
+
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="logo">Panel ÉLITE RY</div>
+      <a href="#" class="activo">Dashboard</a>
+      <a href="#">Usuarios</a>
+      <a href="#">Materiales</a>
+      <a href="#">Proveedores</a>
+      <a href="#">Combos</a>
+      <a href="#">Reportes</a>
+      <a href="#">Asesores</a>
+      <a href="#">Solicitudes de carrito</a>
+      <a href="#">Solicitudes de asesoría</a>
+    </aside>
+    <main class="admin-main">
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="valor">4</div>
+          <div class="label">Solicitudes nuevas</div>
+        </div>
+        <div class="kpi alerta">
+          <div class="valor">2</div>
+          <div class="label">Variantes con stock bajo</div>
+        </div>
+        <div class="kpi dorado">
+          <div class="valor">$3,180</div>
+          <div class="label">Ganancia del mes</div>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <h3>Ganancias — últimos 6 meses</h3>
+        <div class="mini-chart">
+          <div class="barra" style="height:40%"></div>
+          <div class="barra" style="height:55%"></div>
+          <div class="barra" style="height:48%"></div>
+          <div class="barra" style="height:70%"></div>
+          <div class="barra" style="height:60%"></div>
+          <div class="barra actual" style="height:85%"></div>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <h3>Últimas solicitudes de carrito</h3>
+        <table class="solicitudes">
+          <thead>
+            <tr><th>Cliente</th><th>Teléfono</th><th>Estado</th><th>Recibida</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Juan Pérez</td>
+              <td style="font-family:var(--mono);">+58 412-1234567</td>
+              <td><span class="estado-pill estado-nueva">nueva</span></td>
+              <td>hace 2 horas</td>
+            </tr>
+            <tr>
+              <td>María Ruiz</td>
+              <td style="font-family:var(--mono);">+58 424-7654321</td>
+              <td><span class="estado-pill estado-contactado">contactado</span></td>
+              <td>hace 1 día</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ============ 5. BANDEJA DE ASESORIA ============ -->
+<section class="pantalla" id="asesoria" style="border-bottom:none;">
+  <div class="pantalla-etiqueta">Pantalla 5 — Detalle de solicitud de asesoría (panel interno, rol asesor/admin)</div>
+
+  <div class="asesoria-card">
+    <div class="cliente">
+      <strong>Carlos Ruiz</strong> — quiere remodelar un baño completo<br>
+      <span class="tel">+58 412-111-2233</span>
+    </div>
+
+    <div class="stepper">
+      <div class="paso hecho">
+        <div class="linea"></div>
+        <div class="punto"></div>
+        <span class="texto">Pendiente</span>
+      </div>
+      <div class="paso actual">
+        <div class="linea"></div>
+        <div class="punto"></div>
+        <span class="texto">Llamada realizada</span>
+      </div>
+      <div class="paso">
+        <div class="linea"></div>
+        <div class="punto"></div>
+        <span class="texto">Visita pactada</span>
+      </div>
+      <div class="paso">
+        <div class="punto"></div>
+        <span class="texto">No procede</span>
+      </div>
+    </div>
+
+    <div class="accion-disponible">
+      <strong>Siguiente paso disponible</strong>
+      Si la empresa puede atender esta solicitud, coordiná la visita por WhatsApp y marcala como pactada acá. Si no, marcá que no procede.
+      <div style="margin-top:14px; display:flex; gap:10px;">
+        <button class="btn-primario">Marcar visita pactada</button>
+        <button class="btn-secundario">Marcar que no procede</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

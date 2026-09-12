@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/*
+ * Tokens de diseño — Fase 1/2 de UX/UI, aprobados por el negocio.
+ * Ver docs/fase1-ux-ui.md en el repo para la justificación de cada uno.
+ * Fuente real: identidad de marca de Revestimiento Élite RY (Instagram).
+ */
+:root {
+  --color-negro: #0a0a0a;
+  --color-negro-suave: #171512;
+  --color-piedra: #f0ebe1;
+  --color-piedra-oscura: #e3dccc;
+  --color-dorado: #d4af37;
+  --color-dorado-claro: #f2c94c;
+  --color-dorado-oscuro: #b8860b;
+  --color-vino: #7a2e2e;
+  --color-esmeralda: #2f6e52;
+  --color-texto-claro: #ede8dd;
+  --color-texto-secundario: #b9af9c;
+}
+
+@theme inline {
+  --color-negro: var(--color-negro);
+  --color-negro-suave: var(--color-negro-suave);
+  --color-piedra: var(--color-piedra);
+  --color-piedra-oscura: var(--color-piedra-oscura);
+  --color-dorado: var(--color-dorado);
+  --color-dorado-claro: var(--color-dorado-claro);
+  --color-dorado-oscuro: var(--color-dorado-oscuro);
+  --color-vino: var(--color-vino);
+  --color-esmeralda: var(--color-esmeralda);
+  --color-texto-claro: var(--color-texto-claro);
+  --color-texto-secundario: var(--color-texto-secundario);
+
+  --font-serif: var(--font-playfair), serif;
+  --font-sans: var(--font-poppins), sans-serif;
+  --font-mono: var(--font-plex-mono), monospace;
+}
+
+body {
+  background: var(--color-piedra);
+  color: var(--color-negro);
+}
+

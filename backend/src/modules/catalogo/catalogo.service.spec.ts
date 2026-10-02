@@ -40,6 +40,18 @@ describe('CatalogoService', () => {
   });
 
   describe('listarMateriales', () => {
+    it('filtra por categoría cuando se provee categoriaId', async () => {
+      materialRepo.findAndCount.mockResolvedValue([[{ id: '1' }], 1]);
+
+      await service.listarMateriales(1, 20, 'cat-123');
+
+      expect(materialRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { activo: true, categoria: { id: 'cat-123' } },
+        }),
+      );
+    });
+
     it('pagina correctamente y solo trae materiales activos', async () => {
       materialRepo.findAndCount.mockResolvedValue([[{ id: '1' }], 1]);
 

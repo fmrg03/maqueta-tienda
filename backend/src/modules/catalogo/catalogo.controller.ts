@@ -13,13 +13,14 @@ export class CatalogoController {
   listarMateriales(
     @Query('pagina') paginaRaw?: string,
     @Query('por_pagina') porPaginaRaw?: string,
+    @Query('categoria') categoriaId?: string,
   ) {
     // Parseo manual en vez de ParseIntPipe({ optional: true }): esa opción
     // no se comportó como está documentado cuando el query param está
     // ausente (se detectó probando la app real, no solo con tests).
     const pagina = paginaRaw ? parseInt(paginaRaw, 10) : undefined;
     const porPagina = porPaginaRaw ? parseInt(porPaginaRaw, 10) : undefined;
-    return this.catalogoService.listarMateriales(pagina, porPagina);
+    return this.catalogoService.listarMateriales(pagina, porPagina, categoriaId);
   }
 
   @Get('materiales/:id')

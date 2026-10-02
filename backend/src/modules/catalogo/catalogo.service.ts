@@ -26,9 +26,13 @@ export class CatalogoService {
   async listarMateriales(
     pagina = 1,
     porPagina = 20,
+    categoriaId?: string,
   ): Promise<PaginacionResult<Material>> {
     const [items, total] = await this.materialRepository.findAndCount({
-      where: { activo: true },
+      where: {
+        activo: true,
+        ...(categoriaId ? { categoria: { id: categoriaId } } : {}),
+      },
       relations: ['categoria', 'variantes'],
       skip: (pagina - 1) * porPagina,
       take: porPagina,

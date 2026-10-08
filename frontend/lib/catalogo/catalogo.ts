@@ -35,8 +35,15 @@ export async function listarCategorias(): Promise<Categoria[]> {
 export async function listarMateriales(
   pagina = 1,
   porPagina = 20,
+  categoriaId?: string,
 ): Promise<{ items: Material[]; total: number; pagina: number; porPagina: number }> {
-  return apiFetch("/api/v1/catalogo/materiales?pagina=" + pagina + "&por_pagina=" + porPagina, {
+  const params = new URLSearchParams({
+    pagina: String(pagina),
+    por_pagina: String(porPagina),
+  });
+  if (categoriaId) params.set("categoria", categoriaId);
+
+  return apiFetch(`/api/v1/catalogo/materiales?${params.toString()}`, {
     autenticado: false,
   });
 }

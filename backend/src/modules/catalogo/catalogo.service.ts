@@ -4,6 +4,41 @@ import { Repository } from 'typeorm';
 import { Material } from '../inventario/entities/material.entity';
 import { Combo } from '../inventario/entities/combo.entity';
 import { Categoria } from '../inventario/entities/categoria.entity';
+import { VarianteMaterial } from '../inventario/entities/variante-material.entity';
+
+// Lo que el público puede ver de una variante: NUNCA el costo (precioCosto)
+// — es información interna del negocio (con el costo y el precio de venta
+// cualquiera calcularía el margen). Detectado al revisar la respuesta real
+// del catálogo público, no estaba cubierto por el pentest.
+export type VariantePublica = Omit<VarianteMaterial, 'precioCosto'>;
+export type MaterialPublico = Omit<Material, 'variantes'> & {
+  variantes: VariantePublica[];
+};
+export type ComboPublico = Omit<Combo, 'items'> & {
+  items: Array<Omit<Combo['items'][number], 'variante'> & { variante: VariantePublica }>;
+};
+
+function sinCosto(variante: VarianteMaterial): VariantePublica {
+  const { precioCosto: _costo, ...publica } = variante;
+  return publica;
+}
+
+function materialPublico(material: Material): MaterialPublico {
+  return {
+    ...material,
+    variantes: (material.variantes ?? []).map(sinCosto),
+  };
+}
+
+function comboPublico(combo: Combo): ComboPublico {
+  return {
+    ...combo,
+    items: (combo.items ?? []).map((item) => ({
+      ...item,
+      variante: sinCosto(item.variante),
+    })),
+  };
+}
 
 export interface PaginacionResult<T> {
   items: T[];
@@ -27,7 +62,7 @@ export class CatalogoService {
     pagina = 1,
     porPagina = 20,
     categoriaId?: string,
-  ): Promise<PaginacionResult<Material>> {
+  ): Promise<PaginacionResult<MaterialPublico>> {
     const [items, total] = await this.materialRepository.findAndCount({
       where: {
         activo: true,
@@ -39,10 +74,10 @@ export class CatalogoService {
       order: { nombre: 'ASC' },
     });
 
-    return { items, total, pagina, porPagina };
+    return { items: items.map(materialPublico), total, pagina, porPagina };
   }
 
-  async obtenerMaterial(id: string): Promise<Material> {
+  async obtenerMaterial(id: string): Promise<MaterialPublico> {
     const material = await this.materialRepository.findOne({
       where: { id, activo: true },
       relations: ['categoria', 'variantes'],
@@ -50,14 +85,15 @@ export class CatalogoService {
     if (!material) {
       throw new NotFoundException(`Material ${id} no encontrado`);
     }
-    return material;
+    return materialPublico(material);
   }
 
-  async listarCombos(): Promise<Combo[]> {
-    return this.comboRepository.find({
+  async listarCombos(): Promise<ComboPublico[]> {
+    const combos = await this.comboRepository.find({
       where: { activo: true },
-      relations: ['items', 'items.material', 'items.variante'],
+      relations: ['items', 'items.variante'],
     });
+    return combos.map(comboPublico);
   }
 
   async listarCategorias(): Promise<Categoria[]> {

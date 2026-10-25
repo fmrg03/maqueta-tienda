@@ -65,11 +65,33 @@ describe('CatalogoService', () => {
         }),
       );
       expect(resultado).toEqual({
-        items: [{ id: '1' }],
+        items: [{ id: '1', variantes: [] }],
         total: 1,
         pagina: 2,
         porPagina: 10,
       });
+    });
+
+    it('NUNCA expone precioCosto de las variantes (dato interno del negocio)', async () => {
+      materialRepo.findAndCount.mockResolvedValue([
+        [
+          {
+            id: '1',
+            variantes: [
+              { id: 'v1', skuVariante: 'A', precioVenta: 8, precioCosto: 5 },
+              { id: 'v2', skuVariante: 'B', precioVenta: 15, precioCosto: 9.5 },
+            ],
+          },
+        ],
+        1,
+      ]);
+
+      const resultado = await service.listarMateriales();
+
+      for (const variante of resultado.items[0].variantes) {
+        expect(variante).not.toHaveProperty('precioCosto');
+        expect(variante).toHaveProperty('precioVenta');
+      }
     });
   });
 
@@ -80,6 +102,18 @@ describe('CatalogoService', () => {
       await expect(service.obtenerMaterial('no-existe')).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('NUNCA expone precioCosto en la ficha de un material', async () => {
+      materialRepo.findOne.mockResolvedValue({
+        id: '1',
+        variantes: [{ id: 'v1', precioVenta: 8, precioCosto: 5 }],
+      });
+
+      const resultado = await service.obtenerMaterial('1');
+
+      expect(resultado.variantes[0]).not.toHaveProperty('precioCosto');
+      expect(resultado.variantes[0].precioVenta).toBe(8);
     });
   });
 
@@ -92,6 +126,30 @@ describe('CatalogoService', () => {
       expect(comboRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({ where: { activo: true } }),
       );
+    });
+
+    it('no pide la relación items.material (ya no existe tras mover el precio a la variante)', async () => {
+      comboRepo.find.mockResolvedValue([]);
+
+      await service.listarCombos();
+
+      expect(comboRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ relations: ['items', 'items.variante'] }),
+      );
+    });
+
+    it('NUNCA expone precioCosto de las variantes dentro de los items del combo', async () => {
+      comboRepo.find.mockResolvedValue([
+        {
+          id: 'c1',
+          items: [{ id: 'i1', cantidad: 2, variante: { id: 'v1', precioVenta: 8, precioCosto: 5 } }],
+        },
+      ]);
+
+      const [combo] = await service.listarCombos();
+
+      expect(combo.items[0].variante).not.toHaveProperty('precioCosto');
+      expect(combo.items[0].variante.precioVenta).toBe(8);
     });
   });
 });

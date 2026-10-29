@@ -18,6 +18,13 @@ import { enviarSolicitud, normalizarTelefonoVE } from "@/lib/carrito/solicitud";
 type Errores = Partial<Record<"nombre" | "telefono" | "email" | "general", string>>;
 
 function mensajeError(e: unknown): string {
+  // Visible en la consola del navegador (F12) para diagnosticar sin adivinar.
+  console.error("Error al enviar la consulta:", e);
+  if (!(e instanceof ApiError)) {
+    // fetch lanza TypeError cuando no hay respuesta: servidor caído, URL
+    // equivocada o bloqueo de CORS (CORS_ORIGIN del backend).
+    return "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.";
+  }
   if (e instanceof ApiError) {
     if (e.statusCode === 429)
       return "Demasiados intentos. Por favor espera un rato antes de volver a enviar tu consulta.";

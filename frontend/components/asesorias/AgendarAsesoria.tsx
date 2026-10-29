@@ -93,13 +93,16 @@ export function AgendarAsesoria({
       });
       setListo({ fecha: `${etiquetaDia(franjaIso)}, ${etiquetaHora(franjaIso)}` });
     } catch (err) {
-      if (err instanceof ApiError && err.statusCode === 409) {
+      console.error("Error al agendar la llamada:", err);
+      if (!(err instanceof ApiError)) {
+        setErrores({ general: "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo." });
+      } else if (err.statusCode === 409) {
         // Otro cliente se la llevó primero: se refrescan los horarios.
         await cargarFranjas(asesorId);
         setErrores({ general: "Ese horario acaba de ser reservado por otra persona. Elige otro, por favor." });
-      } else if (err instanceof ApiError && err.statusCode === 429) {
+      } else if (err.statusCode === 429) {
         setErrores({ general: "Demasiados intentos. Por favor espera un rato antes de volver a intentar." });
-      } else if (err instanceof ApiError && err.statusCode >= 400 && err.statusCode < 500) {
+      } else if (err.statusCode >= 400 && err.statusCode < 500) {
         setErrores({ general: "Revisa los datos e inténtalo de nuevo." });
       } else {
         setErrores({ general: "No pudimos agendar tu llamada. Inténtalo de nuevo en unos minutos." });

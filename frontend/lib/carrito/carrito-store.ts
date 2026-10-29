@@ -13,6 +13,9 @@ export interface ItemCarrito {
 }
 
 const CLAVE = "maqueta-tienda:carrito";
+// Evento propio: el evento "storage" nativo no se dispara en la misma pestaña
+// que escribe, y el contador del header necesita enterarse al instante.
+const EVENTO = "maqueta-tienda:carrito-cambio";
 
 function esItemValido(x: unknown): x is ItemCarrito {
   if (typeof x !== "object" || x === null) return false;
@@ -46,6 +49,22 @@ function guardar(items: ItemCarrito[]): void {
   } catch {
     /* sin storage: el carrito simplemente no persiste */
   }
+  window.dispatchEvent(new Event(EVENTO));
+}
+
+/** Para useSyncExternalStore: avisa cuando el carrito cambia (esta pestaña u otra). */
+export function suscribirCarrito(callback: () => void): () => void {
+  window.addEventListener(EVENTO, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(EVENTO, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+/** Unidades totales en el carrito (primitivo estable, apto como snapshot). */
+export function contarUnidades(): number {
+  return getCarrito().reduce((s, i) => s + i.cantidad, 0);
 }
 
 export function agregarItem(nuevo: ItemCarrito): ItemCarrito[] {
@@ -63,6 +82,7 @@ export function vaciarCarrito(): void {
   } catch {
     /* noop */
   }
+  window.dispatchEvent(new Event(EVENTO));
 }
 
 export function quitarItem(tipo: ItemCarrito["tipo"], refId: string): ItemCarrito[] {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { clsx } from "clsx";
+import { ContadorConsulta } from "./ContadorConsulta";
 
 interface PublicHeaderProps {
   variante?: "oscuro" | "claro";
@@ -8,7 +9,6 @@ interface PublicHeaderProps {
 const LINKS = [
   { href: "/catalogo", label: "Catálogo" },
   { href: "/combos", label: "Combos" },
-  { href: "/consulta", label: "Mi consulta" },
   { href: "/agendar-asesoria", label: "Agendar asesoría" },
   { href: "/login", label: "Ingresar" },
 ];
@@ -49,6 +49,7 @@ export function PublicHeader({ variante = "oscuro" }: PublicHeaderProps) {
             {link.label}
           </Link>
         ))}
+        <ContadorConsulta />
       </nav>
     </header>
   );

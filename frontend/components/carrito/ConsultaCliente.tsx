@@ -12,6 +12,7 @@ import {
   vaciarCarrito,
   type ItemCarrito,
 } from "@/lib/carrito/carrito-store";
+import { enlaceWhatsApp } from "@/lib/whatsapp";
 import { enviarSolicitud, normalizarTelefonoVE } from "@/lib/carrito/solicitud";
 
 type Errores = Partial<Record<"nombre" | "telefono" | "email" | "general", string>>;
@@ -40,18 +41,29 @@ export function ConsultaCliente() {
   const [email, setEmail] = useState("");
   const [errores, setErrores] = useState<Errores>({});
   const [enviando, setEnviando] = useState(false);
-  const [enviado, setEnviado] = useState(false);
+  const [enviado, setEnviado] = useState<{ nombre: string; items: ItemCarrito[] } | null>(null);
 
   if (items === null) return null;
 
   if (enviado) {
+    const wa = enlaceWhatsApp(enviado.nombre, enviado.items);
     return (
       <div role="status" className="border border-esmeralda/40 bg-white p-6">
         <h2 className="font-serif text-xl font-semibold">¡Recibimos tu consulta!</h2>
         <p className="mt-2 text-[#4A4538]">
           Nuestro equipo de ventas te escribirá por WhatsApp muy pronto.
         </p>
-        <Link href="/catalogo" className="mt-4 inline-block underline">
+        {wa && (
+          <a
+            href={wa}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-block rounded-sm border border-negro px-5 py-2.5 text-sm font-medium hover:bg-negro hover:text-texto-claro"
+          >
+            ¿Prefieres escribirnos tú? Abrir WhatsApp
+          </a>
+        )}
+        <Link href="/catalogo" className="mt-4 block underline">
           Volver al catálogo
         </Link>
       </div>
@@ -91,8 +103,9 @@ export function ConsultaCliente() {
         },
         items!,
       );
+      const snapshot = items!;
       vaciarCarrito();
-      setEnviado(true);
+      setEnviado({ nombre: nombre.trim(), items: snapshot });
     } catch (err) {
       setErrores({ general: mensajeError(err) });
     } finally {

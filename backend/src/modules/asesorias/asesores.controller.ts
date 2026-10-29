@@ -40,6 +40,12 @@ export class AsesoresController {
     return this.asesoresService.agregarDisponibilidad(asesorId, dto);
   }
 
+  // Público: el cliente elige asesor sin login. Solo id, nombre y especialidad.
+  @Get()
+  listarPublicos() {
+    return this.asesoresService.listarPublicos();
+  }
+
   // Público: el cliente necesita ver franjas libres para elegir, sin login.
   @Get(':id/disponibilidad')
   disponibilidad(

@@ -4,6 +4,15 @@ import { Repository } from 'typeorm';
 import { Asesor, DisponibilidadAsesor } from './entities/asesoria.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { CrearDisponibilidadDto } from './dto/crear-disponibilidad.dto';
+import { getRlsManager } from '../../common/rls/request-context';
+
+// Lo único que el público puede ver de un asesor: nada de email, teléfono
+// ni datos de la cuenta de usuario.
+export interface AsesorPublico {
+  id: string;
+  nombre: string;
+  especialidad: string | null;
+}
 
 @Injectable()
 export class AsesoresService {
@@ -30,6 +39,26 @@ export class AsesoresService {
 
   async findAll(): Promise<Asesor[]> {
     return this.asesorRepository.find({ where: { activo: true } });
+  }
+
+  /**
+   * Listado PÚBLICO para que el cliente elija con quién agendar la llamada.
+   * Los nombres viven en `usuarios` (RLS: cada quien ve solo su fila), y acá
+   * no hay sesión, así que se usa el contexto acotado 'service_auth' — con
+   * una consulta fija que devuelve únicamente id, nombre y especialidad.
+   */
+  async listarPublicos(): Promise<AsesorPublico[]> {
+    const manager = getRlsManager();
+    if (manager) {
+      await manager.query(`SELECT set_config('app.rol', 'service_auth', true)`);
+    }
+    return (manager ?? this.asesorRepository.manager).query(
+      `SELECT a.id, u.nombre, a.especialidad
+         FROM asesores a
+         JOIN usuarios u ON u.id = a."usuarioId"
+        WHERE a.activo = true AND u.activo = true
+        ORDER BY u.nombre ASC`,
+    );
   }
 
   async findOne(id: string): Promise<Asesor> {

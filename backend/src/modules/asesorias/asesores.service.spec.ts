@@ -36,6 +36,20 @@ describe('AsesoresService', () => {
     jest.clearAllMocks();
   });
 
+  describe('listarPublicos', () => {
+    it('consulta solo id, nombre y especialidad de asesores activos (sin datos de la cuenta)', async () => {
+      const query = jest.fn().mockResolvedValue([{ id: 'a1', nombre: 'Ana', especialidad: 'Pisos' }]);
+      (asesorRepo as any).manager = { query };
+
+      const res = await service.listarPublicos();
+
+      expect(res).toEqual([{ id: 'a1', nombre: 'Ana', especialidad: 'Pisos' }]);
+      const sql = query.mock.calls[0][0] as string;
+      expect(sql).toContain('a.activo = true');
+      expect(sql).not.toMatch(/email|telefono|passwordHash|password/i);
+    });
+  });
+
   it('debe estar definido', () => {
     expect(service).toBeDefined();
   });

@@ -8,6 +8,7 @@ interface PublicHeaderProps {
 const LINKS = [
   { href: "/catalogo", label: "Catálogo" },
   { href: "/combos", label: "Combos" },
+  { href: "/consulta", label: "Mi consulta" },
   { href: "/agendar-asesoria", label: "Agendar asesoría" },
   { href: "/login", label: "Ingresar" },
 ];

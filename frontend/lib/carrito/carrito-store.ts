@@ -62,3 +62,17 @@ export function vaciarCarrito(): void {
     /* noop */
   }
 }
+
+export function quitarItem(varianteId: string): ItemCarrito[] {
+  const items = getCarrito().filter((i) => i.varianteId !== varianteId);
+  guardar(items);
+  return items;
+}
+
+export function cambiarCantidadItem(varianteId: string, cantidad: number): ItemCarrito[] {
+  const items = getCarrito();
+  const item = items.find((i) => i.varianteId === varianteId);
+  if (item && Number.isInteger(cantidad) && cantidad > 0) item.cantidad = cantidad;
+  guardar(items);
+  return items;
+}

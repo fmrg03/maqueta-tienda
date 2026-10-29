@@ -36,8 +36,8 @@ export function SelectorVariante({ material }: { material: Material }) {
 
   function agregar() {
     agregarItem({
-      varianteId: variante.id,
-      materialId: material.id,
+      tipo: "variante",
+      refId: variante.id,
       nombre: material.nombre,
       presentacion: etiquetaVariante(variante),
       precioVenta: variante.precioVenta,

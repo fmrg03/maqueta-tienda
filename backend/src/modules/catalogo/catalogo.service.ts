@@ -91,7 +91,7 @@ export class CatalogoService {
   async listarCombos(): Promise<ComboPublico[]> {
     const combos = await this.comboRepository.find({
       where: { activo: true },
-      relations: ['items', 'items.variante'],
+      relations: ['items', 'items.variante', 'items.variante.material'],
     });
     return combos.map(comboPublico);
   }

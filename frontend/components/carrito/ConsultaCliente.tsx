@@ -104,7 +104,7 @@ export function ConsultaCliente() {
     <div className="grid gap-10 md:grid-cols-[1fr_340px]">
       <ul className="divide-y divide-piedra-oscura border-y border-piedra-oscura">
         {items.map((i) => (
-          <li key={i.varianteId} className="flex flex-wrap items-center gap-4 py-4">
+          <li key={`${i.tipo}:${i.refId}`} className="flex flex-wrap items-center gap-4 py-4">
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{i.nombre}</p>
               <p className="text-sm text-[#8A8272]">{i.presentacion}</p>
@@ -119,14 +119,14 @@ export function ConsultaCliente() {
                 min={1}
                 value={i.cantidad}
                 onChange={(e) =>
-                  setItems(cambiarCantidadItem(i.varianteId, Number(e.target.value)))
+                  setItems(cambiarCantidadItem(i.tipo, i.refId, Number(e.target.value)))
                 }
                 className="w-20 border border-piedra-oscura bg-white px-2 py-1.5 font-mono"
               />
             </label>
             <button
               type="button"
-              onClick={() => setItems(quitarItem(i.varianteId))}
+              onClick={() => setItems(quitarItem(i.tipo, i.refId))}
               className="text-sm text-vino underline"
             >
               Quitar

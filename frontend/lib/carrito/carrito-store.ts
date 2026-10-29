@@ -2,8 +2,10 @@
 // Todo acceso va envuelto en try/catch — localStorage puede no existir o fallar.
 
 export interface ItemCarrito {
-  varianteId: string;
-  materialId: string;
+  /** Una presentación (variante) o un combo completo. */
+  tipo: "variante" | "combo";
+  /** id de la variante o del combo, según `tipo`. */
+  refId: string;
   nombre: string;
   presentacion: string;
   precioVenta: number;
@@ -16,8 +18,8 @@ function esItemValido(x: unknown): x is ItemCarrito {
   if (typeof x !== "object" || x === null) return false;
   const i = x as Record<string, unknown>;
   return (
-    typeof i.varianteId === "string" &&
-    typeof i.materialId === "string" &&
+    (i.tipo === "variante" || i.tipo === "combo") &&
+    typeof i.refId === "string" &&
     typeof i.nombre === "string" &&
     typeof i.presentacion === "string" &&
     typeof i.precioVenta === "number" &&
@@ -48,7 +50,7 @@ function guardar(items: ItemCarrito[]): void {
 
 export function agregarItem(nuevo: ItemCarrito): ItemCarrito[] {
   const items = getCarrito();
-  const existente = items.find((i) => i.varianteId === nuevo.varianteId);
+  const existente = items.find((i) => i.tipo === nuevo.tipo && i.refId === nuevo.refId);
   if (existente) existente.cantidad += nuevo.cantidad;
   else items.push(nuevo);
   guardar(items);
@@ -63,15 +65,19 @@ export function vaciarCarrito(): void {
   }
 }
 
-export function quitarItem(varianteId: string): ItemCarrito[] {
-  const items = getCarrito().filter((i) => i.varianteId !== varianteId);
+export function quitarItem(tipo: ItemCarrito["tipo"], refId: string): ItemCarrito[] {
+  const items = getCarrito().filter((i) => !(i.tipo === tipo && i.refId === refId));
   guardar(items);
   return items;
 }
 
-export function cambiarCantidadItem(varianteId: string, cantidad: number): ItemCarrito[] {
+export function cambiarCantidadItem(
+  tipo: ItemCarrito["tipo"],
+  refId: string,
+  cantidad: number,
+): ItemCarrito[] {
   const items = getCarrito();
-  const item = items.find((i) => i.varianteId === varianteId);
+  const item = items.find((i) => i.tipo === tipo && i.refId === refId);
   if (item && Number.isInteger(cantidad) && cantidad > 0) item.cantidad = cantidad;
   guardar(items);
   return items;

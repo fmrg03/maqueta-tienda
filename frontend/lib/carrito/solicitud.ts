@@ -32,7 +32,7 @@ export async function enviarSolicitud(
       canalEnvio: "formulario",
       items: items.map((i) => ({
         // El backend exige EXACTAMENTE uno de materialId/varianteId/comboId.
-        varianteId: i.varianteId,
+        ...(i.tipo === "combo" ? { comboId: i.refId } : { varianteId: i.refId }),
         cantidad: i.cantidad,
       })),
     }),

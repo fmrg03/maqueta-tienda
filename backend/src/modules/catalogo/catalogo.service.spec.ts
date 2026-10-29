@@ -134,7 +134,7 @@ describe('CatalogoService', () => {
       await service.listarCombos();
 
       expect(comboRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({ relations: ['items', 'items.variante'] }),
+        expect.objectContaining({ relations: ['items', 'items.variante', 'items.variante.material'] }),
       );
     });
 

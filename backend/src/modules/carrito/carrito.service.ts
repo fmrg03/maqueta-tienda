@@ -67,6 +67,7 @@ export class CarritoService {
           this.varianteRepository,
           itemDto.varianteId,
           'Variante',
+          ['material'], // el nombre del producto va en la notificación
         );
       } else if (itemDto.comboId) {
         item.combo = await this.buscarOFallar(
@@ -99,7 +100,9 @@ export class CarritoService {
     }
 
     const guardada = await this.solicitudRepository.save(solicitud);
-    await this.notificacionesService.notificarNuevaSolicitudCarrito(guardada.id);
+    // Sin await: el cliente no espera al SMTP/WhatsApp, y el servicio de
+    // notificaciones nunca lanza (captura y loguea cada canal por separado).
+    void this.notificacionesService.notificarNuevaSolicitudCarrito(guardada);
 
     return guardada;
   }
@@ -139,8 +142,9 @@ export class CarritoService {
     repo: Repository<T>,
     id: string,
     nombreEntidad: string,
+    relations: string[] = [],
   ): Promise<T> {
-    const entidad = await repo.findOne({ where: { id } as any });
+    const entidad = await repo.findOne({ where: { id } as any, relations });
     if (!entidad) {
       throw new NotFoundException(`${nombreEntidad} ${id} no encontrado`);
     }

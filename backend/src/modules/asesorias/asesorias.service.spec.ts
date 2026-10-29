@@ -86,7 +86,13 @@ describe('AsesoriasService', () => {
           if (entity === SolicitudAsesoria) return solicitudManagerRepo;
           return {};
         }),
-        query: jest.fn().mockResolvedValue(undefined),
+        query: jest.fn().mockImplementation((sql: string) =>
+          Promise.resolve(
+            sql.includes('FROM asesores')
+              ? [{ nombre: 'Ana Asesora', email: 'ana@example.com' }]
+              : undefined,
+          ),
+        ),
         franjaManagerRepo,
         solicitudManagerRepo,
       };
@@ -105,8 +111,11 @@ describe('AsesoriasService', () => {
         expect.objectContaining({ disponible: false }),
       );
       expect(resultado.id).toBe('sol-1');
+      // Recibe la solicitud completa y los datos del asesor elegido (para
+      // avisarle a él), no solo un id.
       expect(notificaciones.notificarNuevaSolicitudAsesoria).toHaveBeenCalledWith(
-        'sol-1',
+        expect.objectContaining({ id: 'sol-1' }),
+        { nombre: 'Ana Asesora', email: 'ana@example.com' },
       );
     });
 

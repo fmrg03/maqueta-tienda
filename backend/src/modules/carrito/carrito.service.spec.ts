@@ -69,7 +69,7 @@ describe('CarritoService', () => {
 
       expect(resultado.id).toBe('sol-1');
       expect(notificaciones.notificarNuevaSolicitudCarrito).toHaveBeenCalledWith(
-        'sol-1',
+        expect.objectContaining({ id: 'sol-1' }),
       );
     });
 

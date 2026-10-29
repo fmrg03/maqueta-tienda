@@ -94,11 +94,27 @@ export class AsesoriasService {
         estado: EstadoSolicitudAsesoria.PENDIENTE,
       });
 
-      return manager.getRepository(SolicitudAsesoria).save(nuevaSolicitud);
+      const guardada = await manager.getRepository(SolicitudAsesoria).save(nuevaSolicitud);
+
+      // Nombre y correo del asesor elegido, para avisarle a él. `usuarios`
+      // tiene RLS y acá no hay sesión; el contexto 'service_auth' (ya
+      // seteado arriba) lo permite, y la consulta es fija y parametrizada.
+      const [datosAsesor] = (await manager.query(
+        `SELECT u.nombre, u.email
+           FROM asesores a JOIN usuarios u ON u.id = a."usuarioId"
+          WHERE a.id = $1`,
+        [dto.asesorId],
+      )) as Array<{ nombre: string; email: string }>;
+
+      return { guardada, datosAsesor: datosAsesor ?? null };
     });
 
-    await this.notificacionesService.notificarNuevaSolicitudAsesoria(solicitud.id);
-    return solicitud;
+    // Sin await: el cliente no espera al SMTP/WhatsApp (el servicio nunca lanza).
+    void this.notificacionesService.notificarNuevaSolicitudAsesoria(
+      solicitud.guardada,
+      solicitud.datosAsesor,
+    );
+    return solicitud.guardada;
   }
 
   async findAll(estado?: EstadoSolicitudAsesoria): Promise<SolicitudAsesoria[]> {

@@ -1,20 +1,90 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { SolicitudCarrito } from '../../modules/carrito/entities/solicitud-carrito.entity';
+import type { SolicitudAsesoria } from '../../modules/asesorias/entities/asesoria.entity';
+import { CallMeBotService } from './callmebot.service';
+import { EmailService } from './email.service';
+import {
+  mensajeNuevaSolicitudAsesoria,
+  mensajeNuevaSolicitudCarrito,
+  type DestinatarioAsesor,
+} from './mensajes';
 
 /**
- * Punto de integración con la cola BullMQ + API de WhatsApp definida en
- * ARCHITECTURE.md (sección Infraestructura). Por ahora solo loguea; el
- * wiring real a Redis/BullMQ y al proveedor de WhatsApp se hace en la
- * fase de infraestructura, sin cambiar esta interfaz pública.
+ * Única puerta de entrada para avisar de nuevas solicitudes. Despacha a todos
+ * los canales habilitados EN PARALELO e independientes: si uno falla (SMTP
+ * caído, CallMeBot sin respuesta) los demás igual salen, y NUNCA se propaga
+ * un error — el cliente ya tiene su solicitud guardada y no debe ver un 500
+ * por una notificación que no salió.
+ *
+ * Los métodos devuelven la promesa del despacho para poder testearla, pero
+ * los servicios la lanzan sin esperarla (`void`): el cliente no espera al SMTP.
  */
 @Injectable()
 export class NotificacionesService {
   private readonly logger = new Logger(NotificacionesService.name);
 
-  async notificarNuevaSolicitudCarrito(solicitudId: string): Promise<void> {
-    this.logger.log(`Encolar notificación de nueva SolicitudCarrito ${solicitudId}`);
+  constructor(
+    private readonly config: ConfigService,
+    private readonly email: EmailService,
+    private readonly callmebot: CallMeBotService,
+  ) {}
+
+  async notificarNuevaSolicitudCarrito(solicitud: SolicitudCarrito): Promise<void> {
+    this.logger.log(`Nueva SolicitudCarrito ${solicitud.id}`);
+    try {
+      const mensaje = mensajeNuevaSolicitudCarrito(solicitud);
+      const ventas = this.config.get<string>('VENTAS_EMAIL');
+
+      await this.despachar([
+        ['email', this.email.habilitado && ventas ? () => this.email.enviar(ventas, mensaje) : null],
+        ['whatsapp', this.callmebot.habilitado ? () => this.callmebot.enviar(mensaje.texto) : null],
+      ]);
+    } catch (error) {
+      this.logger.error(`No se pudo armar la notificación de carrito: ${String(error)}`);
+    }
   }
 
-  async notificarNuevaSolicitudAsesoria(solicitudId: string): Promise<void> {
-    this.logger.log(`Encolar notificación de nueva SolicitudAsesoria ${solicitudId}`);
+  async notificarNuevaSolicitudAsesoria(
+    solicitud: SolicitudAsesoria,
+    asesor: DestinatarioAsesor | null,
+  ): Promise<void> {
+    this.logger.log(`Nueva SolicitudAsesoria ${solicitud.id}`);
+    try {
+      const mensaje = mensajeNuevaSolicitudAsesoria(solicitud, asesor ?? { nombre: '(sin asignar)', email: '' });
+
+      await this.despachar([
+        // Al asesor elegido por el cliente; si no hay correo del asesor, a ventas.
+        [
+          'email',
+          this.email.habilitado
+            ? this.destinoEmailAsesoria(asesor)
+              ? () => this.email.enviar(this.destinoEmailAsesoria(asesor)!, mensaje)
+              : null
+            : null,
+        ],
+        ['whatsapp', this.callmebot.habilitado ? () => this.callmebot.enviar(mensaje.texto) : null],
+      ]);
+    } catch (error) {
+      this.logger.error(`No se pudo armar la notificación de asesoría: ${String(error)}`);
+    }
+  }
+
+  private destinoEmailAsesoria(asesor: DestinatarioAsesor | null): string | null {
+    return asesor?.email || this.config.get<string>('VENTAS_EMAIL') || null;
+  }
+
+  private async despachar(canales: Array<[string, (() => Promise<void>) | null]>): Promise<void> {
+    const activos = canales.filter((c): c is [string, () => Promise<void>] => c[1] !== null);
+    if (activos.length === 0) {
+      this.logger.warn('Ningún canal de notificación configurado: la solicitud quedó solo en la base de datos');
+      return;
+    }
+    const resultados = await Promise.allSettled(activos.map(([, enviar]) => enviar()));
+    resultados.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        this.logger.error(`Canal "${activos[i][0]}" falló: ${String(r.reason)}`);
+      }
+    });
   }
 }

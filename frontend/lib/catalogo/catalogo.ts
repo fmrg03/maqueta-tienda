@@ -5,13 +5,13 @@ export interface Categoria {
   nombre: string;
 }
 
+// El catálogo público NUNCA trae precioCosto (el backend lo elimina).
 export interface VarianteMaterial {
   id: string;
   skuVariante: string;
   atributos: Record<string, string>;
   stock: number;
   precioVenta: number;
-  precioCosto: number;
 }
 
 export interface Material {
@@ -24,6 +24,25 @@ export interface Material {
   activo: boolean;
   variantes: VarianteMaterial[];
   createdAt: string;
+}
+
+// TypeORM devuelve las columnas decimal como string; se normaliza acá
+// una sola vez para que el resto de la UI trabaje con números.
+function normalizarMaterial(m: Material): Material {
+  return {
+    ...m,
+    variantes: (m.variantes ?? []).map((v) => ({
+      ...v,
+      stock: Number(v.stock),
+      precioVenta: Number(v.precioVenta),
+    })),
+  };
+}
+
+/** Texto corto de una presentación: "25kg", "60x60 · Gris" o, si no hay atributos, el SKU. */
+export function etiquetaVariante(variante: VarianteMaterial): string {
+  const valores = Object.values(variante.atributos ?? {}).filter(Boolean);
+  return valores.length > 0 ? valores.join(" · ") : variante.skuVariante;
 }
 
 export async function listarCategorias(): Promise<Categoria[]> {
@@ -43,7 +62,19 @@ export async function listarMateriales(
   });
   if (categoriaId) params.set("categoria", categoriaId);
 
-  return apiFetch(`/api/v1/catalogo/materiales?${params.toString()}`, {
-    autenticado: false,
-  });
+  const res = await apiFetch<{
+    items: Material[];
+    total: number;
+    pagina: number;
+    porPagina: number;
+  }>(`/api/v1/catalogo/materiales?${params.toString()}`, { autenticado: false });
+  return { ...res, items: res.items.map(normalizarMaterial) };
+}
+
+export async function obtenerMaterial(id: string): Promise<Material> {
+  const m = await apiFetch<Material>(
+    `/api/v1/catalogo/materiales/${encodeURIComponent(id)}`,
+    { autenticado: false },
+  );
+  return normalizarMaterial(m);
 }

@@ -18,11 +18,22 @@ export interface ReporteInventarioItem {
   salidas: number;
 }
 
+export interface GananciaPeriodo {
+  periodo: string;
+  ventas: number;
+  costo: number;
+  ganancia: number;
+}
+
 export interface ReporteGananciasItem {
   totalVentas: number;
   totalCosto: number;
   ganancia: number;
+  serie: GananciaPeriodo[];
 }
+
+const TRUNC = { semana: 'week', mes: 'month', anio: 'year' } as const;
+type Agrupacion = keyof typeof TRUNC;
 
 @Injectable()
 export class ReportesService {
@@ -34,13 +45,11 @@ export class ReportesService {
   async reporteInventario(
     query: ReporteQueryDto,
   ): Promise<ReporteInventarioItem[]> {
-    const agrupacion = query.agrupacion ?? 'mes';
-    const truncFormato =
-      agrupacion === 'semana' ? 'week' : agrupacion === 'anio' ? 'year' : 'month';
+    const truncFormato = TRUNC[query.agrupacion ?? 'mes'];
 
     const filas = await this.movimientoRepository
       .createQueryBuilder('movimiento')
-      .select(`date_trunc('${truncFormato}', movimiento.createdAt)`, 'periodo')
+      .select(`to_char(date_trunc('${truncFormato}', movimiento."createdAt" AT TIME ZONE 'America/Caracas'), 'YYYY-MM-DD')`, 'periodo')
       .addSelect(
         `SUM(CASE WHEN movimiento.tipo = :entrada THEN movimiento.cantidad ELSE 0 END)`,
         'entradas',
@@ -71,38 +80,48 @@ export class ReportesService {
   async reporteGanancias(
     desde: string,
     hasta: string,
+    agrupacion: Agrupacion = 'mes',
   ): Promise<ReporteGananciasItem> {
     // Usa el precio congelado en el movimiento (venta de un carrito); las
     // salidas manuales antiguas, sin precio guardado, caen al precio actual.
     // Las ventas anuladas (carrito cancelado tras cerrarse) no cuentan. Se
     // consulta con el manager del request: solicitudes_carrito tiene RLS.
+    // Los períodos se cortan en hora de Venezuela.
     const repo = getRlsManager()?.getRepository(MovimientoInventario) ?? this.movimientoRepository;
-    const fila = await repo
+    const trunc = TRUNC[agrupacion] ?? 'month';
+    const filas = await repo
       .createQueryBuilder('movimiento')
       .leftJoin('movimiento.variante', 'variante')
       .leftJoin(SolicitudCarrito, 'solicitud', 'solicitud.id = movimiento.solicitudId')
       .select(
-        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * COALESCE(movimiento.precioVentaUnitario, variante.precioVenta) ELSE 0 END)`,
-        'totalVentas',
+        `to_char(date_trunc('${trunc}', movimiento."createdAt" AT TIME ZONE 'America/Caracas'), 'YYYY-MM-DD')`,
+        'periodo',
       )
       .addSelect(
-        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * COALESCE(movimiento.precioCostoUnitario, variante.precioCosto) ELSE 0 END)`,
-        'totalCosto',
+        `SUM(movimiento.cantidad * COALESCE(movimiento.precioVentaUnitario, variante.precioVenta))`,
+        'ventas',
       )
-      .where('movimiento.createdAt BETWEEN :desde AND :hasta', { desde, hasta })
+      .addSelect(
+        `SUM(movimiento.cantidad * COALESCE(movimiento.precioCostoUnitario, variante.precioCosto))`,
+        'costo',
+      )
+      .where('movimiento.tipo = :salida', { salida: TipoMovimiento.SALIDA })
+      .andWhere('movimiento.createdAt BETWEEN :desde AND :hasta', { desde, hasta })
       .andWhere('(solicitud.id IS NULL OR solicitud.estado <> :cancelada)', {
         cancelada: EstadoSolicitudCarrito.CANCELADA,
       })
-      .setParameters({ salida: TipoMovimiento.SALIDA })
-      .getRawOne();
+      .groupBy('periodo')
+      .orderBy('periodo', 'ASC')
+      .getRawMany();
 
-    const totalVentas = Number(fila?.totalVentas ?? 0);
-    const totalCosto = Number(fila?.totalCosto ?? 0);
+    const serie: GananciaPeriodo[] = filas.map((f) => {
+      const ventas = Number(f.ventas ?? 0);
+      const costo = Number(f.costo ?? 0);
+      return { periodo: f.periodo, ventas, costo, ganancia: ventas - costo };
+    });
+    const totalVentas = serie.reduce((a, f) => a + f.ventas, 0);
+    const totalCosto = serie.reduce((a, f) => a + f.costo, 0);
 
-    return {
-      totalVentas,
-      totalCosto,
-      ganancia: totalVentas - totalCosto,
-    };
+    return { totalVentas, totalCosto, ganancia: totalVentas - totalCosto, serie };
   }
 }

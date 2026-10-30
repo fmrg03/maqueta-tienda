@@ -396,3 +396,9 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 - `GET /proveedores?estado=activos|inactivos|todos` (incluye cuántas presentaciones suministra cada uno), `PATCH /proveedores/:id` (datos y `activo`).
 - Productos por proveedor: `GET/POST /proveedores/:id/productos`, `PATCH/DELETE /proveedor-productos/:id` (admin). Una presentación solo puede asociarse una vez por proveedor (409).
 - Pantalla de detalle: edita datos, activa/desactiva y compara el costo del proveedor con el `precioCosto` actual de la presentación.
+
+## Panel: Reportes
+
+- `GET /reportes/ganancias?desde&hasta&agrupacion=semana|mes|anio` devuelve totales (ventas, costo, ganancia) y `serie` por período; `GET /reportes/inventario` da entradas/salidas por período. Los períodos se cortan en hora de Venezuela (UTC-4) y salen como `YYYY-MM-DD` (inicio del período).
+- Ventas y costo usan el precio congelado en el movimiento; las ventas de carritos cancelados no cuentan.
+- La pantalla usa atajos de rango (30 días, mes, año), agrupación y barras CSS (sin librería de gráficos).

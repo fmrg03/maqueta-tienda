@@ -21,7 +21,7 @@ export class ReportesController {
   }
 
   @Get('ganancias')
-  reporteGanancias(@Query('desde') desde: string, @Query('hasta') hasta: string) {
-    return this.reportesService.reporteGanancias(desde, hasta);
+  reporteGanancias(@Query() query: ReporteQueryDto) {
+    return this.reportesService.reporteGanancias(query.desde, query.hasta, query.agrupacion);
   }
 }

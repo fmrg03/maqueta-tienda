@@ -20,7 +20,7 @@ export const MENU_PANEL: ItemMenu[] = [
   { href: "/panel/movimientos", label: "Movimientos", descripcion: "Entradas y salidas de inventario", roles: ["admin"], disponible: true },
   { href: "/panel/combos", label: "Combos", descripcion: "Paquetes de productos", roles: ["admin"], disponible: true },
   { href: "/panel/proveedores", label: "Proveedores", descripcion: "Proveedores y costos", roles: ["admin"], disponible: true },
-  { href: "/panel/reportes", label: "Reportes", descripcion: "Inventario y ganancias por período", roles: ["admin"], disponible: false },
+  { href: "/panel/reportes", label: "Reportes", descripcion: "Inventario y ganancias por período", roles: ["admin"], disponible: true },
   { href: "/panel/configuracion", label: "Configuración", descripcion: "Tasa BCV y descuento por divisas", roles: ["admin"], disponible: true },
   { href: "/panel/asesores", label: "Asesores", descripcion: "Asesores y su disponibilidad", roles: ["admin"], disponible: true },
   { href: "/panel/usuarios", label: "Usuarios", descripcion: "Cuentas y roles", roles: ["admin"], disponible: false },

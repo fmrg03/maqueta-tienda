@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="Codo PVC 90°">
+  <rect width="800" height="800" fill="#DCE6EA"/>
+  <circle cx="400" cy="400" r="330" fill="#fff" opacity=".35"/>
+  
+    <path d="M210 600 L210 400 Q210 280 330 280 L600 280" fill="none" stroke="#3F6B7C" stroke-width="150" stroke-linecap="butt"/>
+    <path d="M210 600 L210 400 Q210 280 330 280 L600 280" fill="none" stroke="#F2F2F2" stroke-width="124" stroke-linecap="butt"/>
+    <rect x="130" y="560" width="160" height="50" rx="8" fill="#3F6B7C"/><rect x="560" y="200" width="50" height="160" rx="8" fill="#3F6B7C"/>
+</svg>

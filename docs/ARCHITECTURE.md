@@ -386,3 +386,7 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 - El panel genera los horarios en hora de Venezuela (UTC-4 fijo) a partir de rango de fechas + días de la semana + franja horaria + intervalo.
 - Un asesor desactivado deja de verse para el cliente; sus asesorías ya agendadas se conservan.
 - **Lección de RLS:** `Asesor.usuario` es eager y `usuarios` tiene RLS. Cargar un Asesor sin la sesión del admin deja `usuario = null`, y un `save()` lo escribiría como NULL. Por eso `actualizar` hace `UPDATE` de columnas puntuales y `crearAsesor` guarda en la misma transacción (RLS manager) que la cuenta nueva.
+
+## Imágenes de muestra en el seed
+
+`npm run seed:data` copia las ilustraciones de `backend/seed-assets/imagenes/<SKU>.svg` a `UPLOADS_DIR` y asigna `imagenUrl` (`/uploads/muestra-<SKU>.svg`) a los materiales que aún no tienen imagen. Son ilustraciones, no fotos reales (se regeneran con `node seed-assets/generar-imagenes.js`). Para el catálogo real, la empresa sube sus fotos desde el panel.

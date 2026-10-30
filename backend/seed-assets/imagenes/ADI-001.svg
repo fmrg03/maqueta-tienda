@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="Aditivo Impermeabilizante">
+  <rect width="800" height="800" fill="#E7E1D3"/>
+  <circle cx="400" cy="400" r="330" fill="#fff" opacity=".35"/>
+  
+    <path d="M270 300 L530 300 L500 610 Q400 630 300 610 Z" fill="#6FA3B5" stroke="#7C7466" stroke-width="8" stroke-linejoin="round"/>
+    <ellipse cx="400" cy="300" rx="130" ry="30" fill="#CFC7B4" stroke="#7C7466" stroke-width="8"/>
+    <path d="M285 310 Q400 130 515 310" fill="none" stroke="#7C7466" stroke-width="10" stroke-linecap="round"/>
+    <rect x="320" y="420" width="160" height="90" rx="8" fill="#E7E1D3" stroke="#7C7466" stroke-width="5"/>
+</svg>

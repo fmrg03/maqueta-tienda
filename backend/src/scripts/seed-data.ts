@@ -8,6 +8,8 @@ import { MaterialProveedor } from '../modules/inventario/entities/material-prove
 import { Usuario, RolUsuario } from '../modules/usuarios/entities/usuario.entity';
 import { Asesor, DisponibilidadAsesor } from '../modules/asesorias/entities/asesoria.entity';
 import * as bcrypt from 'bcrypt';
+import { copyFileSync, existsSync, mkdirSync } from 'fs';
+import { join, resolve } from 'path';
 
 config();
 
@@ -328,6 +330,24 @@ async function seedData(): Promise<void> {
     }
     if (franjasCreadas > 0) {
       console.log(`✅ ${franjasCreadas} franjas de disponibilidad creadas (próximos 5 días)`);
+    }
+
+    // --- Imágenes de muestra (ilustraciones, no fotos reales) ---
+    // Se copian a UPLOADS_DIR (la misma carpeta que sirve la API en /uploads)
+    // y se asignan solo a materiales que todavía no tienen imagen.
+    const origen = join(__dirname, '../../seed-assets/imagenes');
+    const destino = resolve(process.env.UPLOADS_DIR ?? join(process.cwd(), 'uploads'));
+    mkdirSync(destino, { recursive: true });
+    let imagenesAsignadas = 0;
+    for (const m of await materialRepo.find()) {
+      const archivo = join(origen, `${m.sku}.svg`);
+      if (m.imagenUrl || !existsSync(archivo)) continue;
+      copyFileSync(archivo, join(destino, `muestra-${m.sku}.svg`));
+      await materialRepo.update({ id: m.id }, { imagenUrl: `/uploads/muestra-${m.sku}.svg` });
+      imagenesAsignadas++;
+    }
+    if (imagenesAsignadas > 0) {
+      console.log(`✅ ${imagenesAsignadas} imágenes de muestra asignadas (copiadas a ${destino})`);
     }
 
     console.log('\n🌱 Seed de datos completo.');

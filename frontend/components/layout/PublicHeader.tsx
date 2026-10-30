@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { clsx } from "clsx";
+import { BotonWhatsAppFlotante } from "./BotonWhatsAppFlotante";
 import { NavPublica } from "./NavPublica";
 
 interface PublicHeaderProps {
@@ -28,6 +29,8 @@ export function PublicHeader({ variante = "oscuro" }: PublicHeaderProps) {
         Revestimiento Élite RY
       </Link>
       <NavPublica esOscuro={esOscuro} />
+      {/* position: fixed -> flota sobre toda la página pública */}
+      <BotonWhatsAppFlotante />
     </header>
   );
 }

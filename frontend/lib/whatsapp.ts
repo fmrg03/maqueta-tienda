@@ -22,3 +22,8 @@ export function enlaceWhatsApp(nombre: string, items: ItemCarrito[]): string | n
   ].join("\n");
   return `https://wa.me/${NUMERO}?text=${encodeURIComponent(texto)}`;
 }
+
+/** Enlace wa.me a un mensaje libre (botón flotante); null si no hay número. */
+export function enlaceChat(mensaje: string): string | null {
+  return NUMERO ? `https://wa.me/${NUMERO}?text=${encodeURIComponent(mensaje)}` : null;
+}

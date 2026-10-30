@@ -1,5 +1,13 @@
 import { apiFetch } from "../api/client";
-import { clearTokens, getTokens, setTokens, type Tokens } from "./token-store";
+import {
+  clearTokens,
+  getTokens,
+  getUsuarioCrudo,
+  setTokens,
+  setUsuarioSesion,
+  suscribirSesion,
+  type Tokens,
+} from "./token-store";
 
 export interface Usuario {
   id: string;
@@ -21,6 +29,7 @@ export async function login(email: string, password: string): Promise<Usuario> {
     body: JSON.stringify({ email, password }),
   });
   setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+  setUsuarioSesion(data.usuario);
   return data.usuario;
 }
 
@@ -35,6 +44,7 @@ export async function registrar(
     body: JSON.stringify({ nombre, email, password }),
   });
   setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+  setUsuarioSesion(data.usuario);
   return data.usuario;
 }
 
@@ -54,3 +64,33 @@ export async function logout(): Promise<void> {
   }
   clearTokens();
 }
+
+// --- Lectura reactiva de la sesión (para componentes cliente) ---
+
+export type RolUsuario = Usuario["rol"];
+
+export const ETIQUETA_ROL: Record<RolUsuario, string> = {
+  admin: "Administrador",
+  ventas: "Ventas",
+  asesor: "Asesor",
+  cliente: "Cliente",
+};
+
+let cacheCrudo: string | null = null;
+let cacheUsuario: Usuario | null = null;
+
+/** Usuario de la sesión actual; misma referencia mientras el dato no cambie. */
+export function getUsuarioSesion(): Usuario | null {
+  const crudo = getUsuarioCrudo();
+  if (crudo !== cacheCrudo) {
+    cacheCrudo = crudo;
+    try {
+      cacheUsuario = crudo ? (JSON.parse(crudo) as Usuario) : null;
+    } catch {
+      cacheUsuario = null;
+    }
+  }
+  return cacheUsuario;
+}
+
+export { suscribirSesion };

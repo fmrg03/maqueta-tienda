@@ -47,5 +47,39 @@ export function clearTokens(): void {
   tokensEnMemoria = null;
   if (typeof window !== "undefined") {
     window.sessionStorage.removeItem(CLAVE_STORAGE);
+    window.sessionStorage.removeItem(CLAVE_USUARIO);
+    window.dispatchEvent(new Event(EVENTO_SESION));
   }
+}
+
+// --- Usuario de la sesión (nombre y rol, para armar el panel) ---
+// Solo sirve para MOSTRAR y para decidir qué menú ver: la autorización real
+// la hace el backend en cada request (JWT + roles + RLS). Manipular esto en
+// el navegador no da acceso a nada.
+const CLAVE_USUARIO = "maqueta-tienda:usuario";
+const EVENTO_SESION = "maqueta-tienda:sesion-cambio";
+
+export function setUsuarioSesion(usuario: unknown): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(CLAVE_USUARIO, JSON.stringify(usuario));
+  window.dispatchEvent(new Event(EVENTO_SESION));
+}
+
+/** Texto crudo del usuario guardado (primitivo estable, apto como snapshot). */
+export function getUsuarioCrudo(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage.getItem(CLAVE_USUARIO);
+  } catch {
+    return null;
+  }
+}
+
+export function suscribirSesion(callback: () => void): () => void {
+  window.addEventListener(EVENTO_SESION, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(EVENTO_SESION, callback);
+    window.removeEventListener("storage", callback);
+  };
 }

@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSyncExternalStore } from "react";
 import { clsx } from "clsx";
+import { getUsuarioSesion, suscribirSesion } from "@/lib/auth/auth";
 import { ContadorConsulta } from "./ContadorConsulta";
 
 const LINKS = [
   { href: "/catalogo", label: "Catálogo" },
   { href: "/combos", label: "Combos" },
   { href: "/agendar-asesoria", label: "Agendar asesoría" },
-  { href: "/login", label: "Ingresar" },
 ];
 
 /** Una ruta está activa si es la misma o una hija (/catalogo/123 activa "Catálogo"). */
@@ -19,6 +20,12 @@ function estaActiva(pathname: string, href: string): boolean {
 
 export function NavPublica({ esOscuro }: { esOscuro: boolean }) {
   const pathname = usePathname();
+  const usuario = useSyncExternalStore(suscribirSesion, getUsuarioSesion, () => null);
+  // Con sesión de personal, "Ingresar" pasa a ser el acceso directo al panel.
+  const acceso =
+    usuario && usuario.rol !== "cliente"
+      ? { href: "/panel", label: "Mi panel" }
+      : { href: "/login", label: "Ingresar" };
 
   const clase = (activo: boolean) =>
     clsx(
@@ -32,7 +39,7 @@ export function NavPublica({ esOscuro }: { esOscuro: boolean }) {
 
   return (
     <nav className="flex gap-7 text-sm">
-      {LINKS.map((link) => {
+      {[...LINKS, acceso].map((link) => {
         const activo = estaActiva(pathname, link.href);
         return (
           <Link

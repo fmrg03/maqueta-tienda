@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ApiError } from "@/lib/api/client";
+import { DialogoReagendar } from "./DialogoReagendar";
 import { enlaceWhatsAppCliente } from "@/lib/panel/carrito";
 import {
   ejecutarAccion,
@@ -15,6 +16,7 @@ import {
   obtenerAsesoria,
   TONO_ESTADO_ASESORIA,
   type AccionAsesoria,
+  type RespuestaReagendar,
   type SolicitudAsesoria,
 } from "@/lib/panel/asesorias";
 
@@ -33,6 +35,8 @@ export function DetalleAsesoria({ id }: { id: string }) {
   const [ocupado, setOcupado] = useState(false);
   const [fallo, setFallo] = useState<string | null>(null);
   const [confirmaCancelar, setConfirmaCancelar] = useState(false);
+  const [reagendando, setReagendando] = useState(false);
+  const [aviso, setAviso] = useState<RespuestaReagendar | null>(null);
 
   useEffect(() => {
     let vigente = true;
@@ -134,12 +138,34 @@ export function DetalleAsesoria({ id }: { id: string }) {
         )}
       </section>
 
+      {aviso && (
+        <div role="status" className="mb-4 border-l-4 border-esmeralda bg-white p-3 text-sm">
+          <p className="font-medium">Llamada reagendada para el {fechaLlamada(aviso.solicitud.fechaHoraLlamada)}.</p>
+          <p className="mt-1 text-[#4A4538]">
+            {aviso.emailEnviado
+              ? "Le enviamos el aviso por correo al cliente."
+              : "No se envió correo (el cliente no dejó uno o el envío no está configurado)."}
+          </p>
+          <a
+            href={enlaceWhatsAppCliente(aviso.solicitud.clienteTelefono, aviso.texto)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-block underline"
+          >
+            Avisarle también por WhatsApp ↗
+          </a>
+        </div>
+      )}
+
       {fallo && <p role="alert" className="mb-3 text-vino">{fallo}</p>}
 
       {abierta && (
         <div className="flex flex-wrap items-center gap-3">
           {s.estado === "pendiente" && (
-            <Button disabled={ocupado} onClick={() => accion("registrar-llamada")}>Registrar llamada realizada</Button>
+            <>
+              <Button disabled={ocupado} onClick={() => accion("registrar-llamada")}>Registrar llamada realizada</Button>
+              <Button variante="secundario" disabled={ocupado} onClick={() => setReagendando(true)}>Reagendar</Button>
+            </>
           )}
           {s.estado === "llamada_realizada" && (
             <>
@@ -157,6 +183,18 @@ export function DetalleAsesoria({ id }: { id: string }) {
             </span>
           )}
         </div>
+      )}
+
+      {reagendando && (
+        <DialogoReagendar
+          solicitud={s}
+          onCerrar={() => setReagendando(false)}
+          onListo={(r) => {
+            setS(r.solicitud);
+            setAviso(r);
+            setReagendando(false);
+          }}
+        />
       )}
     </div>
   );

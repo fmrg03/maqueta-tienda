@@ -5,6 +5,7 @@ import type { SolicitudAsesoria } from '../../modules/asesorias/entities/asesori
 import { CallMeBotService } from './callmebot.service';
 import { EmailService } from './email.service';
 import {
+  mensajeAsesoriaCliente,
   mensajeDetalleCliente,
   mensajeNuevaSolicitudAsesoria,
   mensajeNuevaSolicitudCarrito,
@@ -88,6 +89,29 @@ export class NotificacionesService {
         emailEnviado = true;
       } catch (error) {
         this.logger.error(`No se pudo enviar el detalle al cliente: ${String(error)}`);
+      }
+    }
+    return { texto: mensaje.texto, emailEnviado };
+  }
+
+  /**
+   * Confirmación al CLIENTE (llamada agendada o reagendada). Solo por correo
+   * (si dejó uno): CallMeBot solo escribe al dueño del número, no a clientes.
+   * Nunca lanza; devuelve el texto (para el wa.me del asesor) y si salió el correo.
+   */
+  async notificarAsesoriaACliente(
+    solicitud: SolicitudAsesoria,
+    asesorNombre: string,
+    reagendada: boolean,
+  ): Promise<{ texto: string; emailEnviado: boolean }> {
+    const mensaje = mensajeAsesoriaCliente(solicitud, asesorNombre, reagendada);
+    let emailEnviado = false;
+    if (this.email.habilitado && solicitud.clienteEmail) {
+      try {
+        await this.email.enviar(solicitud.clienteEmail, mensaje);
+        emailEnviado = true;
+      } catch (error) {
+        this.logger.error(`No se pudo avisar al cliente de la asesoría: ${String(error)}`);
       }
     }
     return { texto: mensaje.texto, emailEnviado };

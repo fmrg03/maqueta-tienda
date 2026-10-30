@@ -187,3 +187,23 @@ export function mensajeDetalleCliente(s: SolicitudCarrito): MensajeNotificacion 
     ),
   };
 }
+
+/** Confirmación para el CLIENTE de una llamada agendada o reagendada. */
+export function mensajeAsesoriaCliente(
+  s: SolicitudAsesoria,
+  asesorNombre: string,
+  reagendada: boolean,
+): MensajeNotificacion {
+  const nombre = unaLinea(s.clienteNombre);
+  const cuando = formatearFechaCaracas(new Date(s.fechaHoraLlamada));
+  const titulo = reagendada ? 'Tu llamada fue reagendada' : 'Tu llamada está agendada';
+  const saludo = `Hola ${nombre}, ${reagendada ? 'cambiamos la fecha de tu llamada' : 'recibimos tu solicitud de asesoría'} con ${unaLinea(asesorNombre)} de Revestimiento Élite RY.`;
+  const datos = [`Nueva fecha: ${cuando} (hora de Venezuela)`].map((d) => (reagendada ? d : d.replace('Nueva fecha', 'Fecha')));
+  const cierre = 'Te llamaremos por WhatsApp a esa hora. Si no te queda bien, respóndenos para coordinar otro horario.';
+
+  return {
+    asunto: `${titulo} — ${cuando}`,
+    texto: [saludo, ...datos, cierre].join('\n'),
+    html: envolverHtml(titulo, [escaparHtml(saludo), ...datos.map(escaparHtml)], [], escaparHtml(cierre)),
+  };
+}

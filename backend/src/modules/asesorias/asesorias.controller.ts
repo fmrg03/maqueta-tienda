@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AsesoriasService } from './asesorias.service';
 import { CrearSolicitudAsesoriaDto } from './dto/crear-solicitud-asesoria.dto';
+import { ReagendarDto } from './dto/reagendar.dto';
 import { RegistrarLlamadaDto } from './dto/registrar-llamada.dto';
 import { EstadoSolicitudAsesoria } from './entities/asesoria.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -84,6 +85,14 @@ export class AsesoriasController {
     @Body() dto: RegistrarLlamadaDto,
   ) {
     return this.asesoriasService.marcarNoProcede(id, dto);
+  }
+
+  @Patch('solicitudes/:id/reagendar')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  reagendar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReagendarDto) {
+    return this.asesoriasService.reagendar(id, dto);
   }
 
   @Patch('solicitudes/:id/cancelar')

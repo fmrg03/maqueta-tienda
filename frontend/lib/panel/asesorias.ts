@@ -58,3 +58,14 @@ export function cuandoEs(iso: string, ahora = new Date()): "atrasada" | "hoy" | 
   if (diaCaracas(f) === diaCaracas(ahora)) return f.getTime() < ahora.getTime() ? "atrasada" : "hoy";
   return f.getTime() < ahora.getTime() ? "atrasada" : "proxima";
 }
+
+export interface RespuestaReagendar {
+  solicitud: SolicitudAsesoria;
+  /** Mensaje listo para enviarle al cliente por WhatsApp (wa.me). */
+  texto: string;
+  emailEnviado: boolean;
+}
+
+export function reagendarAsesoria(id: string, fechaHoraLlamada: string): Promise<RespuestaReagendar> {
+  return apiFetch<RespuestaReagendar>(`${BASE}/${id}/reagendar`, { method: "PATCH", body: JSON.stringify({ fechaHoraLlamada }) });
+}

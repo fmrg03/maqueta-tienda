@@ -21,7 +21,7 @@ describe('AsesoriasService', () => {
   let service: AsesoriasService;
   let solicitudRepo: ReturnType<typeof createMockRepository>;
   let dataSource: { transaction: jest.Mock };
-  let notificaciones: { notificarNuevaSolicitudAsesoria: jest.Mock };
+  let notificaciones: { notificarNuevaSolicitudAsesoria: jest.Mock; notificarAsesoriaACliente: jest.Mock };
 
   const dtoBase = {
     clienteNombre: 'Carlos Ruiz',
@@ -32,7 +32,10 @@ describe('AsesoriasService', () => {
 
   beforeEach(async () => {
     dataSource = { transaction: jest.fn() };
-    notificaciones = { notificarNuevaSolicitudAsesoria: jest.fn() };
+    notificaciones = {
+      notificarNuevaSolicitudAsesoria: jest.fn(),
+      notificarAsesoriaACliente: jest.fn().mockResolvedValue({ texto: 'aviso', emailEnviado: true }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -237,6 +240,51 @@ describe('AsesoriasService', () => {
 
       solicitudRepo.findOne.mockResolvedValue({ id: 'sol-2', estado: EstadoSolicitudAsesoria.VISITA_PACTADA });
       await expect(service.cancelar('sol-2')).rejects.toThrow(BadRequestException);
+    });
+
+    describe('reagendar', () => {
+      const futuro = (h: number) => new Date(Date.now() + h * 3600e3);
+      function preparar(franja: any) {
+        const query = jest.fn().mockResolvedValue([]);
+        const qb: any = {};
+        for (const m of ['setLock', 'where', 'andWhere']) qb[m] = jest.fn().mockReturnValue(qb);
+        qb.getOne = jest.fn().mockResolvedValue(franja);
+        const save = jest.fn().mockImplementation((x) => Promise.resolve(x));
+        (dataSource as any).manager = { query, getRepository: () => ({ createQueryBuilder: () => qb, save }) };
+        return { query, save };
+      }
+      const base = (estado = EstadoSolicitudAsesoria.PENDIENTE) => ({
+        id: 'sol-1',
+        estado,
+        asesor: { id: 'as-1', usuario: { nombre: 'Ana' } },
+        fechaHoraLlamada: futuro(-2),
+      });
+
+      it('mueve la llamada, libera la franja vieja, bloquea la nueva y avisa al cliente', async () => {
+        const nueva = futuro(24);
+        const { query, save } = preparar({ id: 'f2', disponible: true });
+        solicitudRepo.findOne.mockResolvedValue(base());
+        solicitudRepo.save.mockImplementation((x) => Promise.resolve(x));
+
+        const r = await service.reagendar('sol-1', { fechaHoraLlamada: nueva.toISOString() });
+
+        expect(r.solicitud.fechaHoraLlamada).toEqual(nueva);
+        expect(save).toHaveBeenCalledWith(expect.objectContaining({ disponible: false }));
+        expect(query).toHaveBeenCalledWith(expect.stringContaining('disponible = true'), ['as-1', expect.any(Date)]);
+        expect(notificaciones.notificarAsesoriaACliente).toHaveBeenCalledWith(expect.anything(), 'Ana', true);
+        expect(r.emailEnviado).toBe(true);
+      });
+
+      it('rechaza franja ocupada (409), inexistente (404), pasada y estados no pendientes', async () => {
+        solicitudRepo.findOne.mockResolvedValue(base());
+        preparar({ id: 'f2', disponible: false });
+        await expect(service.reagendar('sol-1', { fechaHoraLlamada: futuro(5).toISOString() })).rejects.toThrow(ConflictException);
+        preparar(null);
+        await expect(service.reagendar('sol-1', { fechaHoraLlamada: futuro(5).toISOString() })).rejects.toThrow(NotFoundException);
+        await expect(service.reagendar('sol-1', { fechaHoraLlamada: futuro(-5).toISOString() })).rejects.toThrow(BadRequestException);
+        solicitudRepo.findOne.mockResolvedValue(base(EstadoSolicitudAsesoria.LLAMADA_REALIZADA));
+        await expect(service.reagendar('sol-1', { fechaHoraLlamada: futuro(5).toISOString() })).rejects.toThrow(BadRequestException);
+      });
     });
   });
 });

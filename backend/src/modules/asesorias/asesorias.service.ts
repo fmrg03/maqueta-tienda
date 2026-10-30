@@ -13,6 +13,7 @@ import {
   SolicitudAsesoria,
 } from './entities/asesoria.entity';
 import { CrearSolicitudAsesoriaDto } from './dto/crear-solicitud-asesoria.dto';
+import { ReagendarDto } from './dto/reagendar.dto';
 import { RegistrarLlamadaDto } from './dto/registrar-llamada.dto';
 import { NotificacionesService } from '../../common/notificaciones/notificaciones.service';
 import { getRlsManager } from '../../common/rls/request-context';
@@ -114,6 +115,12 @@ export class AsesoriasService {
       solicitud.guardada,
       solicitud.datosAsesor,
     );
+    // Confirmación al cliente (por correo, si dejó uno).
+    void this.notificacionesService.notificarAsesoriaACliente(
+      solicitud.guardada,
+      solicitud.datosAsesor?.nombre ?? 'nuestro asesor',
+      false,
+    );
     return solicitud.guardada;
   }
 
@@ -155,6 +162,64 @@ export class AsesoriasService {
     return this.transicionar(id, EstadoSolicitudAsesoria.NO_PROCEDE, [
       EstadoSolicitudAsesoria.LLAMADA_REALIZADA,
     ], dto?.notasLlamada);
+  }
+
+  /**
+   * Cambia la llamada a otra franja LIBRE del mismo asesor (solo mientras siga
+   * pendiente, incluso si ya pasó la hora). Bloquea la franja nueva, libera la
+   * anterior y avisa al cliente por correo.
+   */
+  async reagendar(
+    id: string,
+    dto: ReagendarDto,
+  ): Promise<{ solicitud: SolicitudAsesoria; texto: string; emailEnviado: boolean }> {
+    const solicitud = await this.findOne(id);
+    if (solicitud.estado !== EstadoSolicitudAsesoria.PENDIENTE) {
+      throw new BadRequestException('Solo se puede reagendar una asesoría pendiente');
+    }
+    if (!solicitud.asesor) {
+      throw new BadRequestException('La asesoría no tiene asesor asignado');
+    }
+    const nueva = new Date(dto.fechaHoraLlamada);
+    const anterior = new Date(solicitud.fechaHoraLlamada);
+    if (nueva.getTime() === anterior.getTime()) {
+      throw new BadRequestException('Esa ya es la fecha agendada');
+    }
+    if (nueva.getTime() <= Date.now()) {
+      throw new BadRequestException('Elige un horario que todavía no haya pasado');
+    }
+
+    const manager = getRlsManager() ?? this.dataSource.manager;
+    const franja = await manager
+      .getRepository(DisponibilidadAsesor)
+      .createQueryBuilder('disponibilidad')
+      .setLock('pessimistic_write')
+      .where('disponibilidad.asesorId = :asesorId', { asesorId: solicitud.asesor.id })
+      .andWhere('disponibilidad.fechaHora = :fechaHora', { fechaHora: nueva })
+      .getOne();
+    if (!franja) {
+      throw new NotFoundException('Ese horario no está disponible para este asesor');
+    }
+    if (!franja.disponible) {
+      throw new ConflictException('Ese horario ya fue reservado por otro cliente');
+    }
+
+    franja.disponible = false;
+    await manager.getRepository(DisponibilidadAsesor).save(franja);
+    await manager.query(
+      `UPDATE disponibilidad_asesor SET disponible = true
+        WHERE "asesorId" = $1 AND "fechaHora" = $2`,
+      [solicitud.asesor.id, anterior],
+    );
+
+    solicitud.fechaHoraLlamada = nueva;
+    const guardada = await this.solicitudRepository.save(solicitud);
+    const aviso = await this.notificacionesService.notificarAsesoriaACliente(
+      guardada,
+      solicitud.asesor.usuario?.nombre ?? 'nuestro asesor',
+      true,
+    );
+    return { solicitud: guardada, ...aviso };
   }
 
   /** Solo se cancela lo que sigue abierto; la franja vuelve a quedar disponible. */

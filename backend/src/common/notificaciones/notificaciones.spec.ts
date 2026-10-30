@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { CallMeBotService } from './callmebot.service';
 import { EmailService } from './email.service';
-import { escaparHtml, mensajeNuevaSolicitudAsesoria, mensajeNuevaSolicitudCarrito, unaLinea } from './mensajes';
+import { escaparHtml, mensajeAsesoriaCliente, mensajeNuevaSolicitudAsesoria, mensajeNuevaSolicitudCarrito, unaLinea } from './mensajes';
 import { NotificacionesService } from './notificaciones.service';
 
 const sendMail = jest.fn();
@@ -164,5 +164,18 @@ describe('NotificacionesService', () => {
   it('sin ningún canal configurado no falla (solo advierte)', async () => {
     const n = armar({ habilitado: false } as any, { habilitado: false } as any);
     await expect(n.notificarNuevaSolicitudCarrito(carrito)).resolves.toBeUndefined();
+  });
+});
+
+describe('mensajeAsesoriaCliente', () => {
+  it('distingue agendada de reagendada y escapa el nombre', () => {
+    const a = { ...asesoria, clienteNombre: 'Pedro <b>x</b>' };
+    const nueva = mensajeAsesoriaCliente(a, 'Ana', false);
+    const re = mensajeAsesoriaCliente(a, 'Ana', true);
+    expect(nueva.asunto).toContain('agendada');
+    expect(re.asunto).toContain('reagendada');
+    expect(re.texto).toContain('Nueva fecha');
+    expect(re.html).not.toContain('<b>');
+    expect(re.asunto).not.toMatch(/[\r\n]/);
   });
 });

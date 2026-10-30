@@ -22,6 +22,9 @@ export function PieDePagina() {
           <p className="mt-3 max-w-xs text-sm text-texto-secundario">
             Carrera 25 con Calle 20, Barquisimeto, Estado Lara.
           </p>
+          <p className="mt-1 max-w-xs text-sm text-texto-secundario">
+            Horario: de 8:00 a. m. a 5:00 p. m.
+          </p>
         </div>
         <nav aria-label="Pie de página">
           <p className="mb-3 text-sm font-medium text-texto-claro">Explorar</p>

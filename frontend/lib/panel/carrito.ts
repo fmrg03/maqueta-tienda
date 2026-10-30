@@ -71,6 +71,7 @@ export interface Faltante {
 
 export interface Solicitud {
   id: string;
+  numero?: number;
   clienteNombre: string;
   clienteTelefono: string;
   clienteEmail?: string | null;

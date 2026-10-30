@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { dinero } from "@/lib/panel/carrito";
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { Badge } from "@/components/ui/Badge";
@@ -144,6 +145,11 @@ export function ListaMovimientos() {
                     </td>
                     <td className="px-4 py-3">
                       {m.motivo || "—"}
+                      {m.tipo === "entrada" && (m.proveedor || m.precioCostoUnitario != null) && (
+                        <span className="block text-xs text-[#8A8272]">
+                          {[m.proveedor?.nombre, m.precioCostoUnitario != null && `${dinero(Number(m.precioCostoUnitario))} c/u`].filter(Boolean).join(" · ")}
+                        </span>
+                      )}
                       {m.solicitudId && (
                         <Link href={`/panel/carrito/${m.solicitudId}`} className="ml-2 text-xs underline">Ver venta</Link>
                       )}

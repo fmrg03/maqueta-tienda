@@ -181,6 +181,37 @@ describe('InventarioService', () => {
       );
     });
 
+    it('guarda proveedor y costo pagado en una entrada', async () => {
+      const manager = mockManager({ ...varianteBase, stock: 1 });
+      (manager.getRepository as jest.Mock).mockImplementation((entity: unknown) => {
+        if (entity === VarianteMaterial) return manager.varianteManagerRepo;
+        if (entity === MovimientoInventario) return manager.movimientoManagerRepo;
+        return { exist: jest.fn().mockResolvedValue(true) };
+      });
+      dataSource.transaction!.mockImplementation((cb: any) => cb(manager));
+
+      await service.registrarMovimiento({
+        varianteId: 'uuid-var-1',
+        tipo: TipoMovimiento.ENTRADA,
+        cantidad: 2,
+        proveedorId: 'prov-1',
+        costoUnitario: 3.5,
+      });
+
+      expect(manager.movimientoManagerRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ proveedorId: 'prov-1', precioCostoUnitario: 3.5 }),
+      );
+    });
+
+    it('rechaza proveedor o costo en una salida', async () => {
+      const manager = mockManager({ ...varianteBase, stock: 10 });
+      dataSource.transaction!.mockImplementation((cb: any) => cb(manager));
+
+      await expect(
+        service.registrarMovimiento({ varianteId: 'uuid-var-1', tipo: TipoMovimiento.SALIDA, cantidad: 1, costoUnitario: 2 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('decrementa el stock en una salida con stock suficiente', async () => {
       const manager = mockManager({ ...varianteBase, stock: 50 });
       dataSource.transaction!.mockImplementation((cb: any) => cb(manager));

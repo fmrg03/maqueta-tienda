@@ -1,4 +1,5 @@
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { TipoMovimiento } from '../entities/movimiento-inventario.entity';
 
 export class RegistrarMovimientoDto {
@@ -15,4 +16,15 @@ export class RegistrarMovimientoDto {
   @IsString()
   @IsOptional()
   motivo?: string;
+
+  // Solo para entradas: a quién se le compró y cuánto se pagó por unidad (USD).
+  @IsOptional()
+  @IsUUID()
+  proveedorId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  costoUnitario?: number;
 }

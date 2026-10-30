@@ -9,6 +9,8 @@ export interface Movimiento {
   cantidad: number;
   motivo?: string | null;
   solicitudId?: string | null;
+  proveedor?: { id: string; nombre: string } | null;
+  precioCostoUnitario?: number | string | null;
   createdAt: string;
   variante?: {
     id: string;

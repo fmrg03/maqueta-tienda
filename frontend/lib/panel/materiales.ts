@@ -89,7 +89,7 @@ export async function actualizarVariante(id: string, d: Partial<DatosVariante>):
 
 export async function registrarMovimiento(
   materialId: string,
-  d: { varianteId: string; tipo: "entrada" | "salida"; cantidad: number; motivo?: string },
+  d: { varianteId: string; tipo: "entrada" | "salida"; cantidad: number; motivo?: string; proveedorId?: string; costoUnitario?: number },
 ): Promise<void> {
   await apiFetch(`/api/v1/materiales/${materialId}/movimientos`, { method: "POST", body: JSON.stringify(d) });
 }

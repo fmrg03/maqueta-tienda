@@ -126,3 +126,29 @@ export async function apiFetch<T>(
   const texto = await respuesta.text();
   return (texto ? JSON.parse(texto) : undefined) as T;
 }
+
+/**
+ * Descarga un archivo protegido (Excel, etc.) y lo guarda con el navegador.
+ * Usa el mismo access token y la misma renovación de sesión que apiFetch.
+ */
+export async function descargarArchivo(path: string, nombreFallback: string): Promise<void> {
+  const pedir = () => {
+    const tokens = getTokens();
+    return fetch(`${API_URL}${path}`, {
+      headers: tokens ? { Authorization: `Bearer ${tokens.accessToken}` } : {},
+      cache: "no-store",
+    });
+  };
+  let r = await pedir();
+  if (r.status === 401 && (await refrescarSesion())) r = await pedir();
+  if (!r.ok) throw new ApiError(r.status, "No pudimos generar el archivo");
+  const nombre = /filename="([^"]+)"/.exec(r.headers.get("Content-Disposition") ?? "")?.[1] ?? nombreFallback;
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

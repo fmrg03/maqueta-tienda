@@ -97,7 +97,7 @@ export function ListaSolicitudes() {
                   className="grid items-center gap-x-4 gap-y-1 p-4 transition-colors hover:bg-[#FAF7F0] sm:grid-cols-[1fr_auto_auto]"
                 >
                   <div>
-                    <p className="font-semibold">{s.clienteNombre}</p>
+                    <p className="font-semibold">{s.clienteNombre}{s.numero !== undefined && <span className="ml-2 text-xs font-normal text-[#8A8272]">Nº {s.numero}</span>}</p>
                     <p className="font-mono text-xs text-[#8A8272]">
                       {s.clienteTelefono} · {s.items.length} {s.items.length === 1 ? "ítem" : "ítems"} · {fechaCorta(s.createdAt)}
                     </p>

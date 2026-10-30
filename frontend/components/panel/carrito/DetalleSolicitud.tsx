@@ -65,6 +65,7 @@ export function DetalleSolicitud({ id }: { id: string }) {
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-serif text-[26px] font-semibold">{solicitud.clienteNombre}</h1>
+          {solicitud.numero !== undefined && <p className="text-sm text-[#8A8272]">Pedido Nº {solicitud.numero}</p>}
           <p className="mt-1 font-mono text-xs text-[#8A8272]">
             Recibida {fechaCorta(solicitud.createdAt)} · {solicitud.canalEnvio}
           </p>

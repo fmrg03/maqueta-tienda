@@ -17,6 +17,7 @@ import { UpdateVarianteDto } from './dto/update-variante.dto';
 import { RegistrarMovimientoDto } from './dto/registrar-movimiento.dto';
 import { ConsultaMovimientosDto } from './dto/consulta-movimientos.dto';
 import { getRlsManager } from '../../common/rls/request-context';
+import { Proveedor } from '../proveedores/entities/proveedor.entity';
 
 @Injectable()
 export class InventarioService {
@@ -131,6 +132,14 @@ export class InventarioService {
         throw new NotFoundException(`Variante ${dto.varianteId} no encontrada`);
       }
 
+      if (dto.tipo === TipoMovimiento.SALIDA && (dto.proveedorId || dto.costoUnitario !== undefined)) {
+        throw new BadRequestException('El proveedor y el costo solo aplican a entradas de mercancía');
+      }
+      if (dto.proveedorId) {
+        const existe = await manager.getRepository(Proveedor).exist({ where: { id: dto.proveedorId } });
+        if (!existe) throw new NotFoundException(`Proveedor ${dto.proveedorId} no encontrado`);
+      }
+
       if (dto.tipo === TipoMovimiento.SALIDA && variante.stock < dto.cantidad) {
         throw new BadRequestException(
           `Stock insuficiente: disponible ${variante.stock}, solicitado ${dto.cantidad}`,
@@ -149,6 +158,8 @@ export class InventarioService {
         tipo: dto.tipo,
         cantidad: dto.cantidad,
         motivo: dto.motivo,
+        proveedorId: dto.proveedorId ?? null,
+        precioCostoUnitario: dto.costoUnitario ?? null,
         usuario: usuarioId ? ({ id: usuarioId } as any) : undefined,
       });
 
@@ -169,7 +180,8 @@ export class InventarioService {
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.variante', 'v')
       .leftJoinAndSelect('v.material', 'mat')
-      .leftJoinAndSelect('m.usuario', 'u');
+      .leftJoinAndSelect('m.usuario', 'u')
+      .leftJoinAndSelect('m.proveedor', 'prov');
 
     if (f.variante) qb.andWhere('v.id = :variante', { variante: f.variante });
     if (f.material) qb.andWhere('mat.id = :material', { material: f.material });

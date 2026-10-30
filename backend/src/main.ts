@@ -57,7 +57,7 @@ async function bootstrap() {
   )
     .split(',')
     .map((origen) => origen.trim());
-  app.enableCors({ origin: origenesPermitidos });
+  app.enableCors({ origin: origenesPermitidos, exposedHeaders: ['Content-Disposition'] });
 
   // Swagger solo se expone fuera de producción — es documentación interna
   // de desarrollo, no un endpoint pensado para estar público.

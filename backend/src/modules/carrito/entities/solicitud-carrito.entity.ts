@@ -51,6 +51,10 @@ export class SolicitudCarrito {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // Número de pedido legible (correlativo); lo asigna la base de datos.
+  @Column({ type: 'int', insert: false, update: false })
+  numero: number;
+
   @Column({ type: 'varchar', length: 150 })
   clienteNombre: string;
 

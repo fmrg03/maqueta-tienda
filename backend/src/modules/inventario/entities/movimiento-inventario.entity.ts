@@ -3,9 +3,11 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  JoinColumn,
   CreateDateColumn,
 } from 'typeorm';
 import { VarianteMaterial } from './variante-material.entity';
+import { Proveedor } from '../../proveedores/entities/proveedor.entity';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 
 export enum TipoMovimiento {
@@ -42,6 +44,14 @@ export class MovimientoInventario {
   // relación TypeORM para evitar el import circular carrito ↔ inventario).
   @Column({ type: 'uuid', nullable: true })
   solicitudId?: string | null;
+
+  // A quién se le compró (solo entradas). El costo pagado va en precioCostoUnitario.
+  @Column({ type: 'uuid', nullable: true })
+  proveedorId?: string | null;
+
+  @ManyToOne(() => Proveedor, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'proveedorId' })
+  proveedor?: Proveedor | null;
 
   @ManyToOne(() => Usuario, { eager: true, onDelete: 'SET NULL', nullable: true })
   usuario?: Usuario;

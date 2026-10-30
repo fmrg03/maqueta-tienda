@@ -399,6 +399,11 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 
 ## Panel: Reportes
 
-- `GET /reportes/ganancias?desde&hasta&agrupacion=semana|mes|anio` devuelve totales (ventas, costo, ganancia) y `serie` por período; `GET /reportes/inventario` da entradas/salidas por período. Los períodos se cortan en hora de Venezuela (UTC-4) y salen como `YYYY-MM-DD` (inicio del período).
-- Ventas y costo usan el precio congelado en el movimiento; las ventas de carritos cancelados no cuentan.
-- La pantalla usa atajos de rango (30 días, mes, año), agrupación y barras CSS (sin librería de gráficos).
+Tres secciones (pestañas): **Ventas y ganancia**, **Mercancía** y **Proveedores**. Todos los endpoints son de admin.
+
+- Ventas: `GET /reportes/ganancias?desde&hasta&agrupacion=semana|mes|anio` (totales + `serie` por período) y `GET /reportes/ventas` (una fila por pedido cerrado, con Nº de pedido, método y referencia de pago). El modo "Diario" de la pantalla lista las ventas del día y cada una enlaza al carrito.
+- Mercancía: `GET /reportes/inventario` (entradas/salidas por período), `/reportes/mas-vendidos` (top 15) y `/reportes/stock` (unidades, valor a costo y a precio de venta, agotados y poco stock ≤ 5).
+- Proveedores: `GET /reportes/compras` (resumen por proveedor + detalle de entradas). Las entradas de mercancía guardan `proveedorId` y el costo pagado por unidad en `precioCostoUnitario` (opcionales; no modifican el costo de la variante). Lo que no tiene costo se avisa y no suma.
+- Excel: `GET /reportes/exportar/:seccion` (ventas | mercancia | proveedores) genera un .xlsx con `exceljs`; el nombre llega por `Content-Disposition` (expuesto en CORS).
+- Ventas y costo usan el precio congelado en el movimiento (ya escalado al monto cobrado); los carritos cancelados no cuentan. Los períodos se cortan en hora de Venezuela (UTC-4).
+- `solicitudes_carrito.numero`: número de pedido correlativo (secuencia en BD) mostrado en el panel. Migración `1788700000000`.

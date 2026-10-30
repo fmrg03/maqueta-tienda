@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AsesoresService } from './asesores.service';
 import { Asesor, DisponibilidadAsesor } from './entities/asesoria.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
@@ -168,6 +168,27 @@ describe('AsesoresService', () => {
         { asesorId: 'asesor-1' },
       );
       expect(queryBuilder.getMany).toHaveBeenCalled();
+    });
+  });
+
+  describe('acceso a horarios', () => {
+    it('el admin siempre puede; el asesor solo sobre su propia agenda', async () => {
+      const query = jest.fn();
+      (asesorRepo as any).manager = { query };
+      await expect(service.verificarAcceso({ id: 'u1', rol: 'admin' }, 'a1')).resolves.toBeUndefined();
+      expect(query).not.toHaveBeenCalled();
+
+      query.mockResolvedValueOnce([{ '?column?': 1 }]);
+      await expect(service.verificarAcceso({ id: 'u1', rol: 'asesor' }, 'a1')).resolves.toBeUndefined();
+      expect(query).toHaveBeenCalledWith(expect.stringContaining('"usuarioId" = $2'), ['a1', 'u1']);
+
+      query.mockResolvedValueOnce([]);
+      await expect(service.verificarAcceso({ id: 'u1', rol: 'asesor' }, 'a-ajeno')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('una franja ajena también se rechaza', async () => {
+      (asesorRepo as any).manager = { query: jest.fn().mockResolvedValue([]) };
+      await expect(service.verificarAccesoFranja({ id: 'u1', rol: 'asesor' }, 'f1')).rejects.toThrow(ForbiddenException);
     });
   });
 });

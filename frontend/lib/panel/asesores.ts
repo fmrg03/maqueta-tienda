@@ -98,3 +98,6 @@ export function generarFechasHora(p: PlanHorarios, ahora = Date.now()): string[]
   }
   return resultado;
 }
+
+/** Perfil del asesor que inició sesión (null si su cuenta aún no tiene perfil). */
+export const miPerfilAsesor = () => apiFetch<AsesorAdmin | null>("/api/v1/asesores/yo");

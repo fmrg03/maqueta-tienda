@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Asesor, DisponibilidadAsesor } from './entities/asesoria.entity';
@@ -70,6 +70,38 @@ export class AsesoresService {
          ${filtro}
         ORDER BY u.nombre ASC`,
     );
+  }
+
+  /** Perfil del asesor que inició sesión (null si su cuenta aún no tiene perfil). */
+  async miPerfil(usuarioId: string): Promise<AsesorAdmin | null> {
+    const filas = await this.manager.query(
+      `SELECT a.id, u.nombre, u.email, u.telefono, a.especialidad,
+              (a.activo AND u.activo) AS activo,
+              (SELECT count(*)::int FROM disponibilidad_asesor d
+                WHERE d."asesorId" = a.id AND d.disponible AND d."fechaHora" >= now()) AS "franjasLibres",
+              (SELECT count(*)::int FROM solicitudes_asesoria s
+                WHERE s."asesorId" = a.id AND s.estado = 'pendiente') AS "asesoriasPendientes"
+         FROM asesores a JOIN usuarios u ON u.id = a."usuarioId"
+        WHERE a."usuarioId" = $1`,
+      [usuarioId],
+    );
+    return filas[0] ?? null;
+  }
+
+  /** El admin gestiona cualquier agenda; un asesor, solo la suya. */
+  async verificarAcceso(usuario: { id: string; rol: string }, asesorId: string): Promise<void> {
+    if (usuario.rol === RolUsuario.ADMIN) return;
+    const filas = await this.manager.query(`SELECT 1 FROM asesores WHERE id = $1 AND "usuarioId" = $2`, [asesorId, usuario.id]);
+    if (filas.length === 0) throw new ForbiddenException('Solo puedes gestionar tus propios horarios');
+  }
+
+  async verificarAccesoFranja(usuario: { id: string; rol: string }, franjaId: string): Promise<void> {
+    if (usuario.rol === RolUsuario.ADMIN) return;
+    const filas = await this.manager.query(
+      `SELECT 1 FROM disponibilidad_asesor d JOIN asesores a ON a.id = d."asesorId" WHERE d.id = $1 AND a."usuarioId" = $2`,
+      [franjaId, usuario.id],
+    );
+    if (filas.length === 0) throw new ForbiddenException('Solo puedes gestionar tus propios horarios');
   }
 
   async actualizar(id: string, dto: ActualizarAsesorDto): Promise<Asesor> {

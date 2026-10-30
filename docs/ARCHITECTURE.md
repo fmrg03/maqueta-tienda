@@ -423,3 +423,7 @@ Tres secciones (pestañas): **Ventas y ganancia**, **Mercancía** y **Proveedore
 ## Acceso del personal
 
 El menú público ya no muestra "Ingresar": el personal entra directo a `/login`. Con sesión de personal activa aparece "Mi panel".
+
+## Panel: Mis horarios (asesor)
+
+El asesor gestiona su propia disponibilidad desde `/panel/mis-horarios`. `GET /asesores/yo` devuelve su perfil; agenda, alta en lote/individual y borrado de franjas aceptan rol `asesor` además de `admin`, pero `AsesoresService.verificarAcceso/verificarAccesoFranja` rechaza (403) cualquier agenda que no sea la suya. Alta/baja/edición de asesores y el listado de admin siguen siendo solo de admin.

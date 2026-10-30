@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -45,11 +46,21 @@ export class AsesoresController {
     );
   }
 
+  // Perfil del asesor con sesión iniciada (antes de ':id' para no confundirse con él).
+  @Get('yo')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ASESOR)
+  miPerfil(@Req() req: any) {
+    return this.asesoresService.miPerfil(req.user.id);
+  }
+
   @Delete('disponibilidad/:franjaId')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
-  eliminarFranja(@Param('franjaId', ParseUUIDPipe) franjaId: string) {
+  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  async eliminarFranja(@Param('franjaId', ParseUUIDPipe) franjaId: string, @Req() req: any) {
+    await this.asesoresService.verificarAccesoFranja(req.user, franjaId);
     return this.asesoresService.eliminarFranja(franjaId);
   }
 
@@ -64,27 +75,31 @@ export class AsesoresController {
   @Get(':id/agenda')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
-  agenda(@Param('id', ParseUUIDPipe) id: string) {
+  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  async agenda(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    await this.asesoresService.verificarAcceso(req.user, id);
     return this.asesoresService.agenda(id);
   }
 
   @Post(':id/disponibilidad/lote')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
-  agregarLote(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DisponibilidadLoteDto) {
+  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  async agregarLote(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DisponibilidadLoteDto, @Req() req: any) {
+    await this.asesoresService.verificarAcceso(req.user, id);
     return this.asesoresService.agregarDisponibilidadLote(id, dto);
   }
 
   @Post(':id/disponibilidad')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
-  agregarDisponibilidad(
+  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  async agregarDisponibilidad(
     @Param('id', ParseUUIDPipe) asesorId: string,
     @Body() dto: CrearDisponibilidadDto,
+    @Req() req: any,
   ) {
+    await this.asesoresService.verificarAcceso(req.user, asesorId);
     return this.asesoresService.agregarDisponibilidad(asesorId, dto);
   }
 

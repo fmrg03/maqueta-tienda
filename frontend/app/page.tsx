@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { PublicShell } from "@/components/layout/PublicShell";
-import { MosaicoPiedra } from "@/components/layout/MosaicoPiedra";
 import { FichaMaterial } from "@/components/catalogo/FichaMaterial";
 import { TarjetaCombo } from "@/components/combos/TarjetaCombo";
 import { Button } from "@/components/ui/Button";
@@ -62,7 +61,15 @@ export default async function HomePage() {
             <Link href="/agendar-asesoria"><Button variante="secundario-oscuro">Agendar una llamada</Button></Link>
           </div>
         </div>
-        <MosaicoPiedra />
+        <div className="relative aspect-[16/10] overflow-hidden border border-dorado-oscuro shadow-[0_0_60px_-20px_rgba(212,175,55,0.35)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/hero-cocina.jpg"
+            alt="Cocina con isla de granito negro y piso de porcelanato negro veteado"
+            className="h-full w-full object-cover"
+            fetchPriority="high"
+          />
+        </div>
       </section>
 
       {categorias.length > 0 && (

@@ -4,14 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/lib/api/client";
-import { formatoBs, useDescuentoDivisas, useTasaBcv } from "@/lib/tasas/tasas";
+import { formatoBs, useConfigDescuento, useTasaBcv } from "@/lib/tasas/tasas";
 import {
   cancelarSolicitud,
   cerrarVenta,
   dinero,
   ETIQUETA_METODO,
   calcularCobroPreview,
-  METODOS_DIVISAS,
   type MetodoPago,
   type Solicitud,
 } from "@/lib/panel/carrito";
@@ -59,7 +58,8 @@ export function DialogoCierre({
   onResultado: (s: Solicitud) => void;
 }) {
   const tasaVigente = useTasaBcv();
-  const porcentaje = useDescuentoDivisas();
+  const { descuentoDivisasPct: porcentaje, descuentoMetodos } = useConfigDescuento();
+  const metodosDescuento = descuentoMetodos as MetodoPago[];
 
   const [metodo, setMetodo] = useState<MetodoPago>(solicitud.metodoPago ?? "pago_movil");
   const [referencia, setReferencia] = useState(solicitud.referenciaPago ?? "");
@@ -77,10 +77,11 @@ export function DialogoCierre({
   const montoManual = montoTexto.trim() === "" ? null : Number(montoTexto.replace(",", "."));
   const montoInvalido = montoManual !== null && (Number.isNaN(montoManual) || montoManual < 0);
 
-  const esDivisas = METODOS_DIVISAS.includes(metodo);
+  const esDivisas = metodosDescuento.includes(metodo);
   const vista = calcularCobroPreview({
     base: total,
     metodo,
+    metodosDescuento,
     aplicarDescuento,
     porcentaje,
     montoManual: montoInvalido ? null : montoManual,
@@ -140,7 +141,7 @@ export function DialogoCierre({
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={aplicarDescuento} onChange={(e) => setAplicarDescuento(e.target.checked)} className="mt-1" />
             <span>
-              Aplicar descuento por pago en divisas (<strong>{porcentaje.toLocaleString("es-VE")}%</strong>)
+              Aplicar descuento (<strong>{porcentaje.toLocaleString("es-VE")}%</strong>)
             </span>
           </label>
         )}

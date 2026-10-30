@@ -434,3 +434,8 @@ El asesor gestiona su propia disponibilidad desde `/panel/mis-horarios`. `GET /a
 - Home: hero con `MosaicoPiedra` (reemplazable por una foto real), categorías, recién llegados, combos y CTA de asesoría.
 - Catálogo: búsqueda (`buscar`), chips de categoría (`categoria`) y orden (`orden`) en la URL; detalle con relacionados y barra fija "Agregar a mi consulta" en móvil.
 - API pública: `GET /catalogo/materiales` limita `pagina` (≥1) y `porPagina` (1–100).
+
+## Método de pago Binance y descuento global por método
+- `MetodoPago.BINANCE` (migración `1788800000000-MetodoPagoBinance`).
+- El descuento global ya no está atado a "divisas": Configuración guarda el % (`descuento_divisas_pct`) y la lista de métodos que lo reciben (`descuento_metodos`, en `configuracion`). Sin elección del admin valen `efectivo_divisas` y `zelle` (comportamiento anterior); lista vacía = no aplica a ninguno.
+- `PUT /configuracion/descuento-divisas` acepta `{ porcentaje, metodos? }`; `GET /configuracion/publica` devuelve `descuentoDivisasPct` y `descuentoMetodos`. Al cerrar una venta, `CarritoService` consulta la lista vigente; el aviso público y el diálogo de cierre usan la misma lista.

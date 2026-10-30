@@ -9,7 +9,7 @@ export type EstadoCarrito =
   | "cerrada"
   | "cancelada";
 
-export type MetodoPago = "efectivo" | "efectivo_divisas" | "pago_movil" | "transferencia" | "zelle" | "otro";
+export type MetodoPago = "efectivo" | "efectivo_divisas" | "pago_movil" | "transferencia" | "zelle" | "binance" | "otro";
 
 export const ETIQUETA_ESTADO: Record<EstadoCarrito, string> = {
   nueva: "Nueva",
@@ -35,11 +35,10 @@ export const ETIQUETA_METODO: Record<MetodoPago, string> = {
   pago_movil: "Pago móvil",
   transferencia: "Transferencia",
   zelle: "Zelle",
+  binance: "Binance",
   otro: "Otro",
 };
 
-/** Métodos que dan derecho al descuento por divisas (igual que en el backend). */
-export const METODOS_DIVISAS: MetodoPago[] = ["efectivo_divisas", "zelle"];
 
 /** Estados en los que el pedido todavía se puede editar / cerrar. */
 export const ESTADOS_ABIERTOS: EstadoCarrito[] = [
@@ -265,6 +264,8 @@ export const ETIQUETA_EVENTO: Record<string, string> = {
 export function calcularCobroPreview(p: {
   base: number;
   metodo: MetodoPago;
+  /** Métodos con descuento según Configuración. */
+  metodosDescuento: MetodoPago[];
   aplicarDescuento: boolean;
   porcentaje: number;
   montoManual: number | null;
@@ -274,7 +275,7 @@ export function calcularCobroPreview(p: {
   let monto = r2(p.base);
   let descuentoMonto: number | null = null;
   if (p.montoManual !== null) monto = r2(p.montoManual);
-  else if (METODOS_DIVISAS.includes(p.metodo) && p.aplicarDescuento && p.porcentaje > 0) {
+  else if (p.metodosDescuento.includes(p.metodo) && p.aplicarDescuento && p.porcentaje > 0) {
     descuentoMonto = r2((p.base * p.porcentaje) / 100);
     monto = r2(p.base - descuentoMonto);
   }

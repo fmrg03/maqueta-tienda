@@ -12,7 +12,6 @@ import {
   ItemSolicitudCarrito,
   EstadoSolicitudCarrito,
   ESTADOS_EDITABLES,
-  METODOS_DIVISAS,
 } from './entities/solicitud-carrito.entity';
 import {
   EventoSolicitudCarrito,
@@ -356,7 +355,7 @@ export class CarritoService {
     }
     const cobro = calcularCobro({
       base,
-      divisas: METODOS_DIVISAS.includes(dto.metodoPago),
+      divisas: (await this.configuracion.descuentoMetodos()).includes(dto.metodoPago),
       aplicarDescuento: dto.aplicarDescuento ?? true,
       porcentaje: await this.configuracion.descuentoDivisasPct(),
       montoManual: dto.montoCobrado,

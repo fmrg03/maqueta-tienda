@@ -1,4 +1,5 @@
 import { apiFetch } from "../api/client";
+import type { MetodoPago } from "./carrito";
 import { olvidarCachesTasas, type TasaBcv } from "../tasas/tasas";
 
 export interface FilaTasa {
@@ -37,16 +38,23 @@ export async function fijarTasaManual(valor: number): Promise<TasaBcv> {
   return norm(t);
 }
 
-export async function descuentoDivisas(): Promise<number> {
-  const c = await apiFetch<{ descuentoDivisasPct: number }>("/api/v1/configuracion/publica", { autenticado: false });
-  return Number(c.descuentoDivisasPct);
+export interface DescuentoGlobal {
+  porcentaje: number;
+  metodos: MetodoPago[];
 }
 
-export async function fijarDescuentoDivisas(porcentaje: number): Promise<number> {
-  const c = await apiFetch<{ descuentoDivisasPct: number }>("/api/v1/configuracion/descuento-divisas", {
+export async function descuentoGlobal(): Promise<DescuentoGlobal> {
+  const c = await apiFetch<{ descuentoDivisasPct: number; descuentoMetodos: MetodoPago[] }>("/api/v1/configuracion/publica", {
+    autenticado: false,
+  });
+  return { porcentaje: Number(c.descuentoDivisasPct), metodos: c.descuentoMetodos };
+}
+
+export async function fijarDescuentoGlobal(porcentaje: number, metodos: MetodoPago[]): Promise<DescuentoGlobal> {
+  const c = await apiFetch<{ descuentoDivisasPct: number; descuentoMetodos: MetodoPago[] }>("/api/v1/configuracion/descuento-divisas", {
     method: "PUT",
-    body: JSON.stringify({ porcentaje }),
+    body: JSON.stringify({ porcentaje, metodos }),
   });
   olvidarCachesTasas();
-  return Number(c.descuentoDivisasPct);
+  return { porcentaje: Number(c.descuentoDivisasPct), metodos: c.descuentoMetodos };
 }

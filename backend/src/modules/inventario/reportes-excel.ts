@@ -11,7 +11,7 @@ const fechaVE = (iso: string) =>
   new Date(iso).toLocaleString('es-VE', { timeZone: 'America/Caracas', dateStyle: 'short', timeStyle: 'short' });
 const METODOS: Record<string, string> = {
   efectivo: 'Efectivo (Bs)', efectivo_divisas: 'Efectivo (divisas)', pago_movil: 'Pago móvil',
-  transferencia: 'Transferencia', zelle: 'Zelle', otro: 'Otro',
+  transferencia: 'Transferencia', zelle: 'Zelle', binance: 'Binance', otro: 'Otro',
 };
 
 function hoja(

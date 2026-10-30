@@ -13,6 +13,8 @@ export interface TasaBcv {
 
 export interface ConfigPublica {
   descuentoDivisasPct: number;
+  /** Métodos de pago a los que aplica el descuento (ej. "zelle", "binance"). */
+  descuentoMetodos: string[];
 }
 
 // Una sola consulta compartida por todos los precios de la página; se vuelve a
@@ -33,7 +35,7 @@ export function obtenerTasaBcv(forzar = false): Promise<TasaBcv | null> {
 export function obtenerConfigPublica(forzar = false): Promise<ConfigPublica | null> {
   if (!forzar && cacheConfig && Date.now() - cacheConfig.en < VIGENCIA_MS) return cacheConfig.promesa;
   const promesa = apiFetch<ConfigPublica>("/api/v1/configuracion/publica", { autenticado: false })
-    .then((c) => ({ descuentoDivisasPct: Number(c.descuentoDivisasPct) }))
+    .then((c) => ({ descuentoDivisasPct: Number(c.descuentoDivisasPct), descuentoMetodos: c.descuentoMetodos ?? [] }))
     .catch(() => null);
   cacheConfig = { en: Date.now(), promesa };
   return promesa;
@@ -57,16 +59,16 @@ export function useTasaBcv(): TasaBcv | null {
   return tasa;
 }
 
-export function useDescuentoDivisas(): number {
-  const [pct, setPct] = useState(0);
+export function useConfigDescuento(): ConfigPublica {
+  const [config, setConfig] = useState<ConfigPublica>({ descuentoDivisasPct: 0, descuentoMetodos: [] });
   useEffect(() => {
     let vigente = true;
-    obtenerConfigPublica().then((c) => vigente && setPct(c?.descuentoDivisasPct ?? 0));
+    obtenerConfigPublica().then((c) => vigente && c && setConfig(c));
     return () => {
       vigente = false;
     };
   }, []);
-  return pct;
+  return config;
 }
 
 const fmtBs = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

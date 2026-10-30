@@ -19,3 +19,20 @@ describe('ConfiguracionService.descuentoDivisasPct', () => {
     expect(await crear(null, { DESCUENTO_DIVISAS_PCT: 'x' }).descuentoDivisasPct()).toBe(0);
   });
 });
+
+describe('ConfiguracionService.descuentoMetodos', () => {
+  it('sin elección del admin valen efectivo en divisas y Zelle', async () => {
+    expect(await crear(null).descuentoMetodos()).toEqual(['efectivo_divisas', 'zelle']);
+  });
+  it('usa los métodos elegidos (p. ej. con Binance) y descarta valores desconocidos', async () => {
+    expect(await crear({ valor: ['zelle', 'binance', 'bitcoin'] }).descuentoMetodos()).toEqual(['zelle', 'binance']);
+  });
+  it('una lista vacía guardada significa que no aplica a ninguno', async () => {
+    expect(await crear({ valor: [] }).descuentoMetodos()).toEqual([]);
+  });
+  it('al guardar quita duplicados', async () => {
+    const repo = { findOne: jest.fn(), save: jest.fn() };
+    const s = new ConfiguracionService(repo as any, { get: () => undefined } as any);
+    expect(await s.fijarDescuentoMetodos(['binance', 'binance', 'zelle'] as any)).toEqual(['binance', 'zelle']);
+  });
+});

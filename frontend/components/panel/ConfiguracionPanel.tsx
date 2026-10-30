@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/lib/api/client";
 import {
   actualizarTasa,
-  descuentoDivisas,
-  fijarDescuentoDivisas,
+  descuentoGlobal,
+  fijarDescuentoGlobal,
   fijarTasaManual,
   historialTasas,
   tasaVigente,
   type FilaTasa,
 } from "@/lib/panel/configuracion";
+import { ETIQUETA_METODO, type MetodoPago } from "@/lib/panel/carrito";
 import { fechaTasa, type TasaBcv } from "@/lib/tasas/tasas";
 
 const msg = (e: unknown) => (e instanceof ApiError ? e.message : "No pudimos completar la acción. Inténtalo de nuevo.");
@@ -23,6 +24,7 @@ export function ConfiguracionPanel() {
   const [historial, setHistorial] = useState<FilaTasa[]>([]);
   const [pct, setPct] = useState<string | null>(null);
   const [pctActual, setPctActual] = useState<number | null>(null);
+  const [metodos, setMetodos] = useState<MetodoPago[] | null>(null);
   const [manual, setManual] = useState("");
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,13 @@ export function ConfiguracionPanel() {
     let vigente = true;
     tasaVigente().then((t) => vigente && setTasa(t));
     historialTasas().then((h) => vigente && setHistorial(h)).catch(() => undefined);
-    descuentoDivisas().then((d) => vigente && setPctActual(d)).catch(() => undefined);
+    descuentoGlobal()
+      .then((d) => {
+        if (!vigente) return;
+        setPctActual(d.porcentaje);
+        setMetodos(d.metodos);
+      })
+      .catch(() => undefined);
     return () => {
       vigente = false;
     };
@@ -66,10 +74,10 @@ export function ConfiguracionPanel() {
       {aviso && <p role="status" className="mb-4 border-l-4 border-esmeralda bg-white px-3 py-2 text-sm">{aviso}</p>}
 
       <section aria-labelledby="desc" className="mb-10 bg-white p-5">
-        <h2 id="desc" className="font-semibold">Descuento por pago en divisas</h2>
+        <h2 id="desc" className="font-semibold">Descuento global</h2>
         <p className="mt-1 text-sm text-[#4A4538]">
-          Porcentaje que se descuenta al cerrar una venta pagada en <strong>efectivo en divisas</strong> o <strong>Zelle</strong>. El
-          asesor puede desmarcarlo en una venta puntual. Cambiarlo no altera ventas ya cerradas. Con 0 no se aplica ni se anuncia en la web.
+          Porcentaje que se descuenta al cerrar una venta pagada con alguno de los métodos que marques abajo. El
+          asesor puede desmarcarlo en una venta puntual. Cambiarlo no altera ventas ya cerradas. Con 0, o sin ningún método marcado, no se aplica ni se anuncia en la web.
         </p>
         <form
           className="mt-4 flex flex-wrap items-end gap-3"
@@ -81,17 +89,39 @@ export function ConfiguracionPanel() {
               return;
             }
             ejecutar("pct", async () => {
-              const v = await fijarDescuentoDivisas(n);
-              setPctActual(v);
+              const v = await fijarDescuentoGlobal(n, metodos ?? []);
+              setPctActual(v.porcentaje);
+              setMetodos(v.metodos);
               setPct(null);
-              setAviso(`Descuento por divisas fijado en ${v}%.`);
+              setAviso(`Descuento fijado en ${v.porcentaje}% para ${v.metodos.length} método(s) de pago.`);
             });
           }}
         >
           <div className="w-40">
             <Input label="Porcentaje (%)" name="pct" inputMode="decimal" value={pctTexto} onChange={(e) => setPct(e.target.value)} />
           </div>
-          <Button type="submit" disabled={ocupado !== null || pctActual === null}>
+          <fieldset className="w-full">
+            <legend className="mb-2 text-sm font-medium">Aplica a estos métodos de pago</legend>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {(Object.entries(ETIQUETA_METODO) as [MetodoPago, string][]).map(([valor, etiqueta]) => (
+                <label key={valor} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={metodos?.includes(valor) ?? false}
+                    disabled={metodos === null}
+                    onChange={(e) =>
+                      setMetodos((actual) =>
+                        e.target.checked ? [...(actual ?? []), valor] : (actual ?? []).filter((m) => m !== valor),
+                      )
+                    }
+                    className="h-4 w-4 accent-dorado-oscuro"
+                  />
+                  {etiqueta}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <Button type="submit" disabled={ocupado !== null || pctActual === null || metodos === null}>
             {ocupado === "pct" ? "Guardando…" : "Guardar"}
           </Button>
         </form>

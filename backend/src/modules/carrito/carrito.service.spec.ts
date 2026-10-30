@@ -48,7 +48,7 @@ describe('CarritoService', () => {
         { provide: getRepositoryToken(Combo), useValue: createMockRepository() },
         { provide: NotificacionesService, useValue: notificaciones },
         { provide: TasasService, useValue: { vigente: jest.fn() } },
-        { provide: ConfiguracionService, useValue: { descuentoDivisasPct: jest.fn() } },
+        { provide: ConfiguracionService, useValue: { descuentoDivisasPct: jest.fn(), descuentoMetodos: jest.fn() } },
         { provide: DataSource, useValue: { manager: { getRepository: () => ({ insert: jest.fn() }) } } },
       ],
     }).compile();

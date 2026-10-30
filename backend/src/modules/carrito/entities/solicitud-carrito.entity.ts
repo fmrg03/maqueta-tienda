@@ -34,11 +34,15 @@ export enum MetodoPago {
   PAGO_MOVIL = 'pago_movil',
   TRANSFERENCIA = 'transferencia',
   ZELLE = 'zelle',
+  BINANCE = 'binance',
   OTRO = 'otro',
 }
 
-/** Métodos que dan derecho al descuento por pago en divisas. */
-export const METODOS_DIVISAS: MetodoPago[] = [MetodoPago.EFECTIVO_DIVISAS, MetodoPago.ZELLE];
+/**
+ * Métodos que dan derecho al descuento global mientras el admin no elija otros
+ * en Configuración (comportamiento original: efectivo en divisas y Zelle).
+ */
+export const METODOS_DESCUENTO_POR_DEFECTO: MetodoPago[] = [MetodoPago.EFECTIVO_DIVISAS, MetodoPago.ZELLE];
 
 export enum CanalEnvio {
   WHATSAPP = 'whatsapp',

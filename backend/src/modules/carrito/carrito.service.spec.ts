@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { CarritoService } from './carrito.service';
 import {
   SolicitudCarrito,
@@ -9,6 +9,7 @@ import {
 import { Material } from '../inventario/entities/material.entity';
 import { VarianteMaterial } from '../inventario/entities/variante-material.entity';
 import { Combo } from '../inventario/entities/combo.entity';
+import { DataSource } from 'typeorm';
 import { NotificacionesService } from '../../common/notificaciones/notificaciones.service';
 import { rlsStorage } from '../../common/rls/request-context';
 
@@ -44,6 +45,7 @@ describe('CarritoService', () => {
         { provide: getRepositoryToken(VarianteMaterial), useValue: createMockRepository() },
         { provide: getRepositoryToken(Combo), useValue: createMockRepository() },
         { provide: NotificacionesService, useValue: notificaciones },
+        { provide: DataSource, useValue: { manager: { getRepository: () => ({ insert: jest.fn() }) } } },
       ],
     }).compile();
 
@@ -152,9 +154,20 @@ describe('CarritoService', () => {
 
       await expect(
         service.actualizarEstado('no-existe', {
-          estado: EstadoSolicitudCarrito.CERRADA,
+          estado: EstadoSolicitudCarrito.CONTACTADO,
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('no permite mover una solicitud ya cerrada o cancelada', async () => {
+      solicitudRepo.findOne.mockResolvedValue({
+        id: 'sol-1',
+        estado: EstadoSolicitudCarrito.CERRADA,
+      });
+
+      await expect(
+        service.actualizarEstado('sol-1', { estado: EstadoSolicitudCarrito.NUEVA }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

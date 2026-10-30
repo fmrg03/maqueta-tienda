@@ -5,6 +5,7 @@ import type { SolicitudAsesoria } from '../../modules/asesorias/entities/asesori
 import { CallMeBotService } from './callmebot.service';
 import { EmailService } from './email.service';
 import {
+  mensajeDetalleCliente,
   mensajeNuevaSolicitudAsesoria,
   mensajeNuevaSolicitudCarrito,
   type DestinatarioAsesor,
@@ -68,6 +69,28 @@ export class NotificacionesService {
     } catch (error) {
       this.logger.error(`No se pudo armar la notificación de asesoría: ${String(error)}`);
     }
+  }
+
+  /**
+   * Detalle editado para el cliente. A diferencia de las notificaciones
+   * internas se espera (el asesor quiere saber si el correo salió), pero
+   * igual nunca lanza: devuelve el texto (para el wa.me del asesor) y si
+   * el correo pudo enviarse.
+   */
+  async enviarDetalleACliente(
+    solicitud: SolicitudCarrito,
+  ): Promise<{ texto: string; emailEnviado: boolean }> {
+    const mensaje = mensajeDetalleCliente(solicitud);
+    let emailEnviado = false;
+    if (this.email.habilitado && solicitud.clienteEmail) {
+      try {
+        await this.email.enviar(solicitud.clienteEmail, mensaje);
+        emailEnviado = true;
+      } catch (error) {
+        this.logger.error(`No se pudo enviar el detalle al cliente: ${String(error)}`);
+      }
+    }
+    return { texto: mensaje.texto, emailEnviado };
   }
 
   private destinoEmailAsesoria(asesor: DestinatarioAsesor | null): string | null {

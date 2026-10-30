@@ -6,13 +6,17 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CarritoService } from './carrito.service';
 import { CreateSolicitudCarritoDto } from './dto/create-solicitud-carrito.dto';
+import { EditarItemsCarritoDto } from './dto/editar-items-carrito.dto';
+import { CancelarCarritoDto, CerrarCarritoDto } from './dto/cerrar-carrito.dto';
 import { ActualizarEstadoCarritoDto } from './dto/actualizar-estado-carrito.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -59,7 +63,60 @@ export class CarritoController {
   actualizarEstado(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ActualizarEstadoCarritoDto,
+    @Req() request: any,
   ) {
-    return this.carritoService.actualizarEstado(id, dto);
+    return this.carritoService.actualizarEstado(id, dto, request.user?.id);
+  }
+
+  @Get('solicitudes/:id/historial')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  historial(@Param('id', ParseUUIDPipe) id: string) {
+    return this.carritoService.historial(id);
+  }
+
+  @Put('solicitudes/:id/items')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  editarItems(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: EditarItemsCarritoDto,
+    @Req() request: any,
+  ) {
+    return this.carritoService.editarItems(id, dto, request.user?.id);
+  }
+
+  @Post('solicitudes/:id/enviar-detalle')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  enviarDetalle(@Param('id', ParseUUIDPipe) id: string, @Req() request: any) {
+    return this.carritoService.enviarDetalle(id, request.user?.id);
+  }
+
+  @Post('solicitudes/:id/cerrar')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  cerrar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CerrarCarritoDto,
+    @Req() request: any,
+  ) {
+    return this.carritoService.cerrar(id, dto, request.user?.id);
+  }
+
+  @Post('solicitudes/:id/cancelar')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  cancelar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CancelarCarritoDto,
+    @Req() request: any,
+  ) {
+    return this.carritoService.cancelar(id, dto, request.user);
   }
 }

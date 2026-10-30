@@ -317,3 +317,26 @@ Probado de punta a punta contra la app real: login → primer refresh (rota con 
 - **Email (`EmailService`, nodemailer/SMTP):** consultas del carrito -> `VENTAS_EMAIL`; llamadas agendadas -> el correo del **asesor que eligió el cliente** (se lee dentro de la misma transacción con el contexto acotado `service_auth`, porque `usuarios` tiene RLS); si el asesor no tiene correo, cae a ventas. `Reply-To` apunta al correo del cliente si lo dejó. Todo texto del cliente se escapa en el HTML y se limpia de saltos de línea en el asunto (sin inyección de HTML ni de cabeceras). `NOTIFICACIONES_EMAIL_OVERRIDE` redirige todo correo a una dirección de prueba.
 - **WhatsApp (`CallMeBotService`):** canal **de pruebas** con un número personal. Se reemplaza en producción por WhatsApp Cloud API (Meta) o Twilio detrás de la misma forma (`enviar(texto)`). El botón `wa.me` del frontend se mantiene como está (es un enlace que abre el chat, no un envío automático).
 - Configuración en `backend/.env.example`; sin variables, cada canal queda apagado sin error.
+
+### Venta del carrito: edición, cierre y contabilidad
+
+El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsApp) y se registra en el panel.
+
+**Estados:** `nueva → contactado → pago_en_verificacion → cerrada`, con salidas `pendiente_stock` (pago recibido, falta mercancía) y `cancelada`. `PATCH /carrito/solicitudes/:id` solo mueve nueva/contactado/pago_en_verificacion; cerrar y cancelar tienen endpoints propios porque tocan inventario y dinero.
+
+| Endpoint | Rol | Qué hace |
+|---|---|---|
+| `PUT /carrito/solicitudes/:id/items` | admin, ventas | Reemplaza ítems (cantidad, precio pactado, `totalFinal`). Marca `modificadaDesdeEnvio`. |
+| `POST .../enviar-detalle` | admin, ventas | Reenvía el detalle al cliente (correo si dejó uno) y devuelve el texto para abrir `wa.me`. |
+| `POST .../cerrar` | admin, ventas | Pago verificado: descuenta stock y registra el ingreso, en una transacción. |
+| `POST .../cancelar` | admin, ventas (anular cerrada: solo admin) | Cancela; si estaba cerrada repone stock con entradas compensatorias. |
+| `GET .../historial` | admin, ventas | Auditoría: estados, ediciones, envíos, cierre, anulación. |
+
+**Reglas del cierre**
+- No se cierra si hay cambios sin enviar al cliente (`modificadaDesdeEnvio`).
+- Un material genérico (sin presentación) o un ítem sin precio no se puede cerrar.
+- Los combos se expanden a sus variantes componentes; el ingreso se reparte proporcional al precio de lista.
+- Si falta stock **no se descuenta nada**: queda `pendiente_stock` con `faltantes` y el pago guardado. Salidas: reintentar el cierre cuando entre mercancía, ajustar el pedido, o cancelar (reembolso).
+- La solicitud se bloquea (`FOR UPDATE`) y las variantes con lock pesimista ordenado por id: dos cierres simultáneos no descuentan dos veces.
+
+**Contabilidad:** cada salida guarda `precioVentaUnitario` y `precioCostoUnitario` congelados (escalados para sumar exactamente el `montoCobrado`). `reporteGanancias` suma esos valores —no el precio actual de la variante— y excluye las ventas canceladas/anuladas. Las salidas manuales antiguas, sin precio guardado, caen al precio actual.

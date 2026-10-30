@@ -30,6 +30,19 @@ export class MovimientoInventario {
   @Column({ type: 'varchar', length: 300, nullable: true })
   motivo?: string;
 
+  // Precios congelados al momento de la venta: el reporte de ganancias no
+  // debe cambiar si mañana se edita el precio de la variante.
+  @Column({ type: 'decimal', precision: 14, scale: 4, nullable: true })
+  precioVentaUnitario?: number | null;
+
+  @Column({ type: 'decimal', precision: 14, scale: 4, nullable: true })
+  precioCostoUnitario?: number | null;
+
+  // Venta del carrito que originó el movimiento (FK en la migración; sin
+  // relación TypeORM para evitar el import circular carrito ↔ inventario).
+  @Column({ type: 'uuid', nullable: true })
+  solicitudId?: string | null;
+
   @ManyToOne(() => Usuario, { eager: true, onDelete: 'SET NULL', nullable: true })
   usuario?: Usuario;
 

@@ -13,7 +13,26 @@ import { Combo } from '../../inventario/entities/combo.entity';
 export enum EstadoSolicitudCarrito {
   NUEVA = 'nueva',
   CONTACTADO = 'contactado',
+  PAGO_EN_VERIFICACION = 'pago_en_verificacion',
+  // Pago recibido pero falta mercancía: no se descontó nada del inventario.
+  PENDIENTE_STOCK = 'pendiente_stock',
   CERRADA = 'cerrada',
+  CANCELADA = 'cancelada',
+}
+
+export const ESTADOS_EDITABLES = [
+  EstadoSolicitudCarrito.NUEVA,
+  EstadoSolicitudCarrito.CONTACTADO,
+  EstadoSolicitudCarrito.PAGO_EN_VERIFICACION,
+  EstadoSolicitudCarrito.PENDIENTE_STOCK,
+];
+
+export enum MetodoPago {
+  EFECTIVO = 'efectivo',
+  PAGO_MOVIL = 'pago_movil',
+  TRANSFERENCIA = 'transferencia',
+  ZELLE = 'zelle',
+  OTRO = 'otro',
 }
 
 export enum CanalEnvio {
@@ -54,6 +73,44 @@ export class SolicitudCarrito {
   @Column({ type: 'text', nullable: true })
   notas?: string;
 
+  // Total pactado con el cliente; si es null vale la suma de los ítems.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  totalFinal?: number | null;
+
+  // true cuando el asesor editó el pedido y aún no se le reenvió el detalle
+  // al cliente: no se puede cerrar la venta sobre una versión sin confirmar.
+  @Column({ type: 'boolean', default: false })
+  modificadaDesdeEnvio: boolean;
+
+  @Column({ type: 'enum', enum: MetodoPago, nullable: true })
+  metodoPago?: MetodoPago | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  referenciaPago?: string | null;
+
+  // Dinero realmente cobrado (lo que cuenta como ingreso).
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  montoCobrado?: number | null;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  montoReembolsado?: number | null;
+
+  @Column({ type: 'varchar', length: 300, nullable: true })
+  motivoCancelacion?: string | null;
+
+  // [{varianteId, sku, requerido, disponible, faltan}] mientras esté pendiente_stock.
+  @Column({ type: 'jsonb', nullable: true })
+  faltantes?: Array<{
+    varianteId: string;
+    sku: string;
+    requerido: number;
+    disponible: number;
+    faltan: number;
+  }> | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  cerradaAt?: Date | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
@@ -79,4 +136,8 @@ export class ItemSolicitudCarrito {
 
   @Column({ type: 'int' })
   cantidad: number;
+
+  // Precio pactado por unidad (editable). null = a confirmar.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  precioUnitario?: number | null;
 }

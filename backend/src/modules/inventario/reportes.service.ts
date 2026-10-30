@@ -5,6 +5,11 @@ import {
   MovimientoInventario,
   TipoMovimiento,
 } from './entities/movimiento-inventario.entity';
+import {
+  EstadoSolicitudCarrito,
+  SolicitudCarrito,
+} from '../carrito/entities/solicitud-carrito.entity';
+import { getRlsManager } from '../../common/rls/request-context';
 import { ReporteQueryDto } from './dto/reporte-query.dto';
 
 export interface ReporteInventarioItem {
@@ -67,18 +72,27 @@ export class ReportesService {
     desde: string,
     hasta: string,
   ): Promise<ReporteGananciasItem> {
-    const fila = await this.movimientoRepository
+    // Usa el precio congelado en el movimiento (venta de un carrito); las
+    // salidas manuales antiguas, sin precio guardado, caen al precio actual.
+    // Las ventas anuladas (carrito cancelado tras cerrarse) no cuentan. Se
+    // consulta con el manager del request: solicitudes_carrito tiene RLS.
+    const repo = getRlsManager()?.getRepository(MovimientoInventario) ?? this.movimientoRepository;
+    const fila = await repo
       .createQueryBuilder('movimiento')
       .leftJoin('movimiento.variante', 'variante')
+      .leftJoin(SolicitudCarrito, 'solicitud', 'solicitud.id = movimiento.solicitudId')
       .select(
-        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * variante.precioVenta ELSE 0 END)`,
+        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * COALESCE(movimiento.precioVentaUnitario, variante.precioVenta) ELSE 0 END)`,
         'totalVentas',
       )
       .addSelect(
-        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * variante.precioCosto ELSE 0 END)`,
+        `SUM(CASE WHEN movimiento.tipo = :salida THEN movimiento.cantidad * COALESCE(movimiento.precioCostoUnitario, variante.precioCosto) ELSE 0 END)`,
         'totalCosto',
       )
       .where('movimiento.createdAt BETWEEN :desde AND :hasta', { desde, hasta })
+      .andWhere('(solicitud.id IS NULL OR solicitud.estado <> :cancelada)', {
+        cancelada: EstadoSolicitudCarrito.CANCELADA,
+      })
       .setParameters({ salida: TipoMovimiento.SALIDA })
       .getRawOne();
 

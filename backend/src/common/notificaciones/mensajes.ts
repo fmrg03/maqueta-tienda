@@ -61,16 +61,21 @@ export function lineaItem(item: ItemSolicitudCarrito): LineaItem {
   let nombre: string;
   let unitario: number | null = null;
 
+  // Precio pactado (editable por el asesor) y, si no hay, el de lista.
+  const pactado = item.precioUnitario;
+  const hayPactado = pactado !== null && pactado !== undefined && !Number.isNaN(Number(pactado));
+
   if (item.combo) {
     nombre = `Combo: ${item.combo.nombre}`;
-    unitario = Number(item.combo.precioCombo);
+    unitario = hayPactado ? Number(pactado) : Number(item.combo.precioCombo);
   } else if (item.variante) {
     const v = item.variante;
     const presentacion = Object.values(v.atributos ?? {}).filter(Boolean).join(' · ');
     nombre = `${v.material?.nombre ?? v.skuVariante}${presentacion ? ` (${presentacion})` : ''} [${v.skuVariante}]`;
-    unitario = Number(v.precioVenta);
+    unitario = hayPactado ? Number(pactado) : Number(v.precioVenta);
   } else if (item.material) {
     nombre = `${item.material.nombre} (cualquier presentación)`;
+    if (hayPactado) unitario = Number(pactado);
   } else {
     nombre = '(ítem sin referencia)';
   }
@@ -154,5 +159,31 @@ export function mensajeNuevaSolicitudAsesoria(
     texto: ['Nueva llamada agendada', ...datos].join('\n'),
     html: envolverHtml('Nueva llamada agendada', datos.map(escaparHtml)),
     replyTo: s.clienteEmail ? unaLinea(s.clienteEmail) : undefined,
+  };
+}
+
+/** Detalle del pedido (ya editado por el asesor) para reenviarle al cliente. */
+export function mensajeDetalleCliente(s: SolicitudCarrito): MensajeNotificacion {
+  const nombre = unaLinea(s.clienteNombre);
+  const lineas = (s.items ?? []).map(lineaItem);
+  const items = lineas.map((l) => l.texto);
+  const { total, parcial } = totalCarrito(lineas);
+  const fijo = s.totalFinal !== null && s.totalFinal !== undefined ? Number(s.totalFinal) : null;
+  const lineaTotal =
+    fijo !== null
+      ? `Total acordado: ${dinero(fijo)}`
+      : `Total: ${dinero(total)}${parcial ? ' (parcial: hay ítems con precio por confirmar)' : ''}`;
+  const saludo = `Hola ${nombre}, este es el detalle actualizado de tu pedido en Revestimiento Élite RY:`;
+  const cierre = 'Si estás de acuerdo, respóndenos para continuar con el pago.';
+
+  return {
+    asunto: 'Detalle actualizado de tu pedido — Revestimiento Élite RY',
+    texto: [saludo, ...items.map((i) => `- ${i}`), lineaTotal, cierre].join('\n'),
+    html: envolverHtml(
+      'Detalle actualizado de tu pedido',
+      [escaparHtml(saludo)],
+      items.map(escaparHtml),
+      `<strong>${escaparHtml(lineaTotal)}</strong><br>${escaparHtml(cierre)}`,
+    ),
   };
 }

@@ -12,7 +12,7 @@ import {
   vaciarCarrito,
   type ItemCarrito,
 } from "@/lib/carrito/carrito-store";
-import { enlaceWhatsApp } from "@/lib/whatsapp";
+import { enlaceWhatsApp, HAY_WHATSAPP } from "@/lib/whatsapp";
 import { enviarSolicitud, normalizarTelefonoVE } from "@/lib/carrito/solicitud";
 
 type Errores = Partial<Record<"nombre" | "telefono" | "email" | "general", string>>;
@@ -67,7 +67,7 @@ export function ConsultaCliente() {
             rel="noopener noreferrer"
             className="mt-4 inline-block rounded-sm border border-negro px-5 py-2.5 text-sm font-medium hover:bg-negro hover:text-texto-claro"
           >
-            ¿Prefieres escribirnos tú? Abrir WhatsApp
+            ¿No se abrió WhatsApp? Ábrelo aquí
           </a>
         )}
         <Link href="/catalogo" className="mt-4 block underline">
@@ -99,6 +99,14 @@ export function ConsultaCliente() {
     if (email && !/^\S+@\S+\.\S+$/.test(email)) nuevos.email = "Correo no válido.";
     setErrores(nuevos);
     if (Object.keys(nuevos).length > 0 || !tel) return;
+
+    // Las dos acciones salen EN PARALELO: se abre WhatsApp con el mensaje ya
+    // redactado y, a la vez, se envía la consulta al backend (que avisa por
+    // correo a ventas). La ventana se abre aquí, dentro del clic del usuario,
+    // antes de cualquier await: si no, el navegador la bloquea como pop-up.
+    const urlWa = enlaceWhatsApp(nombre.trim(), items!);
+    const ventana = urlWa ? window.open(urlWa, "_blank") : null;
+    if (ventana) ventana.opener = null;
 
     setEnviando(true);
     try {
@@ -164,6 +172,17 @@ export function ConsultaCliente() {
         <Input label="Nombre" name="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} error={errores.nombre} autoComplete="name" />
         <Input label="Teléfono (WhatsApp)" name="telefono" type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} error={errores.telefono} autoComplete="tel" />
         <Input label="Correo (opcional)" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errores.email} autoComplete="email" />
+        <p className="border-l-2 border-dorado-oscuro bg-white/60 px-3 py-2 text-xs text-[#4A4538]">
+          {HAY_WHATSAPP ? (
+            <>
+              Al solicitar la cotización haremos <strong>dos cosas a la vez</strong>: abriremos
+              WhatsApp con tu consulta ya escrita (solo te falta pulsar enviar) y enviaremos tu
+              consulta por correo a nuestro equipo de ventas.
+            </>
+          ) : (
+            <>Enviaremos tu consulta a nuestro equipo de ventas, que te contactará por WhatsApp.</>
+          )}
+        </p>
         {/* Espacio reservado para el widget de Cloudflare Turnstile (captchaToken) */}
         <div data-captcha-slot />
         {errores.general && (

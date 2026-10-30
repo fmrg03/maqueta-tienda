@@ -1,17 +1,10 @@
 import Link from "next/link";
 import { clsx } from "clsx";
-import { ContadorConsulta } from "./ContadorConsulta";
+import { NavPublica } from "./NavPublica";
 
 interface PublicHeaderProps {
   variante?: "oscuro" | "claro";
 }
-
-const LINKS = [
-  { href: "/catalogo", label: "Catálogo" },
-  { href: "/combos", label: "Combos" },
-  { href: "/agendar-asesoria", label: "Agendar asesoría" },
-  { href: "/login", label: "Ingresar" },
-];
 
 export function PublicHeader({ variante = "oscuro" }: PublicHeaderProps) {
   const esOscuro = variante === "oscuro";
@@ -34,23 +27,7 @@ export function PublicHeader({ variante = "oscuro" }: PublicHeaderProps) {
       >
         Revestimiento Élite RY
       </Link>
-      <nav className="flex gap-7 text-sm">
-        {LINKS.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={clsx(
-              "transition-colors",
-              esOscuro
-                ? "text-texto-secundario hover:text-dorado-claro"
-                : "text-negro/70 hover:text-dorado-oscuro",
-            )}
-          >
-            {link.label}
-          </Link>
-        ))}
-        <ContadorConsulta />
-      </nav>
+      <NavPublica esOscuro={esOscuro} />
     </header>
   );
 }

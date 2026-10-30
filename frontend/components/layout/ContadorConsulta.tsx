@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { contarUnidades, suscribirCarrito } from "@/lib/carrito/carrito-store";
 
-/** Enlace "Mi consulta" con la cantidad de unidades. Hereda el color del header. */
-export function ContadorConsulta() {
+/** Enlace "Mi consulta" con la cantidad de unidades; el estilo (activo/inactivo) lo decide el menú. */
+export function ContadorConsulta({ className, activo }: { className?: string; activo?: boolean }) {
   const unidades = useSyncExternalStore(suscribirCarrito, contarUnidades, () => 0);
 
   return (
-    <Link href="/consulta" className="transition-colors hover:opacity-80">
+    <Link href="/consulta" aria-current={activo ? "page" : undefined} className={className}>
       Mi consulta
       {unidades > 0 && (
         <span

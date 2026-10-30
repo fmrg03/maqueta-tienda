@@ -110,6 +110,151 @@ async function seedData(): Promise<void> {
       console.log('✅ Variante creada: CEM-001-50KG (stock: 40, venta: $15, costo: $9.50)');
     }
 
+
+    // --- Catálogo ampliado: 5 productos nuevos por categoría ---
+    // (2+ de cada categoría con 2 o 3 presentaciones). Idempotente por SKU.
+    interface VarianteSeed {
+      sku: string;
+      atributos: Record<string, string>;
+      stock: number;
+      venta: number;
+      costo: number;
+    }
+    interface ProductoSeed {
+      sku: string;
+      nombre: string;
+      descripcion: string;
+      categoria: number; // índice en `categorias`
+      variantes: VarianteSeed[];
+    }
+
+    const productos: ProductoSeed[] = [
+      // -- Cemento y Concreto --
+      { sku: 'CEM-002', nombre: 'Cemento Blanco', categoria: 0,
+        descripcion: 'Cemento blanco para acabados, juntas y pastas decorativas',
+        variantes: [
+          { sku: 'CEM-002-1KG', atributos: { presentacion: '1kg' }, stock: 60, venta: 2.5, costo: 1.6 },
+          { sku: 'CEM-002-25KG', atributos: { presentacion: '25kg' }, stock: 25, venta: 28, costo: 19 },
+        ] },
+      { sku: 'MOR-001', nombre: 'Mortero Pega Block', categoria: 0,
+        descripcion: 'Mortero premezclado para pegar bloques y ladrillos',
+        variantes: [
+          { sku: 'MOR-001-25KG', atributos: { presentacion: '25kg' }, stock: 80, venta: 6.5, costo: 4.2 },
+        ] },
+      { sku: 'ARE-001', nombre: 'Arena Lavada', categoria: 0,
+        descripcion: 'Arena lavada para repello, mezclas y concreto',
+        variantes: [
+          { sku: 'ARE-001-S25', atributos: { presentacion: 'Saco 25kg' }, stock: 150, venta: 2, costo: 1.1 },
+          { sku: 'ARE-001-S40', atributos: { presentacion: 'Saco 40kg' }, stock: 90, venta: 3, costo: 1.7 },
+          { sku: 'ARE-001-M3', atributos: { presentacion: '1 m³' }, stock: 0, venta: 22, costo: 14 },
+        ] },
+      { sku: 'ADI-001', nombre: 'Aditivo Impermeabilizante', categoria: 0,
+        descripcion: 'Aditivo líquido para impermeabilizar morteros y concreto',
+        variantes: [
+          { sku: 'ADI-001-1L', atributos: { presentacion: '1 litro' }, stock: 45, venta: 7, costo: 4.5 },
+          { sku: 'ADI-001-4L', atributos: { presentacion: '4 litros' }, stock: 20, venta: 24, costo: 16 },
+        ] },
+      { sku: 'CAL-001', nombre: 'Cal Hidratada', categoria: 0,
+        descripcion: 'Cal hidratada en saco para mezclas y pintura',
+        variantes: [
+          { sku: 'CAL-001-20KG', atributos: { presentacion: '20kg' }, stock: 55, venta: 5, costo: 3.2 },
+        ] },
+
+      // -- Tuberías --
+      { sku: 'TUB-001', nombre: 'Tubo PVC Presión', categoria: 1,
+        descripcion: 'Tubo de PVC para agua a presión, largo de 6 metros',
+        variantes: [
+          { sku: 'TUB-001-12', atributos: { diametro: '1/2"' }, stock: 70, venta: 4.5, costo: 2.9 },
+          { sku: 'TUB-001-34', atributos: { diametro: '3/4"' }, stock: 50, venta: 6.8, costo: 4.5 },
+          { sku: 'TUB-001-1', atributos: { diametro: '1"' }, stock: 0, venta: 9.9, costo: 6.6 },
+        ] },
+      { sku: 'TUB-002', nombre: 'Tubo PVC Sanitario', categoria: 1,
+        descripcion: 'Tubo de PVC para aguas negras y desagües',
+        variantes: [
+          { sku: 'TUB-002-3M', atributos: { diametro: '4"', largo: '3m' }, stock: 35, venta: 11, costo: 7.5 },
+          { sku: 'TUB-002-6M', atributos: { diametro: '4"', largo: '6m' }, stock: 28, venta: 20, costo: 13.8 },
+        ] },
+      { sku: 'COD-001', nombre: 'Codo PVC 90°', categoria: 1,
+        descripcion: 'Codo de PVC de 90 grados para tubería a presión',
+        variantes: [
+          { sku: 'COD-001-12', atributos: { diametro: '1/2"' }, stock: 200, venta: 0.6, costo: 0.3 },
+          { sku: 'COD-001-34', atributos: { diametro: '3/4"' }, stock: 180, venta: 0.9, costo: 0.5 },
+        ] },
+      { sku: 'LLA-001', nombre: 'Llave de Paso Esfera', categoria: 1,
+        descripcion: 'Llave de paso tipo esfera de media vuelta, rosca 1/2"',
+        variantes: [
+          { sku: 'LLA-001-12', atributos: { diametro: '1/2"' }, stock: 40, venta: 5.5, costo: 3.4 },
+        ] },
+      { sku: 'TEF-001', nombre: 'Cinta Teflón', categoria: 1,
+        descripcion: 'Cinta selladora de roscas para plomería',
+        variantes: [
+          { sku: 'TEF-001-12M', atributos: { presentacion: 'Rollo 12m' }, stock: 120, venta: 0.8, costo: 0.4 },
+        ] },
+
+      // -- Herramientas --
+      { sku: 'HER-001', nombre: 'Martillo de Uña', categoria: 2,
+        descripcion: 'Martillo de acero forjado con mango antideslizante',
+        variantes: [
+          { sku: 'HER-001-16', atributos: { peso: '16 oz' }, stock: 30, venta: 9, costo: 5.8 },
+        ] },
+      { sku: 'HER-002', nombre: 'Pala Cuadrada', categoria: 2,
+        descripcion: 'Pala de punta cuadrada con mango de madera',
+        variantes: [
+          { sku: 'HER-002-STD', atributos: { modelo: 'Estándar' }, stock: 22, venta: 12, costo: 7.9 },
+        ] },
+      { sku: 'HER-003', nombre: 'Cinta Métrica', categoria: 2,
+        descripcion: 'Cinta métrica con carcasa resistente y freno de cinta',
+        variantes: [
+          { sku: 'HER-003-5M', atributos: { largo: '5 m' }, stock: 60, venta: 3.5, costo: 2 },
+          { sku: 'HER-003-8M', atributos: { largo: '8 m' }, stock: 45, venta: 5, costo: 3 },
+          { sku: 'HER-003-10M', atributos: { largo: '10 m' }, stock: 25, venta: 6.8, costo: 4.2 },
+        ] },
+      { sku: 'HER-004', nombre: 'Nivel de Burbuja', categoria: 2,
+        descripcion: 'Nivel de aluminio con tres burbujas',
+        variantes: [
+          { sku: 'HER-004-30', atributos: { largo: '30 cm' }, stock: 33, venta: 6, costo: 3.7 },
+          { sku: 'HER-004-60', atributos: { largo: '60 cm' }, stock: 18, venta: 10.5, costo: 6.9 },
+        ] },
+      { sku: 'HER-005', nombre: 'Carretilla Reforzada', categoria: 2,
+        descripcion: 'Carretilla con tolva metálica y neumático macizo',
+        variantes: [
+          { sku: 'HER-005-STD', atributos: { capacidad: '90 L' }, stock: 12, venta: 58, costo: 39 },
+        ] },
+    ];
+
+    let productosCreados = 0;
+    for (const p of productos) {
+      let m = await materialRepo.findOne({ where: { sku: p.sku } });
+      if (!m) {
+        m = await materialRepo.save(
+          materialRepo.create({
+            sku: p.sku,
+            nombre: p.nombre,
+            descripcion: p.descripcion,
+            categoria: categorias[p.categoria],
+            activo: true,
+          }),
+        );
+        productosCreados++;
+      }
+      for (const v of p.variantes) {
+        const existe = await varianteRepo.findOne({ where: { skuVariante: v.sku } });
+        if (!existe) {
+          await varianteRepo.save(
+            varianteRepo.create({
+              material: m,
+              skuVariante: v.sku,
+              atributos: v.atributos,
+              stock: v.stock,
+              precioVenta: v.venta,
+              precioCosto: v.costo,
+            }),
+          );
+        }
+      }
+    }
+    console.log(`✅ Catálogo ampliado: ${productosCreados} productos nuevos (${productos.length} en total en el seed)`);
+
     const materialProveedorRepo = dataSource.getRepository(MaterialProveedor);
     const asociacionExistente = await materialProveedorRepo.findOne({
       where: { variante: { id: variante25kg.id }, proveedor: { id: proveedor.id } },
@@ -160,19 +305,29 @@ async function seedData(): Promise<void> {
       console.log('✅ Asesor creado');
     }
 
+    // Franjas de ejemplo para los próximos 5 días. Horas en UTC; Venezuela
+    // es UTC-4, así que 13/14/15/19/20 UTC = 9/10/11 AM y 3/4 PM allá.
     const disponibilidadRepo = dataSource.getRepository(DisponibilidadAsesor);
-    const mañana = new Date();
-    mañana.setUTCDate(mañana.getUTCDate() + 1);
-    mañana.setUTCHours(14, 0, 0, 0); // 14:00 UTC = 10:00 AM Venezuela (UTC-4)
+    let franjasCreadas = 0;
+    for (let dia = 1; dia <= 5; dia++) {
+      for (const hora of [13, 14, 15, 19, 20]) {
+        const fecha = new Date();
+        fecha.setUTCDate(fecha.getUTCDate() + dia);
+        fecha.setUTCHours(hora, 0, 0, 0);
 
-    const disponibilidadExistente = await disponibilidadRepo.findOne({
-      where: { asesor: { id: asesor.id }, fechaHora: mañana },
-    });
-    if (!disponibilidadExistente) {
-      await disponibilidadRepo.save(
-        disponibilidadRepo.create({ asesor, fechaHora: mañana, disponible: true }),
-      );
-      console.log(`✅ Franja de disponibilidad creada: ${mañana.toISOString()}`);
+        const existente = await disponibilidadRepo.findOne({
+          where: { asesor: { id: asesor.id }, fechaHora: fecha },
+        });
+        if (!existente) {
+          await disponibilidadRepo.save(
+            disponibilidadRepo.create({ asesor, fechaHora: fecha, disponible: true }),
+          );
+          franjasCreadas++;
+        }
+      }
+    }
+    if (franjasCreadas > 0) {
+      console.log(`✅ ${franjasCreadas} franjas de disponibilidad creadas (próximos 5 días)`);
     }
 
     console.log('\n🌱 Seed de datos completo.');

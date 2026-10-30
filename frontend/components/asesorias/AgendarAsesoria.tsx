@@ -128,6 +128,15 @@ export function AgendarAsesoria({
 
   return (
     <form onSubmit={enviar} noValidate className="flex flex-col gap-8">
+      {asesores.length === 1 && (
+        <p className="text-sm">
+          Te atenderá <strong>{asesores[0].nombre}</strong>
+          {asesores[0].especialidad && (
+            <span className="text-[#8A8272]"> · {asesores[0].especialidad}</span>
+          )}
+        </p>
+      )}
+
       {asesores.length > 1 && (
         <fieldset>
           <legend className="mb-2 text-sm font-medium">1. Elige un asesor</legend>

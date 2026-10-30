@@ -17,7 +17,10 @@ export function PieDePagina() {
         <div>
           <p className="font-serif text-xl font-semibold text-dorado-claro">Revestimiento Élite RY</p>
           <p className="mt-3 max-w-xs text-sm text-texto-secundario">
-            Porcelanato, cerámica, grifería y materiales de construcción. Barquisimeto, Venezuela.
+            Porcelanato, cerámica, grifería y materiales de construcción.
+          </p>
+          <p className="mt-3 max-w-xs text-sm text-texto-secundario">
+            Carrera 25 con Calle 20, Barquisimeto, Estado Lara.
           </p>
         </div>
         <nav aria-label="Pie de página">

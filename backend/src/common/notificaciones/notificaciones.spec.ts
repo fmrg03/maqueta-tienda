@@ -18,8 +18,8 @@ const carrito: any = {
   clienteTelefono: '+584141234567',
   clienteEmail: 'maria@example.com',
   items: [
-    { cantidad: 2, variante: { skuVariante: 'CEM-25', atributos: { presentacion: '25kg' }, material: { nombre: 'Cemento Gris' } } },
-    { cantidad: 1, combo: { nombre: 'Combo Obra Gris' } },
+    { cantidad: 2, variante: { skuVariante: 'CEM-25', atributos: { presentacion: '25kg' }, precioVenta: '8.00', material: { nombre: 'Cemento Gris' } } },
+    { cantidad: 1, combo: { nombre: 'Combo Obra Gris', precioCombo: '14.00' } },
     { cantidad: 3, material: { nombre: 'Porcelanato' } },
   ],
 };
@@ -43,9 +43,19 @@ describe('mensajes', () => {
 
   it('describe cada tipo de ítem (variante, combo, material)', () => {
     const { texto } = mensajeNuevaSolicitudCarrito(carrito);
-    expect(texto).toContain('2 × Cemento Gris (25kg) [CEM-25]');
-    expect(texto).toContain('1 × Combo: Combo Obra Gris');
-    expect(texto).toContain('3 × Porcelanato (cualquier presentación)');
+    expect(texto).toContain('2 × Cemento Gris (25kg) [CEM-25] — $8.00 c/u = $16.00');
+    expect(texto).toContain('1 × Combo: Combo Obra Gris — $14.00 c/u = $14.00');
+    expect(texto).toContain('3 × Porcelanato (cualquier presentación) — precio a confirmar');
+  });
+
+  it('incluye el total de referencia, marcado parcial si hay ítems sin precio', () => {
+    const m = mensajeNuevaSolicitudCarrito(carrito);
+    expect(m.texto).toContain('Total de referencia: $30.00 (parcial: hay ítems con precio a confirmar)');
+    expect(m.html).toContain('Total de referencia: $30.00');
+
+    const completo = mensajeNuevaSolicitudCarrito({ ...carrito, items: carrito.items.slice(0, 2) });
+    expect(completo.texto).toContain('Total de referencia: $30.00');
+    expect(completo.texto).not.toContain('parcial');
   });
 
   it('la llamada se muestra en hora de Venezuela (18:00Z = 2:00 p. m.)', () => {

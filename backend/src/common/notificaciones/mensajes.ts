@@ -44,34 +44,70 @@ export function formatearFechaCaracas(fecha: Date): string {
   }).format(fecha);
 }
 
-export function descripcionItem(item: ItemSolicitudCarrito): string {
-  const cantidad = item.cantidad;
-  if (item.combo) {
-    return `${cantidad} × Combo: ${item.combo.nombre}`;
-  }
-  if (item.variante) {
-    const v = item.variante;
-    const nombre = v.material?.nombre ?? v.skuVariante;
-    const presentacion = Object.values(v.atributos ?? {}).filter(Boolean).join(' · ');
-    return `${cantidad} × ${nombre}${presentacion ? ` (${presentacion})` : ''} [${v.skuVariante}]`;
-  }
-  if (item.material) {
-    return `${cantidad} × ${item.material.nombre} (cualquier presentación)`;
-  }
-  return `${cantidad} × (ítem sin referencia)`;
+export function dinero(valor: number): string {
+  return `$${valor.toFixed(2)}`;
 }
 
-function envolverHtml(titulo: string, lineas: string[], items?: string[]): string {
+export interface LineaItem {
+  /** "2 × Cemento Gris (25kg) [CEM-25] — $8.00 c/u = $16.00" */
+  texto: string;
+  /** null si el ítem no tiene precio definido (material sin presentación elegida). */
+  subtotal: number | null;
+}
+
+// Los decimales de Postgres llegan como string ("8.00"): se convierten acá.
+export function lineaItem(item: ItemSolicitudCarrito): LineaItem {
+  const cantidad = item.cantidad;
+  let nombre: string;
+  let unitario: number | null = null;
+
+  if (item.combo) {
+    nombre = `Combo: ${item.combo.nombre}`;
+    unitario = Number(item.combo.precioCombo);
+  } else if (item.variante) {
+    const v = item.variante;
+    const presentacion = Object.values(v.atributos ?? {}).filter(Boolean).join(' · ');
+    nombre = `${v.material?.nombre ?? v.skuVariante}${presentacion ? ` (${presentacion})` : ''} [${v.skuVariante}]`;
+    unitario = Number(v.precioVenta);
+  } else if (item.material) {
+    nombre = `${item.material.nombre} (cualquier presentación)`;
+  } else {
+    nombre = '(ítem sin referencia)';
+  }
+
+  if (unitario === null || Number.isNaN(unitario)) {
+    return { texto: `${cantidad} × ${nombre} — precio a confirmar`, subtotal: null };
+  }
+  const subtotal = unitario * cantidad;
+  return {
+    texto: `${cantidad} × ${nombre} — ${dinero(unitario)} c/u = ${dinero(subtotal)}`,
+    subtotal,
+  };
+}
+
+/** Total de referencia; `parcial` si algún ítem no tiene precio todavía. */
+export function totalCarrito(items: LineaItem[]): { total: number; parcial: boolean } {
+  return {
+    total: items.reduce((s, i) => s + (i.subtotal ?? 0), 0),
+    parcial: items.some((i) => i.subtotal === null),
+  };
+}
+
+function envolverHtml(titulo: string, lineas: string[], items?: string[], pie?: string): string {
   const filas = lineas.map((l) => `<p style="margin:4px 0">${l}</p>`).join('');
   const lista = items
     ? `<ul style="margin:8px 0;padding-left:20px">${items.map((i) => `<li>${i}</li>`).join('')}</ul>`
     : '';
-  return `<div style="font-family:Arial,sans-serif;font-size:14px;color:#171512"><h2 style="margin:0 0 12px">${titulo}</h2>${filas}${lista}</div>`;
+  const cierre = pie ? `<p style="margin:8px 0">${pie}</p>` : '';
+  return `<div style="font-family:Arial,sans-serif;font-size:14px;color:#171512"><h2 style="margin:0 0 12px">${titulo}</h2>${filas}${lista}${cierre}</div>`;
 }
 
 export function mensajeNuevaSolicitudCarrito(s: SolicitudCarrito): MensajeNotificacion {
   const nombre = unaLinea(s.clienteNombre);
-  const items = (s.items ?? []).map(descripcionItem);
+  const lineas = (s.items ?? []).map(lineaItem);
+  const items = lineas.map((l) => l.texto);
+  const { total, parcial } = totalCarrito(lineas);
+  const lineaTotal = `Total de referencia: ${dinero(total)}${parcial ? ' (parcial: hay ítems con precio a confirmar)' : ''}`;
   const datos = [
     `Cliente: ${nombre}`,
     `Teléfono: ${unaLinea(s.clienteTelefono)}`,
@@ -83,6 +119,7 @@ export function mensajeNuevaSolicitudCarrito(s: SolicitudCarrito): MensajeNotifi
     ...datos,
     'Ítems:',
     ...items.map((i) => `- ${i}`),
+    lineaTotal,
   ].join('\n');
 
   return {
@@ -92,6 +129,7 @@ export function mensajeNuevaSolicitudCarrito(s: SolicitudCarrito): MensajeNotifi
       'Nueva consulta de cliente',
       datos.map(escaparHtml),
       items.map(escaparHtml),
+      `<strong>${escaparHtml(lineaTotal)}</strong>`,
     ),
     replyTo: s.clienteEmail ? unaLinea(s.clienteEmail) : undefined,
   };

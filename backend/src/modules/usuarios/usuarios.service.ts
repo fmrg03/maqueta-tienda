@@ -210,6 +210,41 @@ export class UsuariosService {
     return password ? {} : { passwordTemporal: nueva };
   }
 
+  /**
+   * Cambio de contraseña por la propia persona (exige la actual). La política
+   * RLS de escritura sobre `usuarios` es solo de admin, así que este único
+   * UPDATE se hace con rol elevado dentro de la transacción del request y se
+   * restaura enseguida; la identidad ya quedó probada con el JWT y la clave actual.
+   */
+  async cambiarPasswordPropia(id: string, actual: string, nueva: string): Promise<void> {
+    const usuario = await this.repo
+      .createQueryBuilder('usuario')
+      .addSelect('usuario.passwordHash')
+      .where('usuario.id = :id', { id })
+      .getOne();
+    if (!usuario || !(await bcrypt.compare(actual, usuario.passwordHash))) {
+      throw new BadRequestException('La contraseña actual no es correcta');
+    }
+    if (actual === nueva) {
+      throw new BadRequestException('La contraseña nueva debe ser distinta de la actual');
+    }
+    const passwordHash = await bcrypt.hash(nueva, BCRYPT_SALT_ROUNDS);
+
+    const manager = getRlsManager();
+    if (manager) {
+      const previo = (await manager.query(`SELECT current_setting('app.rol', true) AS rol`))[0]?.rol ?? '';
+      await manager.query(`SELECT set_config('app.rol', 'admin', true)`);
+      try {
+        await manager.getRepository(Usuario).update({ id }, { passwordHash });
+      } finally {
+        await manager.query(`SELECT set_config('app.rol', $1, true)`, [previo]);
+      }
+    } else {
+      await this.repo.update({ id }, { passwordHash });
+    }
+    await this.revocarSesiones(id);
+  }
+
   async desactivar(id: string): Promise<void> {
     const usuario = await this.findOne(id);
     // Sin excepción por rol: ni siquiera otro admin puede desactivar la

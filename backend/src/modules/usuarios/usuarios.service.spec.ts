@@ -229,4 +229,32 @@ describe('UsuariosService', () => {
       await expect(service.restablecerPassword('uuid-1', 'uuid-1', 'ClaveNueva123')).resolves.toEqual({});
     });
   });
+
+  describe('cambiarPasswordPropia', () => {
+    const qb = (u: unknown) => ({ addSelect: jest.fn().mockReturnThis(), where: jest.fn().mockReturnThis(), getOne: jest.fn().mockResolvedValue(u) });
+
+    it('rechaza si la contraseña actual no coincide', async () => {
+      repository.createQueryBuilder!.mockReturnValue(qb({ ...usuarioBase }));
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      await expect(service.cambiarPasswordPropia('uuid-1', 'mala', 'NuevaClave123')).rejects.toThrow(BadRequestException);
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it('rechaza una nueva igual a la actual', async () => {
+      repository.createQueryBuilder!.mockReturnValue(qb({ ...usuarioBase }));
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      await expect(service.cambiarPasswordPropia('uuid-1', 'Misma12345', 'Misma12345')).rejects.toThrow(BadRequestException);
+    });
+
+    it('guarda el hash nuevo y cierra las sesiones', async () => {
+      const redis = { set: jest.fn() };
+      (service as any).redis = redis;
+      repository.createQueryBuilder!.mockReturnValue(qb({ ...usuarioBase }));
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hash-nuevo');
+      await service.cambiarPasswordPropia('uuid-1', 'Actual12345', 'NuevaClave123');
+      expect(repository.update).toHaveBeenCalledWith({ id: 'uuid-1' }, { passwordHash: 'hash-nuevo' });
+      expect(redis.set).toHaveBeenCalled();
+    });
+  });
 });

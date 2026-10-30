@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { ApiError } from "@/lib/api/client";
+import { crearAsesor, listarAsesoresAdmin } from "@/lib/panel/asesores";
 import { getUsuarioSesion, suscribirSesion } from "@/lib/auth/auth";
 import { actualizarUsuario, obtenerUsuario, restablecerPassword, type UsuarioAdmin } from "@/lib/panel/usuarios";
 import { Modal } from "../carrito/Dialogos";
@@ -18,6 +19,7 @@ export function DetalleUsuario({ id, recienCreado }: { id: string; recienCreado:
   const [dialogo, setDialogo] = useState(false);
   const [manual, setManual] = useState("");
   const [trabajando, setTrabajando] = useState(false);
+  const [perfilAsesor, setPerfilAsesor] = useState<{ cargado: boolean; id: string | null }>({ cargado: false, id: null });
 
   useEffect(() => {
     let vigente = true;
@@ -28,6 +30,30 @@ export function DetalleUsuario({ id, recienCreado }: { id: string; recienCreado:
       vigente = false;
     };
   }, [id]);
+
+  const esAsesor = u?.rol === "asesor";
+  const emailU = u?.email;
+  useEffect(() => {
+    if (!esAsesor || !emailU) return;
+    let vigente = true;
+    listarAsesoresAdmin("todos")
+      .then((l) => vigente && setPerfilAsesor({ cargado: true, id: l.find((a) => a.email === emailU)?.id ?? null }))
+      .catch(() => vigente && setPerfilAsesor({ cargado: true, id: null }));
+    return () => {
+      vigente = false;
+    };
+  }, [esAsesor, emailU]);
+
+  async function crearPerfil() {
+    if (!u) return;
+    setError(null);
+    try {
+      const a = await crearAsesor({ usuarioId: u.id });
+      setPerfilAsesor({ cargado: true, id: a.id });
+    } catch (e) {
+      setError(msg(e));
+    }
+  }
 
   const msg = (e: unknown) => (e instanceof ApiError ? e.message : "No pudimos completar la acción. Inténtalo de nuevo.");
 
@@ -93,7 +119,18 @@ export function DetalleUsuario({ id, recienCreado }: { id: string; recienCreado:
       <section className="mb-10">
         <h2 className="mb-3 font-serif text-lg font-semibold">Datos</h2>
         <FormularioUsuario inicial={u} esUnoMismo={esUnoMismo} onGuardado={setU} />
-        {u.rol === "asesor" && <p className="mt-3 max-w-md text-xs text-[#8A8272]">Para que aparezca como asesor al agendar citas, su perfil se crea en la sección Asesores.</p>}
+        {u.rol === "asesor" && perfilAsesor.cargado && (
+          <div className="mt-4 max-w-md border border-piedra-oscura bg-white p-3 text-sm">
+            {perfilAsesor.id ? (
+              <p>Tiene perfil de asesor. <Link href={`/panel/asesores/${perfilAsesor.id}`} className="underline">Ver perfil y horarios</Link></p>
+            ) : (
+              <>
+                <p className="mb-2">Aún no tiene perfil de asesor, así que no aparece al agendar citas.</p>
+                <button type="button" onClick={crearPerfil} className="rounded-sm border border-negro px-3 py-1.5 hover:bg-negro hover:text-texto-claro">Crear perfil de asesor</button>
+              </>
+            )}
+          </div>
+        )}
       </section>
 
       {puedeRestablecer && (

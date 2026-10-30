@@ -28,13 +28,9 @@ export async function obtenerAsesorAdmin(id: string): Promise<AsesorAdmin | null
   return (await listarAsesoresAdmin("todos")).find((a) => a.id === id) ?? null;
 }
 
-export interface DatosNuevoAsesor {
-  nombre: string;
-  email: string;
-  password: string;
-  telefono?: string;
-  especialidad?: string;
-}
+export type DatosNuevoAsesor =
+  | { nombre: string; email: string; password: string; telefono?: string; especialidad?: string }
+  | { usuarioId: string; especialidad?: string };
 
 export const crearAsesor = (d: DatosNuevoAsesor) =>
   apiFetch<{ id: string }>("/api/v1/asesores", { method: "POST", body: JSON.stringify(d) });

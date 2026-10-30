@@ -97,6 +97,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           </p>
           <div className="flex items-center gap-4">
             <Badge tono="dorado">{ETIQUETA_ROL[usuario.rol]}</Badge>
+            <Link href="/panel/cuenta" className="text-sm underline hover:text-dorado-oscuro">Mi cuenta</Link>
             <button type="button" onClick={salir} className="text-sm underline hover:text-dorado-oscuro">
               Salir
             </button>

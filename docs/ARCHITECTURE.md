@@ -417,7 +417,8 @@ Tres secciones (pestañas): **Ventas y ganancia**, **Mercancía** y **Proveedore
 - `GET /usuarios?rol&estado&buscar`, `POST /usuarios`, `PATCH /usuarios/:id` (nombre, correo, teléfono, rol, `activo`) y `POST /usuarios/:id/restablecer-password` (genera una temporal de 12 caracteres, o fija la indicada; se muestra una sola vez).
 - Cuenta protegida: no se desactiva ni cambia de rol, y su contraseña solo la restablece ella misma. Un admin tampoco puede desactivarse ni cambiarse el rol a sí mismo.
 - Cierre de sesiones: al desactivar, cambiar de rol o restablecer la contraseña se guarda en Redis `sesiones:corte:<usuarioId>` (7 días). El refresh y el access token con `iat` anterior a ese corte se rechazan, así que el efecto es inmediato.
-- Pendiente: pantalla para que cada persona cambie su propia contraseña.
+- Cambio de contraseña propio: `POST /auth/cambiar-password` (exige la actual; pantalla «Mi cuenta» en el panel). Como la política RLS de escritura sobre `usuarios` es solo de admin, ese único UPDATE sube `app.rol` a admin dentro de la transacción y lo restaura; cierra las sesiones de la persona.
+- Un usuario con rol asesor puede crear/abrir su perfil de asesor desde su ficha (`POST /asesores` con `usuarioId`).
 
 ## Acceso del personal
 

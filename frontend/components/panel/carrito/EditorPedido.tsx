@@ -323,7 +323,7 @@ export function EditorPedido({
       <section aria-labelledby="pedido">
         <h2 id="pedido" className="mb-3 font-serif text-lg font-semibold">Pedido</h2>
 
-        <div className="overflow-x-auto bg-white">
+        <div className="relative overflow-x-auto bg-white">
           <table className="w-full min-w-[34rem] text-sm">
             <thead>
               <tr className="border-b border-piedra-oscura text-left font-mono text-xs text-[#8A8272]">

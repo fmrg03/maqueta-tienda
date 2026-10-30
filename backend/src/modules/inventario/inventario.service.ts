@@ -13,6 +13,7 @@ import {
   TipoMovimiento,
 } from './entities/movimiento-inventario.entity';
 import { CreateVarianteDto } from './dto/create-variante.dto';
+import { UpdateVarianteDto } from './dto/update-variante.dto';
 import { RegistrarMovimientoDto } from './dto/registrar-movimiento.dto';
 
 @Injectable()
@@ -30,6 +31,7 @@ export class InventarioService {
   async crearVariante(
     materialId: string,
     dto: CreateVarianteDto,
+    usuarioId?: string,
   ): Promise<VarianteMaterial> {
     const material = await this.materialRepository.findOne({
       where: { id: materialId },
@@ -51,11 +53,56 @@ export class InventarioService {
       material,
       skuVariante: dto.skuVariante,
       atributos: dto.atributos ?? {},
-      stock: dto.stock ?? 0,
+      // El stock inicial entra como un movimiento (queda en el kardex), no
+      // como un número escrito a mano en la variante.
+      stock: 0,
       precioVenta: dto.precioVenta,
       precioCosto: dto.precioCosto,
     });
 
+    const guardada = await this.varianteRepository.save(variante);
+
+    if (dto.stock && dto.stock > 0) {
+      await this.registrarMovimiento(
+        {
+          varianteId: guardada.id,
+          tipo: TipoMovimiento.ENTRADA,
+          cantidad: dto.stock,
+          motivo: 'Stock inicial',
+        },
+        usuarioId,
+      );
+      guardada.stock = dto.stock;
+    }
+
+    return guardada;
+  }
+
+  async actualizarVariante(
+    id: string,
+    dto: UpdateVarianteDto,
+  ): Promise<VarianteMaterial> {
+    const variante = await this.varianteRepository.findOne({
+      where: { id },
+      relations: ['material'],
+    });
+    if (!variante) {
+      throw new NotFoundException(`Variante ${id} no encontrada`);
+    }
+
+    if (dto.skuVariante && dto.skuVariante !== variante.skuVariante) {
+      const skuEnUso = await this.varianteRepository.findOne({
+        where: { skuVariante: dto.skuVariante },
+      });
+      if (skuEnUso) {
+        throw new ConflictException(
+          `Ya existe una variante con SKU ${dto.skuVariante}`,
+        );
+      }
+    }
+
+    // El stock NO se edita acá: solo cambia con movimientos (kardex).
+    Object.assign(variante, dto);
     return this.varianteRepository.save(variante);
   }
 

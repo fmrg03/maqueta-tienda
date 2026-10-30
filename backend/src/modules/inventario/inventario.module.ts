@@ -8,6 +8,8 @@ import { MaterialProveedor } from './entities/material-proveedor.entity';
 import { MovimientoInventario } from './entities/movimiento-inventario.entity';
 import { MaterialesService } from './materiales.service';
 import { MaterialesController } from './materiales.controller';
+import { CategoriasService } from './categorias.service';
+import { CategoriasController } from './categorias.controller';
 import { InventarioService } from './inventario.service';
 import { InventarioController } from './inventario.controller';
 import { ReportesService } from './reportes.service';
@@ -33,6 +35,7 @@ import { ProveedoresModule } from '../proveedores/proveedores.module';
   ],
   controllers: [
     MaterialesController,
+    CategoriasController,
     InventarioController,
     ReportesController,
     CombosController,
@@ -40,6 +43,7 @@ import { ProveedoresModule } from '../proveedores/proveedores.module';
   ],
   providers: [
     MaterialesService,
+    CategoriasService,
     InventarioService,
     ReportesService,
     CombosService,

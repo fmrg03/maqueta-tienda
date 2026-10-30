@@ -347,3 +347,11 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 - **Bolívares:** el catálogo y el panel muestran "≈ Bs." con la tasa vigente. Es solo presentación; los precios siguen en USD.
 - **Al cerrar una venta** se congelan en `solicitudes_carrito`: `tasaBcv`, `montoCobradoBs`, `descuentoPct` y `descuentoMonto`. No hace falta un histórico aparte de la tasa para auditar una venta pasada.
 - **Descuento por divisas** (`modules/configuracion`): un % global guardado en la tabla `configuracion` (clave `descuento_divisas_pct`), editable por el admin (`PUT /configuracion/descuento-divisas`) y legible públicamente (`GET /configuracion/publica`). `DESCUENTO_DIVISAS_PCT` solo es el valor inicial. Se aplica cuando el método es `efectivo_divisas` o `zelle` (`METODOS_DIVISAS`), sobre el total del pedido (o el total acordado), salvo que el asesor desmarque `aplicarDescuento` o fije un `montoCobrado` manual. Cambiar el % no altera ventas ya cerradas. `efectivo` pasa a significar efectivo en bolívares.
+
+## Módulo de materiales (panel)
+
+- `GET /materiales` acepta `estado` (activos|inactivos|todos) y `buscar` (nombre, SKU del material o de variante).
+- `PATCH /inventario/variantes/:id` edita SKU, atributos y precios; **nunca** el stock (el stock solo cambia vía movimientos).
+- El stock inicial de una presentación se registra como movimiento `ENTRADA` con motivo "Stock inicial" (queda en el kardex).
+- `POST /categorias` y `PATCH /categorias/:id` (admin): nombre único sin distinguir mayúsculas (409 si existe).
+- Desactivar un material lo oculta del catálogo público; el panel lo muestra en el filtro "Inactivos".

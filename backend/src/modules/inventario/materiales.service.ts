@@ -38,12 +38,35 @@ export class MaterialesService {
     return this.materialRepository.save(material);
   }
 
-  async findAll(filtros?: { categoriaId?: string; stockBajo?: boolean }): Promise<Material[]> {
+  async findAll(filtros?: {
+    categoriaId?: string;
+    stockBajo?: boolean;
+    /** Por defecto solo activos (comportamiento histórico). */
+    estado?: 'activos' | 'inactivos' | 'todos';
+    /** Texto a buscar en nombre o SKU (del material o de sus presentaciones). */
+    buscar?: string;
+  }): Promise<Material[]> {
     const query = this.materialRepository
       .createQueryBuilder('material')
       .leftJoinAndSelect('material.categoria', 'categoria')
       .leftJoinAndSelect('material.variantes', 'variantes')
-      .where('material.activo = true');
+      .orderBy('material.nombre', 'ASC')
+      .addOrderBy('variantes.skuVariante', 'ASC');
+
+    const estado = filtros?.estado ?? 'activos';
+    if (estado === 'activos') query.where('material.activo = true');
+    else if (estado === 'inactivos') query.where('material.activo = false');
+    else query.where('1 = 1');
+
+    const buscar = filtros?.buscar?.trim();
+    if (buscar) {
+      query.andWhere(
+        `(material.nombre ILIKE :q OR material.sku ILIKE :q OR material.id IN (
+           SELECT v."materialId" FROM variantes_material v WHERE v."skuVariante" ILIKE :q
+         ))`,
+        { q: `%${buscar.replace(/[%_\\]/g, '\\$&')}%` },
+      );
+    }
 
     if (filtros?.categoriaId) {
       query.andWhere('categoria.id = :categoriaId', {

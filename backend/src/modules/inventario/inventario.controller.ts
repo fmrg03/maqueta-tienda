@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -12,6 +13,7 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { InventarioService } from './inventario.service';
 import { CreateVarianteDto } from './dto/create-variante.dto';
+import { UpdateVarianteDto } from './dto/update-variante.dto';
 import { RegistrarMovimientoDto } from './dto/registrar-movimiento.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -30,8 +32,17 @@ export class InventarioController {
   crearVariante(
     @Param('id', ParseUUIDPipe) materialId: string,
     @Body() dto: CreateVarianteDto,
+    @Req() request: any,
   ) {
-    return this.inventarioService.crearVariante(materialId, dto);
+    return this.inventarioService.crearVariante(materialId, dto, request.user?.id);
+  }
+
+  @Patch('variantes/:id')
+  actualizarVariante(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateVarianteDto,
+  ) {
+    return this.inventarioService.actualizarVariante(id, dto);
   }
 
   @Post('materiales/:id/movimientos')

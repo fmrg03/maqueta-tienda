@@ -35,12 +35,15 @@ export class MaterialesController {
   findAll(
     @Query('categoria') categoriaId?: string,
     @Query('stock_bajo') stockBajoRaw?: string,
+    @Query('estado') estado?: string,
+    @Query('buscar') buscar?: string,
   ) {
     // Parseo manual en vez de ParseBoolPipe({ optional: true }) — mismo
     // motivo que en CatalogoController: esa opción no se comportó como
     // documentado cuando el query param está ausente.
     const stockBajo = stockBajoRaw !== undefined ? stockBajoRaw === 'true' : undefined;
-    return this.materialesService.findAll({ categoriaId, stockBajo });
+    const estadoValido = estado === 'inactivos' || estado === 'todos' ? estado : 'activos';
+    return this.materialesService.findAll({ categoriaId, stockBajo, estado: estadoValido, buscar });
   }
 
   @Get(':id')

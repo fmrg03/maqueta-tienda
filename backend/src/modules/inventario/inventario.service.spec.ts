@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { InventarioService } from './inventario.service';
 import { VarianteMaterial } from './entities/variante-material.entity';
@@ -68,14 +68,36 @@ describe('InventarioService', () => {
       varianteRepo.create!.mockReturnValue(varianteBase);
       varianteRepo.save!.mockResolvedValue(varianteBase);
 
-      const resultado = await service.crearVariante('uuid-mat-1', {
-        skuVariante: 'CEM-001-25KG',
-        stock: 50,
-        precioVenta: 8,
-        precioCosto: 5,
-      });
+      const spy = jest
+        .spyOn(service, 'registrarMovimiento')
+        .mockResolvedValue({} as any);
 
-      expect(resultado).toEqual(varianteBase);
+      const resultado = await service.crearVariante(
+        'uuid-mat-1',
+        { skuVariante: 'CEM-001-25KG', stock: 50, precioVenta: 8, precioCosto: 5 },
+        'user-1',
+      );
+
+      expect(resultado.id).toBe(varianteBase.id);
+      // El stock inicial queda en el kardex como una ENTRADA, no escrito a mano.
+      expect(varianteRepo.create).toHaveBeenCalledWith(expect.objectContaining({ stock: 0 }));
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo: 'entrada', cantidad: 50, motivo: 'Stock inicial' }),
+        'user-1',
+      );
+      expect(resultado.stock).toBe(50);
+    });
+
+    it('sin stock inicial no registra ningún movimiento', async () => {
+      materialRepo.findOne!.mockResolvedValue({ id: 'uuid-mat-1' });
+      varianteRepo.findOne!.mockResolvedValue(null);
+      varianteRepo.create!.mockReturnValue({ ...varianteBase });
+      varianteRepo.save!.mockResolvedValue({ ...varianteBase });
+      const spy = jest.spyOn(service, 'registrarMovimiento');
+
+      await service.crearVariante('uuid-mat-1', { skuVariante: 'X-1', precioVenta: 8, precioCosto: 5 });
+
+      expect(spy).not.toHaveBeenCalled();
     });
 
     it('lanza NotFoundException si el material no existe', async () => {
@@ -88,6 +110,27 @@ describe('InventarioService', () => {
           precioCosto: 5,
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('actualizarVariante', () => {
+    it('lanza NotFoundException si no existe', async () => {
+      varianteRepo.findOne!.mockResolvedValue(null);
+      await expect(service.actualizarVariante('x', { precioVenta: 9 })).rejects.toThrow(NotFoundException);
+    });
+
+    it('rechaza un SKU que ya usa otra variante', async () => {
+      varianteRepo.findOne!
+        .mockResolvedValueOnce({ id: 'v1', skuVariante: 'A' })
+        .mockResolvedValueOnce({ id: 'v2', skuVariante: 'B' });
+      await expect(service.actualizarVariante('v1', { skuVariante: 'B' })).rejects.toThrow(ConflictException);
+    });
+
+    it('actualiza precios y atributos sin tocar el stock', async () => {
+      varianteRepo.findOne!.mockResolvedValue({ id: 'v1', skuVariante: 'A', stock: 7, precioVenta: 1 });
+      varianteRepo.save!.mockImplementation((v) => Promise.resolve(v));
+      const r = await service.actualizarVariante('v1', { precioVenta: 9.5, atributos: { peso: '25kg' } });
+      expect(r).toMatchObject({ precioVenta: 9.5, stock: 7, atributos: { peso: '25kg' } });
     });
   });
 

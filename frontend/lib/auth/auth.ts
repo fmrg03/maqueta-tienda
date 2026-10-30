@@ -33,21 +33,6 @@ export async function login(email: string, password: string): Promise<Usuario> {
   return data.usuario;
 }
 
-export async function registrar(
-  nombre: string,
-  email: string,
-  password: string,
-): Promise<Usuario> {
-  const data = await apiFetch<RespuestaAuth>("/api/v1/auth/register", {
-    method: "POST",
-    autenticado: false,
-    body: JSON.stringify({ nombre, email, password }),
-  });
-  setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
-  setUsuarioSesion(data.usuario);
-  return data.usuario;
-}
-
 export async function logout(): Promise<void> {
   const tokens = getTokens();
   if (tokens) {

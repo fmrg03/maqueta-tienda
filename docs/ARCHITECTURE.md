@@ -90,7 +90,7 @@ Base: `/api/v1`
 
 ### Auth
 - `POST /auth/login`
-- `POST /auth/register`
+- ~~`POST /auth/register`~~ (deshabilitado; el servicio `AuthService.register` se conserva para reactivarlo)
 - `POST /auth/refresh`
 
 ### Inventario (admin)

@@ -7,7 +7,6 @@ import { CambiarPasswordDto } from './dto/cambiar-password.dto';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { CreateUsuarioDto } from '../usuarios/dto/create-usuario.dto';
 
 @ApiTags('Auth')
 @Controller('api/v1/auth')
@@ -29,11 +28,9 @@ export class AuthController {
     return { mensaje: 'Contraseña actualizada' };
   }
 
-  @Post('register')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } }) // 5 intentos/min por IP
-  async register(@Body() dto: CreateUsuarioDto) {
-    return this.authService.register(dto);
-  }
+  // El registro público de clientes está deshabilitado (no hay pantalla ni
+  // uso para esas cuentas todavía): evita altas masivas. AuthService.register
+  // se conserva para reactivarlo exponiendo de nuevo POST /auth/register.
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

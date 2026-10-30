@@ -373,3 +373,9 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 
 - `PATCH /asesorias/solicitudes/:id/reagendar` `{ fechaHoraLlamada }` (admin o el asesor dueño): solo desde `pendiente` (también si ya pasó la hora). Bloquea (lock pesimista) una franja LIBRE del mismo asesor, libera la anterior y devuelve `{ solicitud, texto, emailEnviado }`. 409 si la franja ya fue tomada, 404 si no existe, 400 si ya pasó o es la misma.
 - El cliente recibe correo (si dejó uno) al agendar y al reagendar (`notificarAsesoriaACliente`). CallMeBot NO sirve para clientes (solo escribe al número del dueño); por eso el panel ofrece el enlace wa.me con el mensaje listo. Para WhatsApp automático al cliente hace falta un proveedor real (Twilio/Meta), ya en el backlog.
+
+## Combos (panel)
+
+- `GET /combos?estado=activos|inactivos|todos` (admin) trae ítems con variante y material. `PATCH /combos/:id` edita nombre, descripción, precio, `activo` y, si viene `items`, **reemplaza** todos los ítems en una transacción. Una presentación no puede repetirse dentro de un combo (400); `cantidad` es entera.
+- El panel calcula "por separado costaría", el ahorro, aviso de precio bajo el costo y cuántos combos se pueden armar con el stock actual (mínimo de `floor(stock/cantidad)` entre los ítems).
+- Desactivar un combo lo oculta de la web pública; los carritos ya creados no cambian.

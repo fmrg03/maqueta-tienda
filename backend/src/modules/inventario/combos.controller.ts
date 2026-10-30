@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { CombosService } from './combos.service';
+import { CombosService, type FiltroEstadoCombo } from './combos.service';
 import { CreateComboDto } from './dto/create-combo.dto';
+import { UpdateComboDto } from './dto/update-combo.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -21,12 +22,19 @@ export class CombosController {
   }
 
   @Get()
-  findAll() {
-    return this.combosService.findAll();
+  findAll(@Query('estado') estado?: FiltroEstadoCombo) {
+    return this.combosService.findAll(
+      estado === 'inactivos' || estado === 'todos' ? estado : 'activos',
+    );
   }
 
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.combosService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateComboDto) {
+    return this.combosService.update(id, dto);
   }
 }

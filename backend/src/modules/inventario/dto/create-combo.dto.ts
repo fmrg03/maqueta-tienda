@@ -1,6 +1,7 @@
 import {
   ArrayMinSize,
   IsArray,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -12,13 +13,13 @@ import {
 import { Type } from 'class-transformer';
 import { SanitizedText } from '../../../common/sanitize/sanitized-text.decorator';
 
-class ComboItemInputDto {
+export class ComboItemInputDto {
   // Siempre una variante específica — ver el comentario en la entidad
   // ComboItem sobre por qué ya no se acepta un materialId genérico.
   @IsUUID()
   varianteId: string;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
   cantidad: number;
 }

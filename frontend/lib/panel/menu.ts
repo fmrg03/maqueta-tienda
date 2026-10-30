@@ -18,7 +18,7 @@ export const MENU_PANEL: ItemMenu[] = [
   { href: "/panel/asesorias", label: "Asesorías", descripcion: "Llamadas agendadas por clientes", roles: ["admin", "asesor"], disponible: true },
   { href: "/panel/materiales", label: "Materiales", descripcion: "Productos, presentaciones y precios", roles: ["admin"], disponible: true },
   { href: "/panel/movimientos", label: "Movimientos", descripcion: "Entradas y salidas de inventario", roles: ["admin"], disponible: true },
-  { href: "/panel/combos", label: "Combos", descripcion: "Paquetes de productos", roles: ["admin"], disponible: false },
+  { href: "/panel/combos", label: "Combos", descripcion: "Paquetes de productos", roles: ["admin"], disponible: true },
   { href: "/panel/proveedores", label: "Proveedores", descripcion: "Proveedores y costos", roles: ["admin"], disponible: false },
   { href: "/panel/reportes", label: "Reportes", descripcion: "Inventario y ganancias por período", roles: ["admin"], disponible: false },
   { href: "/panel/configuracion", label: "Configuración", descripcion: "Tasa BCV y descuento por divisas", roles: ["admin"], disponible: true },

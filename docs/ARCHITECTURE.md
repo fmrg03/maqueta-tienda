@@ -355,3 +355,10 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 - El stock inicial de una presentación se registra como movimiento `ENTRADA` con motivo "Stock inicial" (queda en el kardex).
 - `POST /categorias` y `PATCH /categorias/:id` (admin): nombre único sin distinguir mayúsculas (409 si existe).
 - Desactivar un material lo oculta del catálogo público; el panel lo muestra en el filtro "Inactivos".
+
+## Asesorías (panel) y tasa en el header
+
+- Flujo: `pendiente → llamada_realizada → (visita_pactada | no_procede)`; `cancelada` solo desde pendiente o llamada realizada y **libera la franja** de disponibilidad. Las notas se pueden enviar en `registrar-llamada`, `marcar-visita-pactada` y `marcar-no-procede`.
+- RLS: el asesor solo ve y modifica sus solicitudes; el admin todas.
+- `POST /asesores` ahora lee `usuarios` con la sesión RLS del admin (antes devolvía 404 por la política de `usuarios`).
+- El header público muestra "Tasa BCV: 1 USD = Bs. X" (visible desde `lg`; oculto si no hay ninguna tasa).

@@ -26,9 +26,10 @@ export class AsesoresService {
   ) {}
 
   async crearAsesor(usuarioId: string, especialidad?: string): Promise<Asesor> {
-    const usuario = await this.usuarioRepository.findOne({
-      where: { id: usuarioId },
-    });
+    // `usuarios` tiene RLS: hay que leerla con la sesión del admin (RLS manager);
+    // con el repositorio inyectado (sin sesión) la fila nunca aparece.
+    const usuarioRepo = getRlsManager()?.getRepository(Usuario) ?? this.usuarioRepository;
+    const usuario = await usuarioRepo.findOne({ where: { id: usuarioId } });
     if (!usuario) {
       throw new NotFoundException(`Usuario ${usuarioId} no encontrado`);
     }

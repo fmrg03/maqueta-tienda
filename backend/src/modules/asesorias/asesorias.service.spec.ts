@@ -218,16 +218,25 @@ describe('AsesoriasService', () => {
       );
     });
 
-    it('cancelar funciona sin importar el estado actual', async () => {
+    it('cancelar libera la franja y rechaza estados finales', async () => {
+      const query = jest.fn().mockResolvedValue([]);
+      (dataSource as any).manager = { query };
+      const fecha = new Date('2026-11-01T14:00:00Z');
       solicitudRepo.findOne.mockResolvedValue({
         id: 'sol-1',
         estado: EstadoSolicitudAsesoria.PENDIENTE,
+        asesor: { id: 'as-1' },
+        fechaHoraLlamada: fecha,
       });
       solicitudRepo.save.mockImplementation((s) => Promise.resolve(s));
 
       const resultado = await service.cancelar('sol-1');
 
       expect(resultado.estado).toBe(EstadoSolicitudAsesoria.CANCELADA);
+      expect(query).toHaveBeenCalledWith(expect.stringContaining('disponible = true'), ['as-1', fecha]);
+
+      solicitudRepo.findOne.mockResolvedValue({ id: 'sol-2', estado: EstadoSolicitudAsesoria.VISITA_PACTADA });
+      await expect(service.cancelar('sol-2')).rejects.toThrow(BadRequestException);
     });
   });
 });

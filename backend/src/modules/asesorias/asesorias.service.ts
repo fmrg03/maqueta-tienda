@@ -145,28 +145,40 @@ export class AsesoriasService {
     return this.solicitudRepository.save(solicitud);
   }
 
-  async marcarVisitaPactada(id: string): Promise<SolicitudAsesoria> {
+  async marcarVisitaPactada(id: string, dto?: RegistrarLlamadaDto): Promise<SolicitudAsesoria> {
     return this.transicionar(id, EstadoSolicitudAsesoria.VISITA_PACTADA, [
       EstadoSolicitudAsesoria.LLAMADA_REALIZADA,
-    ]);
+    ], dto?.notasLlamada);
   }
 
-  async marcarNoProcede(id: string): Promise<SolicitudAsesoria> {
+  async marcarNoProcede(id: string, dto?: RegistrarLlamadaDto): Promise<SolicitudAsesoria> {
     return this.transicionar(id, EstadoSolicitudAsesoria.NO_PROCEDE, [
       EstadoSolicitudAsesoria.LLAMADA_REALIZADA,
-    ]);
+    ], dto?.notasLlamada);
   }
 
+  /** Solo se cancela lo que sigue abierto; la franja vuelve a quedar disponible. */
   async cancelar(id: string): Promise<SolicitudAsesoria> {
-    const solicitud = await this.findOne(id);
-    solicitud.estado = EstadoSolicitudAsesoria.CANCELADA;
-    return this.solicitudRepository.save(solicitud);
+    const solicitud = await this.transicionar(id, EstadoSolicitudAsesoria.CANCELADA, [
+      EstadoSolicitudAsesoria.PENDIENTE,
+      EstadoSolicitudAsesoria.LLAMADA_REALIZADA,
+    ]);
+    if (solicitud.asesor) {
+      const manager = getRlsManager() ?? this.dataSource.manager;
+      await manager.query(
+        `UPDATE disponibilidad_asesor SET disponible = true
+          WHERE "asesorId" = $1 AND "fechaHora" = $2`,
+        [solicitud.asesor.id, solicitud.fechaHoraLlamada],
+      );
+    }
+    return solicitud;
   }
 
   private async transicionar(
     id: string,
     nuevoEstado: EstadoSolicitudAsesoria,
     estadosPermitidosDesde: EstadoSolicitudAsesoria[],
+    notas?: string,
   ): Promise<SolicitudAsesoria> {
     const solicitud = await this.findOne(id);
 
@@ -177,6 +189,7 @@ export class AsesoriasService {
     }
 
     solicitud.estado = nuevoEstado;
+    if (notas) solicitud.notasLlamada = notas;
     return this.solicitudRepository.save(solicitud);
   }
 }

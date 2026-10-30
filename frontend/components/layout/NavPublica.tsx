@@ -38,7 +38,7 @@ export function NavPublica({ esOscuro }: { esOscuro: boolean }) {
     );
 
   return (
-    <nav className="flex gap-7 text-sm">
+    <nav className="flex flex-wrap gap-x-5 gap-y-1 text-sm sm:gap-x-7">
       {[...LINKS, acceso].map((link) => {
         const activo = estaActiva(pathname, link.href);
         return (

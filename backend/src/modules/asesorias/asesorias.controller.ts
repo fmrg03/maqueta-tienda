@@ -68,16 +68,22 @@ export class AsesoriasController {
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
-  marcarVisitaPactada(@Param('id', ParseUUIDPipe) id: string) {
-    return this.asesoriasService.marcarVisitaPactada(id);
+  marcarVisitaPactada(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RegistrarLlamadaDto,
+  ) {
+    return this.asesoriasService.marcarVisitaPactada(id, dto);
   }
 
   @Patch('solicitudes/:id/marcar-no-procede')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
-  marcarNoProcede(@Param('id', ParseUUIDPipe) id: string) {
-    return this.asesoriasService.marcarNoProcede(id);
+  marcarNoProcede(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RegistrarLlamadaDto,
+  ) {
+    return this.asesoriasService.marcarNoProcede(id, dto);
   }
 
   @Patch('solicitudes/:id/cancelar')

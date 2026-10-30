@@ -1,4 +1,7 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { static as serveStatic } from 'express';
+import { StorageService } from './common/storage/storage.service';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -6,13 +9,30 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Headers de seguridad HTTP (X-Content-Type-Options, X-Frame-Options,
   // Strict-Transport-Security, Content-Security-Policy, y esconde
   // X-Powered-By) — encontrado como gap real en el pentest interno, ver
   // ARCHITECTURE.md sección 6.
   app.use(helmet());
+
+  // Imágenes subidas desde el panel. helmet pone Cross-Origin-Resource-Policy:
+  // same-origin; para /uploads se relaja a cross-origin porque la web (otro
+  // origen) las muestra con <img>. Son archivos inmutables (nombre aleatorio).
+  app.use(
+    '/uploads',
+    (_req, res, next) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      next();
+    },
+    serveStatic(app.get(StorageService).directorio, {
+      maxAge: '30d',
+      immutable: true,
+      index: false,
+      dotfiles: 'deny',
+    }),
+  );
 
   // Whitelist estricta: rechaza cualquier propiedad no declarada en el DTO
   // (ver ARCHITECTURE.md, sección Seguridad > Sanitización y validación).

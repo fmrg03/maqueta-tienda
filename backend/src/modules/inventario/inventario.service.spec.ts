@@ -239,16 +239,29 @@ describe('InventarioService', () => {
     });
   });
 
-  describe('listarMovimientos', () => {
-    it('filtra por variante cuando se provee', async () => {
-      movimientoRepo.find!.mockResolvedValue([]);
+  describe('consultarMovimientos', () => {
+    it('aplica filtros, escapa comodines y pagina', async () => {
+      const qb: any = {};
+      for (const m of ['leftJoinAndSelect', 'andWhere', 'orderBy', 'addOrderBy', 'take', 'skip']) {
+        qb[m] = jest.fn().mockReturnValue(qb);
+      }
+      qb.getManyAndCount = jest.fn().mockResolvedValue([[{ id: 'm1' }], 7]);
+      (movimientoRepo as any).createQueryBuilder = jest.fn().mockReturnValue(qb);
 
-      await service.listarMovimientos('uuid-var-1');
-
-      expect(movimientoRepo.find).toHaveBeenCalledWith({
-        where: { variante: { id: 'uuid-var-1' } },
-        order: { createdAt: 'DESC' },
+      const r = await service.consultarMovimientos({
+        tipo: TipoMovimiento.SALIDA,
+        origen: 'venta',
+        buscar: '50%_x',
+        limite: 10,
+        desplazamiento: 20,
       });
+
+      expect(r).toEqual({ datos: [{ id: 'm1' }], total: 7 });
+      expect(qb.andWhere).toHaveBeenCalledWith('m.tipo = :tipo', { tipo: 'salida' });
+      expect(qb.andWhere).toHaveBeenCalledWith('m.solicitudId IS NOT NULL');
+      expect(qb.andWhere).toHaveBeenCalledWith(expect.stringContaining('ILIKE'), { patron: '%50\\%\\_x%' });
+      expect(qb.take).toHaveBeenCalledWith(10);
+      expect(qb.skip).toHaveBeenCalledWith(20);
     });
   });
 });

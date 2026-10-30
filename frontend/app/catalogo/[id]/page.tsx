@@ -1,3 +1,4 @@
+import { ImagenMaterial } from "@/components/catalogo/ImagenMaterial";
 import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -43,16 +44,7 @@ export default async function FichaProductoPage({ params }: Props) {
         </Link>
 
         <div className="mt-6 grid gap-10 md:grid-cols-2">
-          <div
-            className="flex aspect-square items-end p-3 font-mono text-xs text-[#7A7264]"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(135deg, #EDEAE3, #EDEAE3 10px, #DCD5C4 10px, #DCD5C4 11px)",
-              border: "1px solid #E3DCCC",
-            }}
-          >
-            foto: {material.nombre.toLowerCase()}
-          </div>
+          <ImagenMaterial nombre={material.nombre} imagenUrl={material.imagenUrl} />
 
           <div>
             {material.categoria && (

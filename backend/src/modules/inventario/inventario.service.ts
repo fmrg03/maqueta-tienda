@@ -15,6 +15,8 @@ import {
 import { CreateVarianteDto } from './dto/create-variante.dto';
 import { UpdateVarianteDto } from './dto/update-variante.dto';
 import { RegistrarMovimientoDto } from './dto/registrar-movimiento.dto';
+import { ConsultaMovimientosDto } from './dto/consulta-movimientos.dto';
+import { getRlsManager } from '../../common/rls/request-context';
 
 @Injectable()
 export class InventarioService {
@@ -154,11 +156,47 @@ export class InventarioService {
     });
   }
 
-  async listarMovimientos(varianteId?: string): Promise<MovimientoInventario[]> {
-    const where = varianteId ? { variante: { id: varianteId } } : {};
-    return this.movimientoRepository.find({
-      where,
-      order: { createdAt: 'DESC' },
-    });
+  /**
+   * Historial (kardex) con filtros y paginación. Las fechas son días de
+   * calendario de Caracas; se convierten a instantes UTC con AT TIME ZONE.
+   */
+  async consultarMovimientos(
+    f: ConsultaMovimientosDto,
+  ): Promise<{ datos: MovimientoInventario[]; total: number }> {
+    const repo =
+      getRlsManager()?.getRepository(MovimientoInventario) ?? this.movimientoRepository;
+    const qb = repo
+      .createQueryBuilder('m')
+      .leftJoinAndSelect('m.variante', 'v')
+      .leftJoinAndSelect('v.material', 'mat')
+      .leftJoinAndSelect('m.usuario', 'u');
+
+    if (f.variante) qb.andWhere('v.id = :variante', { variante: f.variante });
+    if (f.material) qb.andWhere('mat.id = :material', { material: f.material });
+    if (f.tipo) qb.andWhere('m.tipo = :tipo', { tipo: f.tipo });
+    if (f.origen === 'venta') qb.andWhere('m.solicitudId IS NOT NULL');
+    if (f.origen === 'manual') qb.andWhere('m.solicitudId IS NULL');
+    if (f.desde) {
+      qb.andWhere(`m.createdAt >= (:desde::date)::timestamp AT TIME ZONE 'America/Caracas'`, { desde: f.desde });
+    }
+    if (f.hasta) {
+      qb.andWhere(`m.createdAt < ((:hasta::date + 1))::timestamp AT TIME ZONE 'America/Caracas'`, { hasta: f.hasta });
+    }
+    const texto = f.buscar?.trim();
+    if (texto) {
+      const patron = `%${texto.replace(/[\\%_]/g, '\\$&')}%`;
+      qb.andWhere(
+        '(mat.nombre ILIKE :patron OR mat.sku ILIKE :patron OR v.skuVariante ILIKE :patron OR m.motivo ILIKE :patron)',
+        { patron },
+      );
+    }
+
+    const [datos, total] = await qb
+      .orderBy('m.createdAt', 'DESC')
+      .addOrderBy('m.id', 'DESC')
+      .take(f.limite ?? 50)
+      .skip(f.desplazamiento ?? 0)
+      .getManyAndCount();
+    return { datos, total };
   }
 }

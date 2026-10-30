@@ -1,5 +1,7 @@
 "use client";
 
+import { ImagenMaterial } from "@/components/catalogo/ImagenMaterial";
+import { urlImagen } from "@/lib/imagenes";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -118,7 +120,7 @@ export function DetalleMaterial({ id, recienCreado }: { id: string; recienCreado
         ) : (
           <dl className="grid gap-x-8 gap-y-1 bg-white p-4 text-sm sm:grid-cols-2">
             <div><dt className="inline text-[#8A8272]">Descripción: </dt><dd className="inline">{material.descripcion || "—"}</dd></div>
-            <div><dt className="inline text-[#8A8272]">Imagen: </dt><dd className="inline break-all">{material.imagenUrl || "—"}</dd></div>
+            <div className="flex items-center gap-3"><dt className="text-[#8A8272]">Foto: </dt><dd>{urlImagen(material.imagenUrl) ? <ImagenMaterial nombre={material.nombre} imagenUrl={material.imagenUrl} className="!aspect-square !w-16" /> : "—"}</dd></div>
             <div><dt className="inline text-[#8A8272]">Visible en el catálogo: </dt><dd className="inline">{material.activo ? "Sí" : "No"}</dd></div>
           </dl>
         )}

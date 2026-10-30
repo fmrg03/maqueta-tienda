@@ -14,6 +14,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { InventarioService } from './inventario.service';
 import { CreateVarianteDto } from './dto/create-variante.dto';
 import { UpdateVarianteDto } from './dto/update-variante.dto';
+import { ConsultaMovimientosDto } from './dto/consulta-movimientos.dto';
 import { RegistrarMovimientoDto } from './dto/registrar-movimiento.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -57,7 +58,7 @@ export class InventarioController {
   }
 
   @Get('movimientos')
-  listarMovimientos(@Query('variante') varianteId?: string) {
-    return this.inventarioService.listarMovimientos(varianteId);
+  listarMovimientos(@Query() filtros: ConsultaMovimientosDto) {
+    return this.inventarioService.consultarMovimientos(filtros);
   }
 }

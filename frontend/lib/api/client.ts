@@ -1,6 +1,6 @@
 import { clearTokens, getTokens, setTokens } from "../auth/token-store";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 export class ApiError extends Error {
   constructor(
@@ -76,8 +76,9 @@ export async function apiFetch<T>(
   const { autenticado = true, headers, ...resto } = options;
 
   const construirHeaders = (): HeadersInit => {
+    // Con FormData el navegador pone solo el Content-Type (multipart + boundary).
     const base: Record<string, string> = {
-      "Content-Type": "application/json",
+      ...(resto.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...(headers as Record<string, string>),
     };
     if (autenticado) {

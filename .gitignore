@@ -27,3 +27,6 @@ coverage/
 
 # Docker
 *.pid
+
+# Imágenes subidas (desarrollo)
+backend/uploads/

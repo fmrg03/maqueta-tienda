@@ -1,5 +1,6 @@
 "use client";
 
+import { CampoImagen } from "./CampoImagen";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -49,7 +50,6 @@ export function FormularioMaterial({
     if (!sku.trim()) nuevos.sku = "Escribe el SKU del material.";
     if (!nombre.trim()) nuevos.nombre = "Escribe el nombre.";
     if (categoria === NUEVA && categoriaNueva.trim().length < 2) nuevos.categoria = "Escribe el nombre de la categoría nueva.";
-    if (imagenUrl.trim() && !/^https?:\/\//i.test(imagenUrl.trim())) nuevos.imagen = "La imagen debe ser un enlace que empiece con http:// o https://";
     setErrores(nuevos);
     if (Object.keys(nuevos).length > 0) return;
 
@@ -63,7 +63,8 @@ export function FormularioMaterial({
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
         categoriaId,
-        imagenUrl: imagenUrl.trim() || undefined,
+        // null borra la foto existente (el backend acepta null por ser opcional)
+        imagenUrl: (imagenUrl.trim() || null) as string | undefined,
         activo,
       });
     } catch (err) {
@@ -114,16 +115,7 @@ export function FormularioMaterial({
         />
       </div>
 
-      <Input
-        label="Imagen (enlace, opcional)"
-        name="imagenUrl"
-        type="url"
-        placeholder="https://…"
-        value={imagenUrl}
-        maxLength={500}
-        onChange={(e) => setImagenUrl(e.target.value)}
-        error={errores.imagen}
-      />
+      <CampoImagen valor={imagenUrl} onCambio={setImagenUrl} />
 
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} className="mt-1" />

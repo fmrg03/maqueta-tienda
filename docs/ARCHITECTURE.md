@@ -362,3 +362,9 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 - RLS: el asesor solo ve y modifica sus solicitudes; el admin todas.
 - `POST /asesores` ahora lee `usuarios` con la sesión RLS del admin (antes devolvía 404 por la política de `usuarios`).
 - El header público muestra "Tasa BCV: 1 USD = Bs. X" (visible desde `lg`; oculto si no hay ninguna tasa).
+
+## Fotos de productos y movimientos
+
+- `POST /api/v1/uploads/imagenes` (admin, multipart `archivo`): valida el tipo REAL por los primeros bytes (JPG/PNG/WebP), tope 3 MB, nombre aleatorio. Hoy se guarda en `UPLOADS_DIR` (por defecto `backend/uploads`) y se sirve en `/uploads` (cache 30 días, `Cross-Origin-Resource-Policy: cross-origin` solo en esa ruta). Devuelve `{ url: "/uploads/<id>.webp" }`; el frontend la completa con `NEXT_PUBLIC_API_URL` (`urlImagen`). **Para producción:** cambiar `StorageService.guardarImagen` por una subida a R2/S3 que devuelva la URL absoluta; el resto no cambia. Con disco local, usar un volumen persistente.
+- El panel reduce la foto en el navegador (lado mayor 1200 px, WebP) antes de subirla. Quitar la foto envía `imagenUrl: null`.
+- `GET /api/v1/movimientos` (admin) devuelve `{ datos, total }` y acepta `tipo`, `origen` (venta|manual), `desde`/`hasta` (AAAA-MM-DD, hora de Caracas, inclusivos), `buscar`, `variante`, `material`, `limite` (≤200) y `desplazamiento`.

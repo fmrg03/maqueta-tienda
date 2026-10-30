@@ -9,7 +9,7 @@ export type EstadoCarrito =
   | "cerrada"
   | "cancelada";
 
-export type MetodoPago = "efectivo" | "pago_movil" | "transferencia" | "zelle" | "otro";
+export type MetodoPago = "efectivo" | "efectivo_divisas" | "pago_movil" | "transferencia" | "zelle" | "otro";
 
 export const ETIQUETA_ESTADO: Record<EstadoCarrito, string> = {
   nueva: "Nueva",
@@ -30,12 +30,16 @@ export const TONO_ESTADO: Record<EstadoCarrito, "neutro" | "exito" | "alerta" | 
 };
 
 export const ETIQUETA_METODO: Record<MetodoPago, string> = {
-  efectivo: "Efectivo",
+  efectivo_divisas: "Efectivo en divisas",
+  efectivo: "Efectivo en bolívares",
   pago_movil: "Pago móvil",
   transferencia: "Transferencia",
   zelle: "Zelle",
   otro: "Otro",
 };
+
+/** Métodos que dan derecho al descuento por divisas (igual que en el backend). */
+export const METODOS_DIVISAS: MetodoPago[] = ["efectivo_divisas", "zelle"];
 
 /** Estados en los que el pedido todavía se puede editar / cerrar. */
 export const ESTADOS_ABIERTOS: EstadoCarrito[] = [
@@ -79,6 +83,10 @@ export interface Solicitud {
   metodoPago?: MetodoPago | null;
   referenciaPago?: string | null;
   montoCobrado: number | null;
+  descuentoPct: number | null;
+  descuentoMonto: number | null;
+  tasaBcv: number | null;
+  montoCobradoBs: number | null;
   montoReembolsado: number | null;
   motivoCancelacion?: string | null;
   faltantes?: Faltante[] | null;
@@ -103,6 +111,10 @@ function normalizar(s: Solicitud): Solicitud {
     ...s,
     totalFinal: num(s.totalFinal),
     montoCobrado: num(s.montoCobrado),
+    descuentoPct: num(s.descuentoPct),
+    descuentoMonto: num(s.descuentoMonto),
+    tasaBcv: num(s.tasaBcv),
+    montoCobradoBs: num(s.montoCobradoBs),
     montoReembolsado: num(s.montoReembolsado),
     items: (s.items ?? []).map((i) => ({
       ...i,
@@ -166,7 +178,13 @@ export async function enviarDetalle(id: string): Promise<RespuestaEnvio> {
 
 export async function cerrarVenta(
   id: string,
-  datos: { metodoPago: MetodoPago; referenciaPago?: string; montoCobrado?: number },
+  datos: {
+    metodoPago: MetodoPago;
+    referenciaPago?: string;
+    montoCobrado?: number;
+    aplicarDescuento?: boolean;
+    tasaBcv?: number;
+  },
 ): Promise<Solicitud> {
   return normalizar(await apiFetch<Solicitud>(`${BASE}/${id}/cerrar`, { method: "POST", body: JSON.stringify(datos) }));
 }
@@ -241,3 +259,23 @@ export const ETIQUETA_EVENTO: Record<string, string> = {
   cancelada: "Cancelada",
   anulada: "Venta anulada",
 };
+
+/** Misma cuenta que el backend (calcularCobro) para mostrar la vista previa antes de cerrar. */
+export function calcularCobroPreview(p: {
+  base: number;
+  metodo: MetodoPago;
+  aplicarDescuento: boolean;
+  porcentaje: number;
+  montoManual: number | null;
+  tasa: number | null;
+}) {
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  let monto = r2(p.base);
+  let descuentoMonto: number | null = null;
+  if (p.montoManual !== null) monto = r2(p.montoManual);
+  else if (METODOS_DIVISAS.includes(p.metodo) && p.aplicarDescuento && p.porcentaje > 0) {
+    descuentoMonto = r2((p.base * p.porcentaje) / 100);
+    monto = r2(p.base - descuentoMonto);
+  }
+  return { monto, descuentoMonto, montoBs: p.tasa ? r2(monto * p.tasa) : null };
+}

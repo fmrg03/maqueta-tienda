@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Material } from "@/lib/catalogo/catalogo";
+import { PrecioBs } from "@/components/ui/PrecioBs";
 
 interface FichaMaterialProps {
   material: Material;
@@ -30,6 +31,7 @@ export function FichaMaterial({ material }: FichaMaterialProps) {
       <p className="mt-2.5 font-mono text-[17px] font-medium text-dorado-oscuro">
         {precioMinimo !== null ? `Desde $${precioMinimo.toFixed(2)}` : "Consultar precio"}
       </p>
+      {precioMinimo !== null && <PrecioBs usd={precioMinimo} className="font-mono text-xs text-[#8A8272]" />}
       <p className="mt-0.5 text-xs text-[#8A8272]">
         {cantidadVariantes} {cantidadVariantes === 1 ? "presentación" : "presentaciones"}
       </p>

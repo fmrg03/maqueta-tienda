@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PrecioBs } from "@/components/ui/PrecioBs";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { agregarItem } from "@/lib/carrito/carrito-store";
@@ -40,6 +41,7 @@ export function TarjetaCombo({ combo }: { combo: Combo }) {
         <p className="font-mono text-2xl font-medium text-dorado-oscuro">
           ${combo.precioCombo.toFixed(2)}
         </p>
+        <PrecioBs usd={combo.precioCombo} className="font-mono text-xs text-[#8A8272]" />
         {ahorro > 0 && (
           <p className="mt-1 font-mono text-xs text-[#8A8272]">
             Por separado: <s>${separado.toFixed(2)}</s> · ahorras ${ahorro.toFixed(2)}

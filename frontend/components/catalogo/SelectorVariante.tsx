@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PrecioBs } from "@/components/ui/PrecioBs";
 import { useState } from "react";
 import { clsx } from "clsx";
 import { Badge } from "@/components/ui/Badge";
@@ -78,6 +79,7 @@ export function SelectorVariante({ material }: { material: Material }) {
       <p className="mt-6 font-mono text-3xl font-medium text-dorado-oscuro">
         ${variante.precioVenta.toFixed(2)}
       </p>
+      <PrecioBs usd={variante.precioVenta} className="font-mono text-sm text-[#8A8272]" />
       <div className="mt-2 flex items-center gap-3">
         <Badge tono={sinStock ? "alerta" : "exito"}>
           {sinStock ? "Sin stock" : `Stock: ${variante.stock}`}
@@ -99,7 +101,8 @@ export function SelectorVariante({ material }: { material: Material }) {
           />
         </label>
         <p className="pb-2 font-mono text-sm text-[#8A8272]">
-          Subtotal de referencia: ${(variante.precioVenta * cantidad).toFixed(2)}
+          Subtotal de referencia: ${(variante.precioVenta * cantidad).toFixed(2)}{" "}
+          <PrecioBs usd={variante.precioVenta * cantidad} />
         </p>
       </div>
 

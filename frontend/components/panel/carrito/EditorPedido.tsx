@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PrecioBs } from "@/components/ui/PrecioBs";
 import { ApiError } from "@/lib/api/client";
 import { etiquetaVariante, listarMateriales, type Material } from "@/lib/catalogo/catalogo";
 import { listarCombos, type Combo } from "@/lib/catalogo/combos";
@@ -12,6 +13,7 @@ import {
   enlaceWhatsAppCliente,
   enviarDetalle,
   ESTADOS_ABIERTOS,
+  ETIQUETA_METODO,
   guardarItems,
   nombreItem,
   obtenerSolicitud,
@@ -158,6 +160,22 @@ export function EditorPedido({
     setAgregar("");
   }
 
+  function elegirPresentacion(clave: string, varianteId: string) {
+    if (!varianteId) return;
+    for (const m of materiales) {
+      const v = m.variantes.find((x) => x.id === varianteId);
+      if (!v) continue;
+      setLineas((ls) =>
+        ls.map((l) =>
+          l.clave === clave
+            ? { ...l, tipo: "variante", refId: v.id, nombre: m.nombre, presentacion: etiquetaVariante(v), precio: v.precioVenta.toFixed(2), stock: v.stock }
+            : l,
+        ),
+      );
+      return;
+    }
+  }
+
   const cambiar = (clave: string, campo: "cantidad" | "precio", valor: string) =>
     setLineas((ls) => ls.map((l) => (l.clave === clave ? { ...l, [campo]: valor } : l)));
 
@@ -268,9 +286,19 @@ export function EditorPedido({
           <h2 className="font-semibold text-esmeralda">Venta cerrada</h2>
           <p className="mt-1 text-[#4A4538]">
             Cobrado {solicitud.montoCobrado !== null ? dinero(solicitud.montoCobrado) : "—"}
-            {solicitud.metodoPago && ` · ${solicitud.metodoPago.replace("_", " ")}`}
+            {solicitud.metodoPago && ` · ${ETIQUETA_METODO[solicitud.metodoPago] ?? solicitud.metodoPago}`}
             {solicitud.referenciaPago && ` · ref. ${solicitud.referenciaPago}`}. El inventario ya fue descontado.
           </p>
+          {solicitud.descuentoPct !== null && solicitud.descuentoMonto !== null && (
+            <p className="mt-1 text-[#4A4538]">
+              Incluye descuento por divisas de {solicitud.descuentoPct}% ({dinero(solicitud.descuentoMonto)}).
+            </p>
+          )}
+          {solicitud.tasaBcv !== null && solicitud.montoCobradoBs !== null && (
+            <p className="mt-1 font-mono text-xs text-[#8A8272]">
+              Tasa BCV {solicitud.tasaBcv.toFixed(2)} · {`Bs. ${new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2 }).format(solicitud.montoCobradoBs)}`}
+            </p>
+          )}
         </section>
       )}
 
@@ -315,8 +343,22 @@ export function EditorPedido({
                   <tr key={l.clave} className="border-b border-piedra-oscura last:border-0 align-top">
                     <td className="p-3">
                       <p className="font-medium">{l.nombre}</p>
-                      {l.presentacion && (
-                        <p className={l.tipo === "material" ? "text-xs text-vino" : "text-xs text-[#8A8272]"}>{l.presentacion}</p>
+                      {l.tipo === "material" && abierta ? (
+                        <select
+                          aria-label={`Elegir presentación de ${l.nombre}`}
+                          value=""
+                          onChange={(e) => elegirPresentacion(l.clave, e.target.value)}
+                          className="mt-1 max-w-full rounded-sm border border-vino bg-white px-2 py-1 text-xs"
+                        >
+                          <option value="">Elegir presentación…</option>
+                          {(materiales.find((m) => m.id === l.refId)?.variantes ?? []).map((v) => (
+                            <option key={v.id} value={v.id}>{`${etiquetaVariante(v)} · ${dinero(v.precioVenta)} · stock ${v.stock}`}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        l.presentacion && (
+                          <p className={l.tipo === "material" ? "text-xs text-vino" : "text-xs text-[#8A8272]"}>{l.presentacion}</p>
+                        )
                       )}
                       {l.stock !== undefined && (
                         <p className={`font-mono text-xs ${falta ? "text-vino" : "text-[#8A8272]"}`}>
@@ -401,7 +443,7 @@ export function EditorPedido({
 
         {genericos.length > 0 && abierta && (
           <p className="mt-3 text-sm text-vino">
-            {genericos.map((g) => g.nombre).join(", ")}: el cliente no eligió presentación. Quita ese ítem y agrega la presentación concreta.
+            {genericos.map((g) => g.nombre).join(", ")}: el cliente no eligió presentación. Elígela en el selector del ítem.
           </p>
         )}
 
@@ -424,6 +466,7 @@ export function EditorPedido({
             <span className="text-sm text-[#8A8272]">Total{totalNum !== null ? " acordado" : ""}</span>
             <br />
             <strong className="font-mono text-xl">{dinero(totalMostrado)}</strong>
+            <PrecioBs usd={totalMostrado} className="block font-mono text-xs text-[#8A8272]" />
             {parcial && totalNum === null && <span className="block text-xs text-vino">hay ítems sin precio</span>}
           </p>
         </div>

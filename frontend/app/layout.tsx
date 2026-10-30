@@ -23,7 +23,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Revestimiento Élite RY",
   description:
-    "Porcelanato, cerámica, grifería y sanitarios de alta gama. Consultá disponibilidad y te contactamos por WhatsApp.",
+    "Porcelanato, cerámica, grifería y sanitarios de alta gama. Consulta disponibilidad y te contactamos por WhatsApp.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -17,6 +17,9 @@
   --color-esmeralda: #2f6e52;
   --color-texto-claro: #ede8dd;
   --color-texto-secundario: #b9af9c;
+  --color-linea: #2b2720;
+  --color-carbon: #121110;
+  --color-apagado: #9a9080;
 }
 
 @theme inline {
@@ -31,6 +34,9 @@
   --color-esmeralda: var(--color-esmeralda);
   --color-texto-claro: var(--color-texto-claro);
   --color-texto-secundario: var(--color-texto-secundario);
+  --color-linea: var(--color-linea);
+  --color-carbon: var(--color-carbon);
+  --color-apagado: var(--color-apagado);
 
   --font-serif: var(--font-playfair), serif;
   --font-sans: var(--font-poppins), sans-serif;
@@ -42,3 +48,35 @@ body {
   color: var(--color-negro);
 }
 
+
+
+/* Junta dorada entre baldosas: el motivo del sitio público. */
+.junta-dorada {
+  background: linear-gradient(135deg, #f2c94c, #b8860b);
+}
+
+/* Única animación de entrada del sitio: las baldosas de la portada se asientan una a una. */
+@keyframes baldosa-entra {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+.baldosa {
+  animation: baldosa-entra 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .baldosa {
+    animation: none;
+  }
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Grano de piedra reutilizable (ruido fino sobre el color base). */
+.grano {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.5'/></svg>");
+}

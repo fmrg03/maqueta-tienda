@@ -63,6 +63,9 @@ export class CatalogoService {
     porPagina = 20,
     categoriaId?: string,
   ): Promise<PaginacionResult<MaterialPublico>> {
+    // Valores sanos: entero >= 1 y tope de 100 por página (endpoint público).
+    pagina = Number.isInteger(pagina) && pagina >= 1 ? pagina : 1;
+    porPagina = Number.isInteger(porPagina) && porPagina >= 1 ? Math.min(porPagina, 100) : 20;
     const [items, total] = await this.materialRepository.findAndCount({
       where: {
         activo: true,

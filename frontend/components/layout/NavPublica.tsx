@@ -18,7 +18,7 @@ function estaActiva(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function NavPublica({ esOscuro }: { esOscuro: boolean }) {
+export function NavPublica() {
   const pathname = usePathname();
   const usuario = useSyncExternalStore(suscribirSesion, getUsuarioSesion, () => null);
   // No se muestra "Ingresar" al público: el personal entra yendo directo a /login.
@@ -27,16 +27,14 @@ export function NavPublica({ esOscuro }: { esOscuro: boolean }) {
 
   const clase = (activo: boolean) =>
     clsx(
-      "transition-colors",
+      "border-b py-1 transition-colors",
       activo
-        ? clsx("font-bold", esOscuro ? "text-dorado-claro" : "text-negro")
-        : esOscuro
-          ? "text-texto-secundario hover:text-dorado-claro"
-          : "text-negro/70 hover:text-dorado-oscuro",
+        ? "border-dorado-claro font-medium text-dorado-claro"
+        : "border-transparent text-texto-secundario hover:text-dorado-claro",
     );
 
   return (
-    <nav className="flex flex-wrap gap-x-5 gap-y-1 text-sm sm:gap-x-7">
+    <nav aria-label="Principal" className="flex flex-wrap gap-x-5 gap-y-1 text-sm sm:gap-x-7">
       {(acceso ? [...LINKS, acceso] : LINKS).map((link) => {
         const activo = estaActiva(pathname, link.href);
         return (

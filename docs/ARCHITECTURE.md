@@ -427,3 +427,10 @@ El menú público ya no muestra "Ingresar": el personal entra directo a `/login`
 ## Panel: Mis horarios (asesor)
 
 El asesor gestiona su propia disponibilidad desde `/panel/mis-horarios`. `GET /asesores/yo` devuelve su perfil; agenda, alta en lote/individual y borrado de franjas aceptan rol `asesor` además de `admin`, pero `AsesoresService.verificarAcceso/verificarAccesoFranja` rechaza (403) cualquier agenda que no sea la suya. Alta/baja/edición de asesores y el listado de admin siguen siendo solo de admin.
+
+## Sitio público: estilo premium oscuro
+- Tema negro + dorado en todo el sitio público (tokens en `globals.css`: `negro`, `carbon`, `linea`, `dorado*`, `apagado`; utilidades `.junta-dorada`, `.baldosa`, `.grano`).
+- `PublicShell` envuelve cada página pública (header sticky, footer, botón WhatsApp). Consulta y agendar usan un panel claro `bg-piedra` dentro de la página oscura.
+- Home: hero con `MosaicoPiedra` (reemplazable por una foto real), categorías, recién llegados, combos y CTA de asesoría.
+- Catálogo: búsqueda (`buscar`), chips de categoría (`categoria`) y orden (`orden`) en la URL; detalle con relacionados y barra fija "Agregar a mi consulta" en móvil.
+- API pública: `GET /catalogo/materiales` limita `pagina` (≥1) y `porPagina` (1–100).

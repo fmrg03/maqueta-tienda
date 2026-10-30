@@ -1,4 +1,4 @@
-import { PublicHeader } from "@/components/layout/PublicHeader";
+import { PublicShell, TituloPagina } from "@/components/layout/PublicShell";
 import { AgendarAsesoria } from "@/components/asesorias/AgendarAsesoria";
 import { listarAsesores, listarFranjas } from "@/lib/asesorias/asesorias";
 
@@ -15,27 +15,25 @@ export default async function AgendarAsesoriaPage() {
       : null;
 
   return (
-    <main className="min-h-screen bg-piedra text-negro">
-      <PublicHeader variante="claro" />
+    <PublicShell>
       <div className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="font-serif text-[26px] font-semibold">Agendar una llamada</h1>
-        <div className="my-3.5 h-0.5 w-12 bg-gradient-to-r from-dorado-claro to-dorado-oscuro" />
-        <p className="mb-8 text-[#8A8272]">
-          Elige un horario y un asesor te llamará por WhatsApp para conversar qué
-          necesitas. Si podemos ayudarte, la visita se coordina directamente contigo después.
-        </p>
+        <TituloPagina descripcion="Elige un horario y un asesor te llamará por WhatsApp para conversar qué necesitas. Si podemos ayudarte, la visita se coordina directamente contigo después.">
+          Agendar una llamada
+        </TituloPagina>
         {asesores === null ? (
-          <p role="alert" className="text-vino">
+          <p role="alert" className="text-[#f0a09c]">
             No pudimos cargar los asesores. Inténtalo de nuevo en unos minutos.
           </p>
         ) : asesores.length === 0 ? (
-          <p className="text-[#8A8272]">
+          <p className="border border-linea bg-negro-suave p-8 text-texto-secundario">
             Por ahora no hay asesores disponibles para agendar. Escríbenos por WhatsApp.
           </p>
         ) : (
-          <AgendarAsesoria asesores={asesores} franjasIniciales={franjasIniciales} />
+          <div className="bg-piedra p-6 text-negro md:p-8">
+            <AgendarAsesoria asesores={asesores} franjasIniciales={franjasIniciales} />
+          </div>
         )}
       </div>
-    </main>
+    </PublicShell>
   );
 }

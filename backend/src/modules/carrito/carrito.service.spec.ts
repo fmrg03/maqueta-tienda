@@ -10,6 +10,8 @@ import { Material } from '../inventario/entities/material.entity';
 import { VarianteMaterial } from '../inventario/entities/variante-material.entity';
 import { Combo } from '../inventario/entities/combo.entity';
 import { DataSource } from 'typeorm';
+import { TasasService } from '../tasas/tasas.service';
+import { ConfiguracionService } from '../configuracion/configuracion.service';
 import { NotificacionesService } from '../../common/notificaciones/notificaciones.service';
 import { rlsStorage } from '../../common/rls/request-context';
 
@@ -45,6 +47,8 @@ describe('CarritoService', () => {
         { provide: getRepositoryToken(VarianteMaterial), useValue: createMockRepository() },
         { provide: getRepositoryToken(Combo), useValue: createMockRepository() },
         { provide: NotificacionesService, useValue: notificaciones },
+        { provide: TasasService, useValue: { vigente: jest.fn() } },
+        { provide: ConfiguracionService, useValue: { descuentoDivisasPct: jest.fn() } },
         { provide: DataSource, useValue: { manager: { getRepository: () => ({ insert: jest.fn() }) } } },
       ],
     }).compile();

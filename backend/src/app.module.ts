@@ -10,6 +10,8 @@ import { ProveedoresModule } from './modules/proveedores/proveedores.module';
 import { InventarioModule } from './modules/inventario/inventario.module';
 import { CatalogoModule } from './modules/catalogo/catalogo.module';
 import { CarritoModule } from './modules/carrito/carrito.module';
+import { TasasModule } from './modules/tasas/tasas.module';
+import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
 import { AsesoriasModule } from './modules/asesorias/asesorias.module';
 import { RlsInterceptor } from './common/rls/rls.interceptor';
 import { HealthModule } from './health/health.module';
@@ -49,6 +51,8 @@ import { RedisModule } from './common/redis/redis.module';
     InventarioModule,
     CatalogoModule,
     CarritoModule,
+    TasasModule,
+    ConfiguracionModule,
     AsesoriasModule,
     HealthModule,
   ],

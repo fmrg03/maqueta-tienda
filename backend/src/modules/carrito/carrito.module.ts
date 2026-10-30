@@ -7,6 +7,8 @@ import {
 import { EventoSolicitudCarrito } from './entities/evento-solicitud-carrito.entity';
 import { CarritoService } from './carrito.service';
 import { CarritoController } from './carrito.controller';
+import { TasasModule } from '../tasas/tasas.module';
+import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { InventarioModule } from '../inventario/inventario.module';
 import { NotificacionesModule } from '../../common/notificaciones/notificaciones.module';
 
@@ -14,6 +16,8 @@ import { NotificacionesModule } from '../../common/notificaciones/notificaciones
   imports: [
     TypeOrmModule.forFeature([SolicitudCarrito, ItemSolicitudCarrito, EventoSolicitudCarrito]),
     InventarioModule,
+    TasasModule,
+    ConfiguracionModule,
     NotificacionesModule,
   ],
   controllers: [CarritoController],

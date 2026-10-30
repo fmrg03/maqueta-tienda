@@ -1,4 +1,5 @@
 import {
+  calcularCobro,
   calcularFaltantes,
   CarritoNoCerrableError,
   planificarSalidas,
@@ -97,6 +98,34 @@ describe('carrito-calculos', () => {
       expect(f).toEqual([
         { varianteId: 'a', sku: 'SKU-a', requerido: 5, disponible: 3, faltan: 2 },
       ]);
+    });
+  });
+
+  describe('calcularCobro', () => {
+    const base = { base: 100, divisas: true, aplicarDescuento: true, porcentaje: 10, tasa: 40 };
+
+    it('aplica el descuento por divisas y convierte a bolívares', () => {
+      expect(calcularCobro(base)).toEqual({ monto: 90, descuentoPct: 10, descuentoMonto: 10, montoBs: 3600 });
+    });
+
+    it('sin descuento si el método no es en divisas o se desmarca', () => {
+      expect(calcularCobro({ ...base, divisas: false }).monto).toBe(100);
+      expect(calcularCobro({ ...base, aplicarDescuento: false })).toMatchObject({ monto: 100, descuentoPct: null, descuentoMonto: null });
+    });
+
+    it('sin descuento si el porcentaje configurado es 0', () => {
+      expect(calcularCobro({ ...base, porcentaje: 0 }).descuentoPct).toBeNull();
+    });
+
+    it('un monto manual manda sobre el descuento y no registra porcentaje', () => {
+      expect(calcularCobro({ ...base, montoManual: 85 })).toEqual({ monto: 85, descuentoPct: null, descuentoMonto: null, montoBs: 3400 });
+    });
+
+    it('redondea a centavos', () => {
+      const r = calcularCobro({ ...base, base: 33.33, porcentaje: 7.5, tasa: 36.1234 });
+      expect(r.descuentoMonto).toBe(2.5);
+      expect(r.monto).toBe(30.83);
+      expect(r.montoBs).toBeCloseTo(30.83 * 36.1234, 2);
     });
   });
 });

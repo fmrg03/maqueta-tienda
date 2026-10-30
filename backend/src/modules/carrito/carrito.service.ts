@@ -12,6 +12,7 @@ import {
   ItemSolicitudCarrito,
   EstadoSolicitudCarrito,
   ESTADOS_EDITABLES,
+  METODOS_DIVISAS,
 } from './entities/solicitud-carrito.entity';
 import {
   EventoSolicitudCarrito,
@@ -21,9 +22,12 @@ import {
   MovimientoInventario,
   TipoMovimiento,
 } from '../inventario/entities/movimiento-inventario.entity';
+import { TasasService } from '../tasas/tasas.service';
+import { ConfiguracionService } from '../configuracion/configuracion.service';
 import { EditarItemsCarritoDto } from './dto/editar-items-carrito.dto';
 import { CancelarCarritoDto, CerrarCarritoDto } from './dto/cerrar-carrito.dto';
 import {
+  calcularCobro,
   calcularFaltantes,
   CarritoNoCerrableError,
   planificarSalidas,
@@ -63,6 +67,8 @@ export class CarritoService {
     private readonly comboRepository: Repository<Combo>,
     private readonly notificacionesService: NotificacionesService,
     private readonly dataSource: DataSource,
+    private readonly tasas: TasasService,
+    private readonly configuracion: ConfiguracionService,
   ) {}
 
   // Manager transaccional del request (con el contexto RLS) o, fuera de un
@@ -340,7 +346,23 @@ export class CarritoService {
 
     const { total } = totalItems(solicitud.items as any);
     const fijo = solicitud.totalFinal !== null && solicitud.totalFinal !== undefined ? Number(solicitud.totalFinal) : null;
-    const monto = dto.montoCobrado ?? fijo ?? total;
+    const base = fijo ?? total;
+
+    const tasa = dto.tasaBcv ?? (await this.tasas.vigente())?.valor;
+    if (!tasa) {
+      throw new BadRequestException(
+        'No hay tasa BCV disponible. Regístrala en Configuración o indícala al cerrar la venta.',
+      );
+    }
+    const cobro = calcularCobro({
+      base,
+      divisas: METODOS_DIVISAS.includes(dto.metodoPago),
+      aplicarDescuento: dto.aplicarDescuento ?? true,
+      porcentaje: await this.configuracion.descuentoDivisasPct(),
+      montoManual: dto.montoCobrado,
+      tasa,
+    });
+    const monto = cobro.monto;
 
     let salidas;
     try {
@@ -365,6 +387,10 @@ export class CarritoService {
       metodoPago: dto.metodoPago,
       referenciaPago: dto.referenciaPago ?? null,
       montoCobrado: monto,
+      descuentoPct: cobro.descuentoPct,
+      descuentoMonto: cobro.descuentoMonto,
+      tasaBcv: tasa,
+      montoCobradoBs: cobro.montoBs,
     };
 
     if (faltantes.length > 0) {

@@ -163,3 +163,38 @@ export function calcularFaltantes(
   }
   return faltantes;
 }
+
+export interface CobroCalculado {
+  monto: number;
+  descuentoPct: number | null;
+  descuentoMonto: number | null;
+  montoBs: number;
+}
+
+/**
+ * Cuánto se cobra y cómo queda registrado.
+ * - `montoManual` manda sobre todo (el asesor lo fijó a mano; no hay % registrado).
+ * - Pagando en divisas con el descuento activo: total − porcentaje.
+ * - El monto en bolívares usa la tasa BCV del momento.
+ */
+export function calcularCobro(p: {
+  base: number;
+  divisas: boolean;
+  aplicarDescuento: boolean;
+  porcentaje: number;
+  montoManual?: number | null;
+  tasa: number;
+}): CobroCalculado {
+  let monto = redondear(p.base, 2);
+  let descuentoPct: number | null = null;
+  let descuentoMonto: number | null = null;
+
+  if (p.montoManual !== undefined && p.montoManual !== null) {
+    monto = redondear(p.montoManual, 2);
+  } else if (p.divisas && p.aplicarDescuento && p.porcentaje > 0) {
+    descuentoPct = p.porcentaje;
+    descuentoMonto = redondear((p.base * p.porcentaje) / 100, 2);
+    monto = redondear(p.base - descuentoMonto, 2);
+  }
+  return { monto, descuentoPct, descuentoMonto, montoBs: redondear(monto * p.tasa, 2) };
+}

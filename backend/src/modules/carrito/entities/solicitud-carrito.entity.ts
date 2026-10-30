@@ -28,12 +28,17 @@ export const ESTADOS_EDITABLES = [
 ];
 
 export enum MetodoPago {
+  // Efectivo en bolívares (el valor histórico 'efectivo').
   EFECTIVO = 'efectivo',
+  EFECTIVO_DIVISAS = 'efectivo_divisas',
   PAGO_MOVIL = 'pago_movil',
   TRANSFERENCIA = 'transferencia',
   ZELLE = 'zelle',
   OTRO = 'otro',
 }
+
+/** Métodos que dan derecho al descuento por pago en divisas. */
+export const METODOS_DIVISAS: MetodoPago[] = [MetodoPago.EFECTIVO_DIVISAS, MetodoPago.ZELLE];
 
 export enum CanalEnvio {
   WHATSAPP = 'whatsapp',
@@ -91,6 +96,20 @@ export class SolicitudCarrito {
   // Dinero realmente cobrado (lo que cuenta como ingreso).
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   montoCobrado?: number | null;
+
+  // % y monto de descuento por divisas aplicados (congelados al cerrar).
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  descuentoPct?: number | null;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  descuentoMonto?: number | null;
+
+  // Tasa BCV (Bs/USD) usada al registrar el pago y lo cobrado en bolívares.
+  @Column({ type: 'decimal', precision: 14, scale: 4, nullable: true })
+  tasaBcv?: number | null;
+
+  @Column({ type: 'decimal', precision: 16, scale: 2, nullable: true })
+  montoCobradoBs?: number | null;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   montoReembolsado?: number | null;

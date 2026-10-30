@@ -340,3 +340,10 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 - La solicitud se bloquea (`FOR UPDATE`) y las variantes con lock pesimista ordenado por id: dos cierres simultáneos no descuentan dos veces.
 
 **Contabilidad:** cada salida guarda `precioVentaUnitario` y `precioCostoUnitario` congelados (escalados para sumar exactamente el `montoCobrado`). `reporteGanancias` suma esos valores —no el precio actual de la variante— y excluye las ventas canceladas/anuladas. Las salidas manuales antiguas, sin precio guardado, caen al precio actual.
+
+### Tasa BCV, bolívares y descuento por divisas
+
+- **Tasa BCV** (`modules/tasas`): `GET /api/v1/tasas/bcv` (público) devuelve `{ valor, fuente, fecha, desactualizada }`. Se consulta de forma perezosa a `TASA_BCV_URL` (por defecto DolarAPI Venezuela) como máximo cada `TASA_BCV_TTL_MIN` minutos y **se guarda en `tasas_cambio` solo cuando el valor cambia** (historial). Si la fuente falla se usa la última tasa guardada. El admin puede fijarla a mano (`POST /tasas/manual`, manda 24 h) o forzar la consulta (`POST /tasas/actualizar`). `GET /tasas/historial` es solo admin.
+- **Bolívares:** el catálogo y el panel muestran "≈ Bs." con la tasa vigente. Es solo presentación; los precios siguen en USD.
+- **Al cerrar una venta** se congelan en `solicitudes_carrito`: `tasaBcv`, `montoCobradoBs`, `descuentoPct` y `descuentoMonto`. No hace falta un histórico aparte de la tasa para auditar una venta pasada.
+- **Descuento por divisas** (`modules/configuracion`): un % global guardado en la tabla `configuracion` (clave `descuento_divisas_pct`), editable por el admin (`PUT /configuracion/descuento-divisas`) y legible públicamente (`GET /configuracion/publica`). `DESCUENTO_DIVISAS_PCT` solo es el valor inicial. Se aplica cuando el método es `efectivo_divisas` o `zelle` (`METODOS_DIVISAS`), sobre el total del pedido (o el total acordado), salvo que el asesor desmarque `aplicarDescuento` o fije un `montoCobrado` manual. Cambiar el % no altera ventas ya cerradas. `efectivo` pasa a significar efectivo en bolívares.

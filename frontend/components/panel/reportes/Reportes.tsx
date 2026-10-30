@@ -5,10 +5,11 @@ import { clsx } from "clsx";
 import { ApiError } from "@/lib/api/client";
 import { exportarReporte, hoyVE, type Agrupacion, type SeccionReporte } from "@/lib/panel/reportes";
 import { SeccionMercancia } from "./SeccionMercancia";
+import { SeccionAsesorias } from "./SeccionAsesorias";
 import { SeccionProveedores } from "./SeccionProveedores";
 import { SeccionVentas, type ModoVentas } from "./SeccionVentas";
 
-const SECCIONES: Array<[SeccionReporte, string]> = [["ventas", "Ventas y ganancia"], ["mercancia", "Mercancía"], ["proveedores", "Proveedores"]];
+const SECCIONES: Array<[SeccionReporte, string]> = [["ventas", "Ventas y ganancia"], ["mercancia", "Mercancía"], ["proveedores", "Proveedores"], ["asesorias", "Asesorías"]];
 const MODOS_VENTAS: Array<[ModoVentas, string]> = [["dia", "Diario"], ["semana", "Por semana"], ["mes", "Por mes"], ["anio", "Por año"]];
 const MODOS_MERCANCIA: Array<[Agrupacion, string]> = [["semana", "Por semana"], ["mes", "Por mes"], ["anio", "Por año"]];
 
@@ -58,7 +59,7 @@ export function Reportes() {
     <div className="max-w-5xl">
       <h1 className="font-serif text-[26px] font-semibold">Reportes</h1>
       <div className="my-3.5 h-0.5 w-12 bg-gradient-to-r from-dorado-claro to-dorado-oscuro" />
-      <p className="mb-6 text-[#8A8272]">Ventas y ganancia, movimiento de mercancía y lo pagado a proveedores. Todo se puede descargar en Excel.</p>
+      <p className="mb-6 text-[#8A8272]">Ventas y ganancia, movimiento de mercancía, lo pagado a proveedores y las citas de asesoría. Todo se puede descargar en Excel.</p>
 
       <div role="tablist" aria-label="Secciones del reporte" className="mb-4 flex flex-wrap gap-2 border-b border-piedra-oscura">
         {SECCIONES.map(([v, l]) => (
@@ -112,6 +113,8 @@ export function Reportes() {
         <SeccionVentas modo={modo} desde={d1} hasta={d2} />
       ) : seccion === "mercancia" ? (
         <SeccionMercancia desde={d1} hasta={d2} agrupacion={agrupMerc} />
+      ) : seccion === "asesorias" ? (
+        <SeccionAsesorias desde={d1} hasta={d2} />
       ) : (
         <SeccionProveedores desde={d1} hasta={d2} />
       )}

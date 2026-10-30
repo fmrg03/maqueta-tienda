@@ -1,11 +1,18 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
+import { randomInt } from 'crypto';
+import type Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../common/redis/redis.module';
+import { ConsultaUsuariosDto } from './dto/consulta-usuarios.dto';
 import * as bcrypt from 'bcrypt';
 import { Usuario } from './entities/usuario.entity';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
@@ -13,13 +20,29 @@ import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { getRlsManager } from '../../common/rls/request-context';
 
 const BCRYPT_SALT_ROUNDS = 12;
+const SESIONES_TTL_SEGUNDOS = 7 * 24 * 60 * 60;
+// Sin caracteres que se confunden al dictarlos (0/O, 1/l/I).
+const ALFABETO_TEMPORAL = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+export const claveCorteSesiones = (usuarioId: string) => `sesiones:corte:${usuarioId}`;
 
 @Injectable()
 export class UsuariosService {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
+    @Optional() @Inject(REDIS_CLIENT) private readonly redis?: Redis,
   ) {}
+
+  /** Cierra todas las sesiones abiertas del usuario (refresh y access tokens emitidos hasta ahora). */
+  async revocarSesiones(usuarioId: string): Promise<void> {
+    await this.redis?.set(
+      claveCorteSesiones(usuarioId),
+      String(Math.floor(Date.now() / 1000)),
+      'EX',
+      SESIONES_TTL_SEGUNDOS,
+    );
+  }
 
   // La tabla `usuarios` tiene RLS (ver migración AddRowLevelSecurity). Si
   // hay un request en curso con contexto de RLS activo, usamos el
@@ -71,8 +94,15 @@ export class UsuariosService {
     return this.repo.save(usuario);
   }
 
-  async findAll(): Promise<Usuario[]> {
-    return this.repo.find();
+  async findAll(f: ConsultaUsuariosDto = {}): Promise<Usuario[]> {
+    const base: Record<string, unknown> = {};
+    if (f.rol) base.rol = f.rol;
+    if (f.estado === 'activos') base.activo = true;
+    if (f.estado === 'inactivos') base.activo = false;
+    const texto = f.buscar?.trim();
+    const patron = texto ? `%${texto.replace(/[\\%_]/g, '\\$&')}%` : null;
+    const where = patron ? [{ ...base, nombre: ILike(patron) }, { ...base, email: ILike(patron) }] : base;
+    return this.repo.find({ where, order: { createdAt: 'DESC' } });
   }
 
   async findOne(id: string): Promise<Usuario> {
@@ -122,7 +152,7 @@ export class UsuariosService {
     return this.findOne(id);
   }
 
-  async update(id: string, dto: UpdateUsuarioDto): Promise<Usuario> {
+  async update(id: string, dto: UpdateUsuarioDto, actorId?: string): Promise<Usuario> {
     const usuario = await this.findOne(id);
 
     if (dto.email && dto.email !== usuario.email) {
@@ -141,9 +171,43 @@ export class UsuariosService {
         'Esta cuenta está protegida y no puede cambiar de rol',
       );
     }
+    if (usuario.protegido && dto.activo === false) {
+      throw new ForbiddenException(
+        'Esta cuenta está protegida y no puede desactivarse',
+      );
+    }
+    // Evita que un admin se deje a sí mismo sin acceso por un descuido.
+    if (actorId && actorId === id) {
+      if (dto.activo === false) throw new BadRequestException('No puedes desactivar tu propia cuenta');
+      if (dto.rol && dto.rol !== usuario.rol) throw new BadRequestException('No puedes cambiar tu propio rol');
+    }
 
+    const cierraSesiones =
+      (dto.activo === false && usuario.activo) || (dto.rol !== undefined && dto.rol !== usuario.rol);
     Object.assign(usuario, dto);
-    return this.repo.save(usuario);
+    const guardado = await this.repo.save(usuario);
+    if (cierraSesiones) await this.revocarSesiones(id);
+    return guardado;
+  }
+
+  /**
+   * Fija una contraseña nueva (la indicada o una temporal generada) y cierra
+   * las sesiones abiertas. La cuenta protegida solo puede restablecerla ella misma.
+   */
+  async restablecerPassword(
+    id: string,
+    actorId: string | undefined,
+    password?: string,
+  ): Promise<{ passwordTemporal?: string }> {
+    const usuario = await this.findOne(id);
+    if (usuario.protegido && actorId !== id) {
+      throw new ForbiddenException('La contraseña de la cuenta protegida solo puede cambiarla su propietario');
+    }
+    const nueva = password ?? Array.from({ length: 12 }, () => ALFABETO_TEMPORAL[randomInt(ALFABETO_TEMPORAL.length)]).join('');
+    const passwordHash = await bcrypt.hash(nueva, BCRYPT_SALT_ROUNDS);
+    await this.repo.update({ id }, { passwordHash });
+    await this.revocarSesiones(id);
+    return password ? {} : { passwordTemporal: nueva };
   }
 
   async desactivar(id: string): Promise<void> {
@@ -158,5 +222,6 @@ export class UsuariosService {
     }
     usuario.activo = false;
     await this.repo.save(usuario);
+    await this.revocarSesiones(id);
   }
 }

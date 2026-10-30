@@ -23,7 +23,7 @@ export const MENU_PANEL: ItemMenu[] = [
   { href: "/panel/reportes", label: "Reportes", descripcion: "Inventario y ganancias por período", roles: ["admin"], disponible: true },
   { href: "/panel/configuracion", label: "Configuración", descripcion: "Tasa BCV y descuento por divisas", roles: ["admin"], disponible: true },
   { href: "/panel/asesores", label: "Asesores", descripcion: "Asesores y su disponibilidad", roles: ["admin"], disponible: true },
-  { href: "/panel/usuarios", label: "Usuarios", descripcion: "Cuentas y roles", roles: ["admin"], disponible: false },
+  { href: "/panel/usuarios", label: "Usuarios", descripcion: "Cuentas y roles", roles: ["admin"], disponible: true },
 ];
 
 export function menuParaRol(rol: RolUsuario): ItemMenu[] {

@@ -51,6 +51,21 @@ export interface MasVendido { material: string; sku: string; atributos: Record<s
 export interface StockItem { material: string; sku: string; atributos: Record<string, string>; stock: number; valorCosto: number; valorVenta: number }
 export interface ReporteStock { unidades: number; valorCosto: number; valorVenta: number; agotados: number; pocoStock: StockItem[]; items: StockItem[] }
 
+export interface AsesoriaFila {
+  fecha: string; cliente: string; telefono: string; asesor: string; estado: string;
+}
+export interface AsesoriaAsesor {
+  asesor: string; total: number; pendiente: number; llamadaRealizada: number; visitaPactada: number; noProcede: number; cancelada: number;
+}
+export interface ReporteAsesorias {
+  total: number;
+  porEstado: Record<string, number>;
+  /** visitas pactadas sobre las citas ya atendidas (llamada realizada + visita + no procede). */
+  conversionPct: number | null;
+  porAsesor: AsesoriaAsesor[];
+  detalle: AsesoriaFila[];
+}
+
 const TRUNC = { semana: 'week', mes: 'month', anio: 'year' } as const;
 type Agrupacion = keyof typeof TRUNC;
 
@@ -283,6 +298,47 @@ export class ReportesService {
       agotados: items.filter((i) => i.stock === 0).length,
       pocoStock: items.filter((i) => i.stock > 0 && i.stock <= UMBRAL_POCO_STOCK),
       items,
+    };
+  }
+  /** Citas de asesoría con llamada dentro del rango: por estado, por asesor y detalle. */
+  async reporteAsesorias(desde: string, hasta: string): Promise<ReporteAsesorias> {
+    const filas = await this.manager().query(
+      `SELECT s."fechaHoraLlamada" AS fecha, s."clienteNombre", s."clienteTelefono", s.estado,
+              COALESCE(u.nombre, 'Sin asesor') AS asesor
+         FROM solicitudes_asesoria s
+         LEFT JOIN asesores a ON a.id = s."asesorId"
+         LEFT JOIN usuarios u ON u.id = a."usuarioId"
+        WHERE s."fechaHoraLlamada" BETWEEN $1 AND $2
+        ORDER BY s."fechaHoraLlamada" DESC
+        LIMIT 2000`,
+      [desde, hasta],
+    );
+    const porEstado: Record<string, number> = { pendiente: 0, llamada_realizada: 0, visita_pactada: 0, no_procede: 0, cancelada: 0 };
+    const mapa = new Map<string, AsesoriaAsesor>();
+    for (const f of filas) {
+      porEstado[f.estado] = (porEstado[f.estado] ?? 0) + 1;
+      const r = mapa.get(f.asesor) ?? { asesor: f.asesor, total: 0, pendiente: 0, llamadaRealizada: 0, visitaPactada: 0, noProcede: 0, cancelada: 0 };
+      r.total += 1;
+      if (f.estado === 'pendiente') r.pendiente += 1;
+      else if (f.estado === 'llamada_realizada') r.llamadaRealizada += 1;
+      else if (f.estado === 'visita_pactada') r.visitaPactada += 1;
+      else if (f.estado === 'no_procede') r.noProcede += 1;
+      else if (f.estado === 'cancelada') r.cancelada += 1;
+      mapa.set(f.asesor, r);
+    }
+    const atendidas = porEstado.llamada_realizada + porEstado.visita_pactada + porEstado.no_procede;
+    return {
+      total: filas.length,
+      porEstado,
+      conversionPct: atendidas > 0 ? (porEstado.visita_pactada / atendidas) * 100 : null,
+      porAsesor: [...mapa.values()].sort((a, b) => b.total - a.total),
+      detalle: filas.map((f: any) => ({
+        fecha: new Date(f.fecha).toISOString(),
+        cliente: f.clienteNombre,
+        telefono: f.clienteTelefono,
+        asesor: f.asesor,
+        estado: f.estado,
+      })),
     };
   }
 }

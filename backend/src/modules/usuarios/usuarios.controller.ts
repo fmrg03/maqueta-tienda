@@ -7,6 +7,8 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
+  Req,
   UseGuards,
   UseInterceptors,
   ClassSerializerInterceptor,
@@ -15,6 +17,8 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { ConsultaUsuariosDto } from './dto/consulta-usuarios.dto';
+import { RestablecerPasswordDto } from './dto/restablecer-password.dto';
 import { UsuarioResponseDto } from './dto/usuario-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -38,8 +42,8 @@ export class UsuariosController {
 
   @Get()
   @Roles(RolUsuario.ADMIN)
-  async findAll(): Promise<UsuarioResponseDto[]> {
-    const usuarios = await this.usuariosService.findAll();
+  async findAll(@Query() consulta: ConsultaUsuariosDto): Promise<UsuarioResponseDto[]> {
+    const usuarios = await this.usuariosService.findAll(consulta);
     return usuarios.map((u) => new UsuarioResponseDto(u));
   }
 
@@ -57,9 +61,20 @@ export class UsuariosController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUsuarioDto,
+    @Req() request: any,
   ): Promise<UsuarioResponseDto> {
-    const usuario = await this.usuariosService.update(id, dto);
+    const usuario = await this.usuariosService.update(id, dto, request.user?.id);
     return new UsuarioResponseDto(usuario);
+  }
+
+  @Post(':id/restablecer-password')
+  @Roles(RolUsuario.ADMIN)
+  restablecerPassword(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RestablecerPasswordDto,
+    @Req() request: any,
+  ): Promise<{ passwordTemporal?: string }> {
+    return this.usuariosService.restablecerPassword(id, request.user?.id, dto.password);
   }
 
   @Delete(':id')

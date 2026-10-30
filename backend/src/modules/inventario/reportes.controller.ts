@@ -42,6 +42,11 @@ export class ReportesController {
     return this.reportesService.reporteMasVendidos(q.desde, q.hasta);
   }
 
+  @Get('asesorias')
+  asesorias(@Query() q: ReporteQueryDto) {
+    return this.reportesService.reporteAsesorias(q.desde, q.hasta);
+  }
+
   @Get('stock')
   stock() {
     return this.reportesService.reporteStock();

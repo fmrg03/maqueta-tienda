@@ -21,11 +21,9 @@ function estaActiva(pathname: string, href: string): boolean {
 export function NavPublica({ esOscuro }: { esOscuro: boolean }) {
   const pathname = usePathname();
   const usuario = useSyncExternalStore(suscribirSesion, getUsuarioSesion, () => null);
-  // Con sesión de personal, "Ingresar" pasa a ser el acceso directo al panel.
-  const acceso =
-    usuario && usuario.rol !== "cliente"
-      ? { href: "/panel", label: "Mi panel" }
-      : { href: "/login", label: "Ingresar" };
+  // No se muestra "Ingresar" al público: el personal entra yendo directo a /login.
+  // Con sesión de personal activa sí aparece el acceso directo al panel.
+  const acceso = usuario && usuario.rol !== "cliente" ? { href: "/panel", label: "Mi panel" } : null;
 
   const clase = (activo: boolean) =>
     clsx(
@@ -39,7 +37,7 @@ export function NavPublica({ esOscuro }: { esOscuro: boolean }) {
 
   return (
     <nav className="flex flex-wrap gap-x-5 gap-y-1 text-sm sm:gap-x-7">
-      {[...LINKS, acceso].map((link) => {
+      {(acceso ? [...LINKS, acceso] : LINKS).map((link) => {
         const activo = estaActiva(pathname, link.href);
         return (
           <Link

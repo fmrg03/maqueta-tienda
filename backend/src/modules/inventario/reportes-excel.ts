@@ -1,8 +1,9 @@
 import * as ExcelJS from 'exceljs';
 import { ReportesService } from './reportes.service';
 
-export type SeccionReporte = 'ventas' | 'mercancia' | 'proveedores';
-export const SECCIONES: SeccionReporte[] = ['ventas', 'mercancia', 'proveedores'];
+export type SeccionReporte = 'ventas' | 'mercancia' | 'proveedores' | 'asesorias';
+export const SECCIONES: SeccionReporte[] = ['ventas', 'mercancia', 'proveedores', 'asesorias'];
+const ESTADOS_ASESORIA: Record<string, string> = { pendiente: 'Pendiente', llamada_realizada: 'Llamada realizada', visita_pactada: 'Visita pactada', no_procede: 'No procede', cancelada: 'Cancelada' };
 
 const USD = '"$"#,##0.00';
 const attrs = (a: Record<string, string>) => Object.values(a ?? {}).join(' / ');
@@ -108,6 +109,25 @@ export async function construirLibro(
       { header: 'Total (USD)', key: 't', width: 14, formato: USD },
       { header: 'Motivo / nota', key: 'n', width: 30 },
     ], c.detalle.map((d) => ({ f: fechaVE(d.fecha), p: d.proveedor ?? 'Sin proveedor indicado', m: d.material, a: attrs(d.atributos), k: d.sku, u: d.unidades, c: d.costoUnitario ?? '', t: d.total ?? '', n: d.motivo ?? '' })));
+  }
+  if (seccion === 'asesorias') {
+    const a = await svc.reporteAsesorias(desde, hasta);
+    hoja(wb, 'Por asesor', [
+      { header: 'Asesor', key: 'a', width: 28 },
+      { header: 'Total', key: 't', width: 10 },
+      { header: 'Pendientes', key: 'p', width: 12 },
+      { header: 'Llamada realizada', key: 'l', width: 18 },
+      { header: 'Visita pactada', key: 'v', width: 16 },
+      { header: 'No procede', key: 'n', width: 12 },
+      { header: 'Canceladas', key: 'c', width: 12 },
+    ], a.porAsesor.map((r) => ({ a: r.asesor, t: r.total, p: r.pendiente, l: r.llamadaRealizada, v: r.visitaPactada, n: r.noProcede, c: r.cancelada })));
+    hoja(wb, 'Citas', [
+      { header: 'Fecha de la llamada', key: 'f', width: 20 },
+      { header: 'Cliente', key: 'c', width: 28 },
+      { header: 'Teléfono', key: 't', width: 16 },
+      { header: 'Asesor', key: 'a', width: 26 },
+      { header: 'Estado', key: 'e', width: 20 },
+    ], a.detalle.map((d) => ({ f: fechaVE(d.fecha), c: d.cliente, t: d.telefono, a: d.asesor, e: ESTADOS_ASESORIA[d.estado] ?? d.estado })));
   }
   return wb;
 }

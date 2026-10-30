@@ -1,7 +1,7 @@
 import { apiFetch, descargarArchivo } from "../api/client";
 
 export type Agrupacion = "semana" | "mes" | "anio";
-export type SeccionReporte = "ventas" | "mercancia" | "proveedores";
+export type SeccionReporte = "ventas" | "mercancia" | "proveedores" | "asesorias";
 
 export interface GananciaPeriodo { periodo: string; ventas: number; costo: number; ganancia: number }
 export interface ReporteGanancias { totalVentas: number; totalCosto: number; ganancia: number; serie: GananciaPeriodo[] }
@@ -41,6 +41,13 @@ export const reporteCompras = (desde: string, hasta: string) =>
 
 export const reporteMasVendidos = (desde: string, hasta: string) =>
   apiFetch<MasVendido[]>(`/api/v1/reportes/mas-vendidos?${rango(desde, hasta)}`);
+
+export interface AsesoriaAsesor { asesor: string; total: number; pendiente: number; llamadaRealizada: number; visitaPactada: number; noProcede: number; cancelada: number }
+export interface AsesoriaFila { fecha: string; cliente: string; telefono: string; asesor: string; estado: string }
+export interface ReporteAsesorias { total: number; porEstado: Record<string, number>; conversionPct: number | null; porAsesor: AsesoriaAsesor[]; detalle: AsesoriaFila[] }
+
+export const reporteAsesorias = (desde: string, hasta: string) =>
+  apiFetch<ReporteAsesorias>(`/api/v1/reportes/asesorias?${rango(desde, hasta)}`);
 
 export const reporteStock = () => apiFetch<ReporteStock>("/api/v1/reportes/stock");
 

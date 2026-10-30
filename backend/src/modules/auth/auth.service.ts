@@ -13,6 +13,7 @@ import { LoginDto } from './dto/login.dto';
 import { CreateUsuarioDto } from '../usuarios/dto/create-usuario.dto';
 import { UsuarioResponseDto } from '../usuarios/dto/usuario-response.dto';
 import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { claveCorteSesiones } from '../usuarios/usuarios.service';
 import { REDIS_CLIENT } from '../../common/redis/redis.module';
 
 const BCRYPT_SALT_ROUNDS = 12;
@@ -27,6 +28,7 @@ interface RefreshPayload {
   sub: string;
   familyId: string;
   jti: string;
+  iat?: number;
 }
 
 @Injectable()
@@ -140,6 +142,13 @@ export class AuthService {
       throw new UnauthorizedException(
         'Refresh token reusado — la sesión fue revocada por seguridad',
       );
+    }
+
+    // Sesiones cerradas por un admin (desactivación, cambio de rol o de contraseña).
+    const corte = await this.redis.get(claveCorteSesiones(payload.sub));
+    if (corte && payload.iat !== undefined && payload.iat <= Number(corte)) {
+      await this.redis.del(key);
+      throw new UnauthorizedException('Sesión cerrada, inicia sesión de nuevo');
     }
 
     const usuario = await this.usuariosService.findOneParaRefresh(payload.sub);

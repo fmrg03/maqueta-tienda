@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UsuariosService } from './usuarios.service';
 import { RolUsuario, Usuario } from './entities/usuario.entity';
+import { BadRequestException } from '@nestjs/common';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 
 // Mock de bcrypt: en tests unitarios no queremos hashing real (lento y no
@@ -19,6 +20,7 @@ const createMockRepository = (): MockRepository => ({
   save: jest.fn(),
   find: jest.fn(),
   createQueryBuilder: jest.fn(),
+  update: jest.fn(),
 });
 
 describe('UsuariosService', () => {
@@ -185,6 +187,46 @@ describe('UsuariosService', () => {
         ForbiddenException,
       );
       expect(repository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('administración de cuentas', () => {
+    it('no deja desactivar la cuenta protegida por PATCH', async () => {
+      repository.findOne!.mockResolvedValue({ ...usuarioBase, protegido: true, rol: RolUsuario.ADMIN });
+      await expect(service.update('uuid-1', { activo: false }, 'otro-admin')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('no deja que un admin se desactive ni cambie su propio rol', async () => {
+      repository.findOne!.mockResolvedValue({ ...usuarioBase, rol: RolUsuario.ADMIN });
+      await expect(service.update('uuid-1', { activo: false }, 'uuid-1')).rejects.toThrow(BadRequestException);
+      await expect(service.update('uuid-1', { rol: RolUsuario.VENTAS }, 'uuid-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('al desactivar o cambiar de rol cierra las sesiones del usuario', async () => {
+      const redis = { set: jest.fn() };
+      (service as any).redis = redis;
+      repository.findOne!.mockResolvedValue({ ...usuarioBase });
+      repository.save!.mockImplementation((u) => Promise.resolve(u));
+      await service.update('uuid-1', { activo: false }, 'admin-x');
+      expect(redis.set).toHaveBeenCalledWith('sesiones:corte:uuid-1', expect.any(String), 'EX', expect.any(Number));
+    });
+
+    it('restablecerPassword genera una temporal de 12 caracteres, la guarda hasheada y cierra sesiones', async () => {
+      const redis = { set: jest.fn() };
+      (service as any).redis = redis;
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hash-nuevo');
+      repository.findOne!.mockResolvedValue({ ...usuarioBase });
+      const r = await service.restablecerPassword('uuid-1', 'admin-x');
+      expect(r.passwordTemporal).toHaveLength(12);
+      expect(repository.update).toHaveBeenCalledWith({ id: 'uuid-1' }, { passwordHash: 'hash-nuevo' });
+      expect(redis.set).toHaveBeenCalled();
+    });
+
+    it('la contraseña de la cuenta protegida solo la cambia su dueño', async () => {
+      repository.findOne!.mockResolvedValue({ ...usuarioBase, protegido: true });
+      await expect(service.restablecerPassword('uuid-1', 'otro-admin')).rejects.toThrow(ForbiddenException);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('h');
+      await expect(service.restablecerPassword('uuid-1', 'uuid-1', 'ClaveNueva123')).resolves.toEqual({});
     });
   });
 });

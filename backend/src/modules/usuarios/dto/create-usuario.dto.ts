@@ -28,7 +28,7 @@ export class CreateUsuarioDto {
   @IsOptional()
   rol?: RolUsuario;
 
-  @IsPhoneNumber('VE')
+  @IsPhoneNumber('VE', { message: 'El teléfono no es válido (ejemplo: 0414 1234567)' })
   @IsOptional()
   telefono?: string;
 }

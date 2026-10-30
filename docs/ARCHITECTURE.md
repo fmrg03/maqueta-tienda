@@ -407,3 +407,18 @@ Tres secciones (pestañas): **Ventas y ganancia**, **Mercancía** y **Proveedore
 - Excel: `GET /reportes/exportar/:seccion` (ventas | mercancia | proveedores) genera un .xlsx con `exceljs`; el nombre llega por `Content-Disposition` (expuesto en CORS).
 - Ventas y costo usan el precio congelado en el movimiento (ya escalado al monto cobrado); los carritos cancelados no cuentan. Los períodos se cortan en hora de Venezuela (UTC-4).
 - `solicitudes_carrito.numero`: número de pedido correlativo (secuencia en BD) mostrado en el panel. Migración `1788700000000`.
+
+### Reportes: sección Asesorías
+
+`GET /reportes/asesorias?desde&hasta` agrupa las citas cuya llamada cae en el rango: conteo por estado, por asesor, conversión (visitas pactadas ÷ citas ya atendidas) y detalle. También sale en Excel (`/reportes/exportar/asesorias`).
+
+## Panel: Usuarios
+
+- `GET /usuarios?rol&estado&buscar`, `POST /usuarios`, `PATCH /usuarios/:id` (nombre, correo, teléfono, rol, `activo`) y `POST /usuarios/:id/restablecer-password` (genera una temporal de 12 caracteres, o fija la indicada; se muestra una sola vez).
+- Cuenta protegida: no se desactiva ni cambia de rol, y su contraseña solo la restablece ella misma. Un admin tampoco puede desactivarse ni cambiarse el rol a sí mismo.
+- Cierre de sesiones: al desactivar, cambiar de rol o restablecer la contraseña se guarda en Redis `sesiones:corte:<usuarioId>` (7 días). El refresh y el access token con `iat` anterior a ese corte se rechazan, así que el efecto es inmediato.
+- Pendiente: pantalla para que cada persona cambie su propia contraseña.
+
+## Acceso del personal
+
+El menú público ya no muestra "Ingresar": el personal entra directo a `/login`. Con sesión de personal activa aparece "Mi panel".

@@ -379,3 +379,10 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 - `GET /combos?estado=activos|inactivos|todos` (admin) trae ítems con variante y material. `PATCH /combos/:id` edita nombre, descripción, precio, `activo` y, si viene `items`, **reemplaza** todos los ítems en una transacción. Una presentación no puede repetirse dentro de un combo (400); `cantidad` es entera.
 - El panel calcula "por separado costaría", el ahorro, aviso de precio bajo el costo y cuántos combos se pueden armar con el stock actual (mínimo de `floor(stock/cantidad)` entre los ítems).
 - Desactivar un combo lo oculta de la web pública; los carritos ya creados no cambian.
+
+## Asesores (panel)
+
+- Admin: `GET /asesores/admin?estado=`, `POST /asesores` (cuenta existente por `usuarioId` **o** cuenta nueva `nombre+email+password`, en la misma transacción), `PATCH /asesores/:id` (especialidad, activo), `GET /asesores/:id/agenda` (franjas libres y reservadas con el cliente), `POST /asesores/:id/disponibilidad/lote` (hasta 300 instantes; las existentes se omiten) y `DELETE /asesores/disponibilidad/:franjaId` (solo libres; 409 si hay un cliente).
+- El panel genera los horarios en hora de Venezuela (UTC-4 fijo) a partir de rango de fechas + días de la semana + franja horaria + intervalo.
+- Un asesor desactivado deja de verse para el cliente; sus asesorías ya agendadas se conservan.
+- **Lección de RLS:** `Asesor.usuario` es eager y `usuarios` tiene RLS. Cargar un Asesor sin la sesión del admin deja `usuario = null`, y un `save()` lo escribiría como NULL. Por eso `actualizar` hace `UPDATE` de columnas puntuales y `crearAsesor` guarda en la misma transacción (RLS manager) que la cuenta nueva.

@@ -4,6 +4,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AsesoresService } from './asesores.service';
 import { Asesor, DisponibilidadAsesor } from './entities/asesoria.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
+import { UsuariosService } from '../usuarios/usuarios.service';
 
 const createMockRepository = () => ({
   create: jest.fn(),
@@ -11,6 +12,7 @@ const createMockRepository = () => ({
   find: jest.fn(),
   findOne: jest.fn(),
   createQueryBuilder: jest.fn(),
+  update: jest.fn(),
 });
 
 describe('AsesoresService', () => {
@@ -26,6 +28,7 @@ describe('AsesoresService', () => {
         { provide: getRepositoryToken(Asesor), useValue: createMockRepository() },
         { provide: getRepositoryToken(Usuario), useValue: createMockRepository() },
         { provide: getRepositoryToken(DisponibilidadAsesor), useValue: createMockRepository() },
+        { provide: UsuariosService, useValue: { create: jest.fn() } },
       ],
     }).compile();
 
@@ -58,7 +61,7 @@ describe('AsesoresService', () => {
     it('lanza NotFoundException si el usuario no existe', async () => {
       usuarioRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.crearAsesor('no-existe')).rejects.toThrow(
+      await expect(service.crearAsesor({ usuarioId: 'no-existe' })).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -68,9 +71,57 @@ describe('AsesoresService', () => {
       asesorRepo.create.mockReturnValue({ id: 'asesor-1' });
       asesorRepo.save.mockResolvedValue({ id: 'asesor-1' });
 
-      const resultado = await service.crearAsesor('user-1', 'Construcción');
+      const resultado = await service.crearAsesor({ usuarioId: 'user-1', especialidad: 'Construcción' });
 
       expect(resultado).toEqual({ id: 'asesor-1' });
+    });
+  });
+
+  describe('crearAsesor (cuenta nueva y duplicados)', () => {
+    it('crea la cuenta con rol asesor y luego el perfil', async () => {
+      const crear = (service as any).usuariosService.create as jest.Mock;
+      crear.mockResolvedValue({ id: 'u-nuevo' });
+      asesorRepo.findOne.mockResolvedValue(null);
+      asesorRepo.create.mockImplementation((x) => x);
+      asesorRepo.save.mockImplementation((x) => Promise.resolve({ id: 'a1', ...x }));
+
+      const r = await service.crearAsesor({ nombre: 'Ana', email: 'a@x.com', password: '12345678', especialidad: 'Pisos' });
+
+      expect(crear).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Ana', rol: 'asesor' }));
+      expect(r).toMatchObject({ id: 'a1', especialidad: 'Pisos' });
+    });
+
+    it('rechaza si la cuenta ya es asesor (409)', async () => {
+      usuarioRepo.findOne.mockResolvedValue({ id: 'u1' });
+      asesorRepo.findOne.mockResolvedValue({ id: 'a-existente' });
+      await expect(service.crearAsesor({ usuarioId: 'u1' })).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('actualizar', () => {
+    it('hace UPDATE de las columnas que cambian y nunca save() (no pisa la cuenta del asesor)', async () => {
+      asesorRepo.findOne.mockResolvedValue({ id: 'a1', usuario: null });
+      await service.actualizar('a1', { activo: false });
+      expect(asesorRepo.update).toHaveBeenCalledWith({ id: 'a1' }, { activo: false });
+      expect(asesorRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('agenda: lote y borrado', () => {
+    it('el lote rechaza horarios pasados', async () => {
+      asesorRepo.findOne.mockResolvedValue({ id: 'a1' });
+      await expect(
+        service.agregarDisponibilidadLote('a1', { fechasHora: [new Date(Date.now() - 3600e3).toISOString()] }),
+      ).rejects.toThrow('ya pasaron');
+    });
+
+    it('no borra una franja reservada (409) pero sí una libre', async () => {
+      disponibilidadRepo.findOne.mockResolvedValue({ id: 'f1', disponible: false });
+      await expect(service.eliminarFranja('f1')).rejects.toThrow(ConflictException);
+      (disponibilidadRepo as any).delete = jest.fn();
+      disponibilidadRepo.findOne.mockResolvedValue({ id: 'f2', disponible: true });
+      await service.eliminarFranja('f2');
+      expect((disponibilidadRepo as any).delete).toHaveBeenCalledWith({ id: 'f2' });
     });
   });
 

@@ -62,15 +62,17 @@ describe('ProveedoresService', () => {
   });
 
   describe('findAll', () => {
-    it('retorna solo proveedores activos', async () => {
-      repository.find!.mockResolvedValue([proveedorBase]);
+    it('filtra por estado y agrega cuántas presentaciones suministra cada uno', async () => {
+      repository.find!.mockResolvedValue([{ ...proveedorBase }]);
+      (repository as any).manager = { query: jest.fn().mockResolvedValue([{ id: 'uuid-prov-1', n: 3 }]) };
 
       const resultado = await service.findAll();
 
-      expect(repository.find).toHaveBeenCalledWith({
-        where: { activo: true },
-      });
-      expect(resultado).toEqual([proveedorBase]);
+      expect(repository.find).toHaveBeenCalledWith({ where: { activo: true }, order: { nombre: 'ASC' } });
+      expect(resultado[0]).toMatchObject({ id: 'uuid-prov-1', productos: 3 });
+
+      await service.findAll('todos');
+      expect(repository.find).toHaveBeenLastCalledWith({ where: {}, order: { nombre: 'ASC' } });
     });
   });
 

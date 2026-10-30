@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -32,8 +33,10 @@ export class ProveedoresController {
   }
 
   @Get()
-  findAll() {
-    return this.proveedoresService.findAll();
+  findAll(@Query('estado') estado?: string) {
+    return this.proveedoresService.findAll(
+      estado === 'inactivos' || estado === 'todos' ? estado : 'activos',
+    );
   }
 
   @Get(':id')

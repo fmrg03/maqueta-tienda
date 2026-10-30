@@ -17,7 +17,7 @@ import { ReportesController } from './reportes.controller';
 import { CombosService } from './combos.service';
 import { CombosController } from './combos.controller';
 import { MaterialProveedorService } from './material-proveedor.service';
-import { MaterialProveedorController } from './material-proveedor.controller';
+import { MaterialProveedorController, ProveedorProductosController } from './material-proveedor.controller';
 import { ProveedoresModule } from '../proveedores/proveedores.module';
 
 @Module({
@@ -40,6 +40,7 @@ import { ProveedoresModule } from '../proveedores/proveedores.module';
     ReportesController,
     CombosController,
     MaterialProveedorController,
+    ProveedorProductosController,
   ],
   providers: [
     MaterialesService,

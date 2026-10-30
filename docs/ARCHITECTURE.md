@@ -390,3 +390,9 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 ## Imágenes de muestra en el seed
 
 `npm run seed:data` copia las ilustraciones de `backend/seed-assets/imagenes/<SKU>.svg` a `UPLOADS_DIR` y asigna `imagenUrl` (`/uploads/muestra-<SKU>.svg`) a los materiales que aún no tienen imagen. Son ilustraciones, no fotos reales (se regeneran con `node seed-assets/generar-imagenes.js`). Para el catálogo real, la empresa sube sus fotos desde el panel.
+
+## Panel: Proveedores
+
+- `GET /proveedores?estado=activos|inactivos|todos` (incluye cuántas presentaciones suministra cada uno), `PATCH /proveedores/:id` (datos y `activo`).
+- Productos por proveedor: `GET/POST /proveedores/:id/productos`, `PATCH/DELETE /proveedor-productos/:id` (admin). Una presentación solo puede asociarse una vez por proveedor (409).
+- Pantalla de detalle: edita datos, activa/desactiva y compara el costo del proveedor con el `precioCosto` actual de la presentación.

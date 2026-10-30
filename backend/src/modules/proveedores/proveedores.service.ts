@@ -17,8 +17,17 @@ export class ProveedoresService {
     return this.proveedorRepository.save(proveedor);
   }
 
-  async findAll(): Promise<Proveedor[]> {
-    return this.proveedorRepository.find({ where: { activo: true } });
+  /** Con la cantidad de presentaciones que suministra cada uno. */
+  async findAll(
+    estado: 'activos' | 'inactivos' | 'todos' = 'activos',
+  ): Promise<Array<Proveedor & { productos: number }>> {
+    const where = estado === 'todos' ? {} : { activo: estado === 'activos' };
+    const proveedores = await this.proveedorRepository.find({ where, order: { nombre: 'ASC' } });
+    const conteos: Array<{ id: string; n: number }> = await this.proveedorRepository.manager.query(
+      `SELECT "proveedorId" AS id, count(*)::int AS n FROM material_proveedor GROUP BY "proveedorId"`,
+    );
+    const porId = new Map(conteos.map((c) => [c.id, c.n]));
+    return proveedores.map((p) => Object.assign(p, { productos: porId.get(p.id) ?? 0 }));
   }
 
   async findOne(id: string): Promise<Proveedor> {

@@ -7,9 +7,9 @@
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts",
-    "migration:generate": "npm run typeorm -- migration:generate",
-    "migration:run": "npm run typeorm -- migration:run",
-    "migration:revert": "npm run typeorm -- migration:revert",
+    "migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/data-source.ts",
+    "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/data-source.ts",
+    "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/data-source.ts",
     "seed:admin": "ts-node -r tsconfig-paths/register src/scripts/seed-admin.ts",
     "seed:data": "ts-node -r tsconfig-paths/register src/scripts/seed-data.ts"
   },
@@ -31,6 +31,7 @@
     "class-validator": "^0.14.1",
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
+    "express": "^4.22.1",
     "helmet": "^7.1.0",
     "ioredis": "^5.4.1",
     "nodemailer": "^10.3.1",
@@ -48,6 +49,7 @@
     "@nestjs/cli": "^10.4.5",
     "@nestjs/testing": "^10.4.0",
     "@types/bcrypt": "^5.0.2",
+    "@types/express": "^5.0.6",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.14.0",
     "@types/nodemailer": "^8.0.2",
@@ -59,5 +61,14 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.5.4"
+  },
+  "packageManager": "pnpm@10.28.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt"
+    ],
+    "ignoredBuiltDependencies": [
+      "@nestjs/core"
+    ]
   }
 }

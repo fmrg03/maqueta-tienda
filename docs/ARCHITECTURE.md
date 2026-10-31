@@ -221,7 +221,7 @@ Expuesta en `/api/docs` vía `@nestjs/swagger`, deshabilitada automáticamente c
 Se evaluó agregar un rol `master`/`root` por encima de `admin` (que pudiera eliminar admins, mientras que un admin no puede eliminar a otro admin ni al master). Se descartó por ahora: la empresa va a operar con un solo admin al inicio (aunque puede haber varios admins a futuro, todos con el mismo nivel de poder entre sí) — un rol jerárquico nuevo hubiera significado tocar el enum `RolUsuario`, los guards, y las políticas de RLS en varios lugares sin que hubiera, todavía, alguien de quien proteger esa cuenta.
 
 En su lugar, se agregó un campo `protegido: boolean` (default `false`) a `Usuario`. Logra el mismo objetivo práctico sin la complejidad de un rol nuevo:
-- Solo la cuenta creada por el script `npm run seed:admin` (`backend/src/scripts/seed-admin.ts`) tiene `protegido = true` — no es alcanzable desde ningún endpoint de la API.
+- Solo la cuenta creada por el script `pnpm seed:admin` (`backend/src/scripts/seed-admin.ts`) tiene `protegido = true` — no es alcanzable desde ningún endpoint de la API.
 - `UsuariosService.desactivar` y `UsuariosService.update` (al intentar cambiarle el rol) rechazan la operación con `403 Forbidden` sobre una cuenta protegida, **sin importar qué rol tenga quien lo pide** — ni siquiera otro admin puede tocarla.
 - El script de seed debe correr con las credenciales privilegiadas de las migraciones (no con `app_backend`): insertar un usuario con `rol='admin'` choca con las mismas políticas de RLS ya descritas — no existe todavía una sesión admin activa que lo autorice, y a propósito no se agregó una excepción tipo `service_auth` para este caso, porque crear el admin fundacional es una operación administrativa deliberadamente fuera de la app en ejecución.
 - Probado de punta a punta: seed exitoso, segundo intento de seed rechazado (ya existe una cuenta protegida), login, y un `DELETE` sobre la propia cuenta protegida devolviendo `403` con el formato de error estándar.
@@ -230,8 +230,8 @@ Si en el futuro la empresa necesita jerarquía real entre varios admins (algunos
 
 ### Health check, CI, y seeds de desarrollo
 - `GET /health` (sin auth, para balanceadores/orquestadores) chequea la conexión real a la base de datos vía `@nestjs/terminus`.
-- CI en GitHub Actions (`.github/workflows/backend-ci.yml`): `tsc --noEmit` + `npm test` en cada push/PR contra `main`.
-- `npm run seed:data`: categorías, un proveedor, un material con variante, un asesor con una franja de disponibilidad — idempotente (no duplica si ya existe), pensado solo para desarrollo local. Igual que `seed:admin`, necesita credenciales privilegiadas (no `app_backend`) por la misma razón de RLS.
+- CI en GitHub Actions (`.github/workflows/backend-ci.yml`): `tsc --noEmit` + `pnpm test` en cada push/PR contra `main`.
+- `pnpm seed:data`: categorías, un proveedor, un material con variante, un asesor con una franja de disponibilidad — idempotente (no duplica si ya existe), pensado solo para desarrollo local. Igual que `seed:admin`, necesita credenciales privilegiadas (no `app_backend`) por la misma razón de RLS.
 
 ### Dos bugs más, encontrados en una corrida de arranque limpio de punta a punta (DB vacía → migraciones → seeds → app corriendo → requests reales)
 Aparecieron recién al simular el flujo completo que alguien seguiría clonando el repo por primera vez — ninguno se detectó con tests unitarios ni con SQL manual, porque ambos dependen de la app real ejecutando el camino completo:
@@ -297,7 +297,7 @@ Señalado por el dueño del negocio al revisar el catálogo en Swagger: dos pres
 1. **`synchronize: true` en desarrollo es incompatible con RLS.** La app corre como `app_backend` (rol restringido a propósito para que RLS aplique), que no es dueño de las tablas — TypeORM no tiene permisos para auto-alterar el esquema con esa conexión. Encontrado en vivo: la app fallaba al arrancar con `must be owner of table material_proveedor` al intentar sincronizar el esquema tras el cambio de entidades. Se desactivó `synchronize` completamente (antes solo se desactivaba en producción) — de ahora en más, migraciones son el único camino, incluso en desarrollo.
 2. **Swagger no mostraba el body de los endpoints** (ej. login sin schema visible) porque nunca se configuró el plugin de `@nestjs/swagger` en `nest-cli.json`, que es el que infiere automáticamente la forma de los DTOs a partir de los tipos de TypeScript. Agregado (`"plugins": ["@nestjs/swagger"]`) y confirmado en vivo que `LoginDto` ahora se ve completo en el schema de Swagger, con sus validaciones (`minLength`).
 
-Se aprovechó también para agregar los scripts `start`, `start:dev`, `build` y `@nestjs/cli` a `package.json` — el `README.md` los mencionaba desde el principio, pero nunca habían sido agregados (encontrado porque el usuario intentó levantar el proyecto siguiendo la guía y `npm run start:dev` no existía).
+Se aprovechó también para agregar los scripts `start`, `start:dev`, `build` y `@nestjs/cli` a `package.json` — el `README.md` los mencionaba desde el principio, pero nunca habían sido agregados (encontrado porque el usuario intentó levantar el proyecto siguiendo la guía y `pnpm start:dev` no existía).
 
 ### Rotación de refresh tokens + logout real
 El punto que quedó anotado desde el pentest ("el refresh token se puede reusar indefinidamente hasta expirar, sin revocación") se resolvió con el patrón estándar de la industria: **rotación de un solo uso + detección de reuso**, respaldado en Redis (`backend/src/common/redis/`).
@@ -389,7 +389,7 @@ El carrito del cliente es una *consulta*; la venta se concreta por fuera (WhatsA
 
 ## Imágenes de muestra en el seed
 
-`npm run seed:data` copia las ilustraciones de `backend/seed-assets/imagenes/<SKU>.svg` a `UPLOADS_DIR` y asigna `imagenUrl` (`/uploads/muestra-<SKU>.svg`) a los materiales que aún no tienen imagen. Son ilustraciones, no fotos reales (se regeneran con `node seed-assets/generar-imagenes.js`). Para el catálogo real, la empresa sube sus fotos desde el panel.
+`pnpm seed:data` copia las ilustraciones de `backend/seed-assets/imagenes/<SKU>.svg` a `UPLOADS_DIR` y asigna `imagenUrl` (`/uploads/muestra-<SKU>.svg`) a los materiales que aún no tienen imagen. Son ilustraciones, no fotos reales (se regeneran con `node seed-assets/generar-imagenes.js`). Para el catálogo real, la empresa sube sus fotos desde el panel.
 
 ## Panel: Proveedores
 
@@ -439,3 +439,10 @@ El asesor gestiona su propia disponibilidad desde `/panel/mis-horarios`. `GET /a
 - `MetodoPago.BINANCE` (migración `1788800000000-MetodoPagoBinance`).
 - El descuento global ya no está atado a "divisas": Configuración guarda el % (`descuento_divisas_pct`) y la lista de métodos que lo reciben (`descuento_metodos`, en `configuracion`). Sin elección del admin valen `efectivo_divisas` y `zelle` (comportamiento anterior); lista vacía = no aplica a ninguno.
 - `PUT /configuracion/descuento-divisas` acepta `{ porcentaje, metodos? }`; `GET /configuracion/publica` devuelve `descuentoDivisasPct` y `descuentoMetodos`. Al cerrar una venta, `CarritoService` consulta la lista vigente; el aviso público y el diálogo de cierre usan la misma lista.
+
+## Gestor de paquetes: pnpm
+- Backend y frontend usan **pnpm** (`pnpm-lock.yaml` en cada carpeta; la versión queda fijada en `packageManager`). En un equipo nuevo: `corepack enable` y luego `pnpm install`.
+- Comandos: `pnpm start:dev`, `pnpm test`, `pnpm migration:run`, `pnpm migration:generate src/migrations/Nombre` (sin `--`). Los scripts de migración llaman directo a la CLI de TypeORM porque pnpm reenvía el `--` literalmente.
+- Los scripts de instalación solo se ejecutan para dependencias autorizadas (`pnpm.onlyBuiltDependencies`: `bcrypt` en el backend, `unrs-resolver` en el frontend).
+- pnpm exigió declarar `express` (dependencia directa) y `@types/express`, que antes funcionaban solo porque npm los dejaba a la vista.
+- No mezclar con npm: no se versionan `package-lock.json`.

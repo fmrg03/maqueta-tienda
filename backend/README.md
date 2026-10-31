@@ -7,10 +7,10 @@ NestJS + TypeScript + TypeORM + PostgreSQL. Ver el plano completo en
 
 ```bash
 cd backend
-npm install
+pnpm install
 cp .env.example .env   # completar con tus credenciales locales
-npm run migration:run  # aplica el esquema a la base de datos
-npm run start:dev
+pnpm migration:run  # aplica el esquema a la base de datos
+pnpm start:dev
 ```
 
 ## Migraciones
@@ -20,13 +20,13 @@ desactivado, incluso en desarrollo — no solo en producción. La app corre
 como `app_backend` (rol restringido para que RLS aplique), que no es
 dueño de las tablas, así que TypeORM no tiene permisos para
 auto-sincronizar el esquema con esa conexión. El único camino es
-`npm run migration:run`, corrido con las credenciales privilegiadas
+`pnpm migration:run`, corrido con las credenciales privilegiadas
 (ver sección de RLS más abajo).
 
 ```bash
-npm run migration:generate -- src/migrations/NombreDescriptivo   # tras cambiar una entidad
-npm run migration:run                                             # aplicar pendientes
-npm run migration:revert                                          # revertir la última
+pnpm migration:generate src/migrations/NombreDescriptivo   # tras cambiar una entidad
+pnpm migration:run                                             # aplicar pendientes
+pnpm migration:revert                                          # revertir la última
 ```
 
 La migración inicial (`InitSchema`) fue generada y probada (`up` y `down`)
@@ -51,7 +51,7 @@ necesitan una excepción acotada, documentada ahí).
 ## Tests
 
 ```bash
-npm test
+pnpm test
 ```
 
 ## Cuenta admin fundacional
@@ -62,7 +62,7 @@ privilegiadas que las migraciones — no con `app_backend`:
 
 ```bash
 SEED_ADMIN_EMAIL=admin@empresa.com SEED_ADMIN_NOMBRE="Nombre Apellido" \
-  npm run seed:admin
+  pnpm seed:admin
 ```
 
 Si no pasás `SEED_ADMIN_PASSWORD`, se genera una contraseña aleatoria y se
@@ -73,7 +73,7 @@ admins adicionales se crean vía `POST /usuarios` (sin esa protección).
 
 ## API interactiva (Swagger)
 
-Con el servidor corriendo (`npm run start:dev`), la documentación
+Con el servidor corriendo (`pnpm start:dev`), la documentación
 interactiva está en `http://localhost:3000/api/docs` (deshabilitada
 automáticamente cuando `NODE_ENV=production`).
 

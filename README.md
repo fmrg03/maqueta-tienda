@@ -31,15 +31,15 @@ docker compose -f docker-compose.dev.yml up -d
 
 # 2. Backend: instalar, migrar, cargar datos de ejemplo
 cd ../backend
-npm install
+pnpm install
 cp .env.example .env
-npm run migration:run
+pnpm migration:run
 
-SEED_ADMIN_EMAIL=admin@empresa.com SEED_ADMIN_NOMBRE="Tu Nombre" npm run seed:admin
-npm run seed:data
+SEED_ADMIN_EMAIL=admin@empresa.com SEED_ADMIN_NOMBRE="Tu Nombre" pnpm seed:admin
+pnpm seed:data
 
 # 3. Arrancar la API
-npm run start:dev
+pnpm start:dev
 ```
 
 Verificá que quedó arriba:
@@ -61,9 +61,9 @@ mockups de las 5 pantallas clave.
 
 ```bash
 cd frontend
-npm install
+pnpm install
 cp .env.example .env.local   # apuntando al backend local
-npm run dev
+pnpm dev
 ```
 
 **Auth:** JWT con rotación de refresh tokens (no cookies). El cliente

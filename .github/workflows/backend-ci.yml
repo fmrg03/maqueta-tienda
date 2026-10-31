@@ -19,17 +19,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: backend/package.json
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: backend/pnpm-lock.yaml
 
       - name: Instalar dependencias
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Verificar tipos
-        run: npx tsc --noEmit
+        run: pnpm exec tsc --noEmit
 
       - name: Correr tests unitarios
-        run: npm test
+        run: pnpm test

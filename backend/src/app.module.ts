@@ -14,6 +14,7 @@ import { CarritoModule } from './modules/carrito/carrito.module';
 import { TasasModule } from './modules/tasas/tasas.module';
 import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
 import { AsesoriasModule } from './modules/asesorias/asesorias.module';
+import { PresupuestosModule } from './modules/presupuestos/presupuestos.module';
 import { RlsInterceptor } from './common/rls/rls.interceptor';
 import { HealthModule } from './health/health.module';
 import { RedisModule } from './common/redis/redis.module';
@@ -56,6 +57,7 @@ import { RedisModule } from './common/redis/redis.module';
     TasasModule,
     ConfiguracionModule,
     AsesoriasModule,
+    PresupuestosModule,
     HealthModule,
   ],
   providers: [

@@ -159,6 +159,45 @@ export class CarritoService {
     return guardada;
   }
 
+  /**
+   * Crea una solicitud ya en contacto a partir de un presupuesto aprobado
+   * (solo productos y combos, con el precio pactado en el presupuesto).
+   */
+  async crearDesdePresupuesto(
+    datos: {
+      numeroPresupuesto: number;
+      clienteNombre: string;
+      clienteTelefono: string;
+      clienteEmail?: string;
+      items: Array<{ varianteId?: string; comboId?: string; cantidad: number; precioUnitario: number }>;
+      totalFinal: number | null;
+      notas: string;
+    },
+    usuarioId?: string,
+  ): Promise<SolicitudCarrito> {
+    const items = datos.items.map((d) => {
+      const item = new ItemSolicitudCarrito();
+      item.cantidad = d.cantidad;
+      item.precioUnitario = d.precioUnitario;
+      if (d.varianteId) item.variante = { id: d.varianteId } as VarianteMaterial;
+      else item.combo = { id: d.comboId } as Combo;
+      return item;
+    });
+    const guardada = await this.solicitudRepository.save(
+      this.solicitudRepository.create({
+        clienteNombre: datos.clienteNombre,
+        clienteTelefono: datos.clienteTelefono,
+        clienteEmail: datos.clienteEmail,
+        estado: EstadoSolicitudCarrito.CONTACTADO,
+        notas: datos.notas,
+        totalFinal: datos.totalFinal,
+        items,
+      }),
+    );
+    await this.registrarEvento(guardada, 'desde_presupuesto', usuarioId, { presupuesto: datos.numeroPresupuesto });
+    return guardada;
+  }
+
   async findAll(estado?: string): Promise<SolicitudCarrito[]> {
     return this.solicitudRepository.find({
       where: estado ? ({ estado } as any) : {},

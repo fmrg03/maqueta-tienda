@@ -440,6 +440,17 @@ El asesor gestiona su propia disponibilidad desde `/panel/mis-horarios`. `GET /a
 - El descuento global ya no está atado a "divisas": Configuración guarda el % (`descuento_divisas_pct`) y la lista de métodos que lo reciben (`descuento_metodos`, en `configuracion`). Sin elección del admin valen `efectivo_divisas` y `zelle` (comportamiento anterior); lista vacía = no aplica a ninguno.
 - `PUT /configuracion/descuento-divisas` acepta `{ porcentaje, metodos? }`; `GET /configuracion/publica` devuelve `descuentoDivisasPct` y `descuentoMetodos`. Al cerrar una venta, `CarritoService` consulta la lista vigente; el aviso público y el diálogo de cierre usan la misma lista.
 
+## Panel: Presupuestos y Servicios
+
+Módulo solo del panel (admin, ventas y asesores) para armar cotizaciones a medida con productos/combos del catálogo y servicios (demolición, pegado de cerámica, montaje de porcelanato…).
+
+- **Datos:** `presupuestos`, `presupuesto_items` y `servicios` (migración `1788900000000-Presupuestos`). Cada línea guarda una copia de descripción, unidad y precio: si el catálogo cambia, el presupuesto no. Los totales nunca se guardan; se calculan desde las líneas (`presupuesto-calculos.ts`, mismo cálculo en el frontend). Descuento en % sobre el subtotal. Productos y combos con cantidad entera, servicios con decimales.
+- **Estados:** borrador → enviado → aprobado / rechazado → convertido (solo lectura). El nombre de quien lo creó se copia al crear (`creadoPorNombre`) porque la RLS de `usuarios` no deja leer a otros.
+- **RLS:** personal autenticado lee/escribe presupuestos; el PDF público por enlace solo lee los que no son borrador, con `app.rol = service_auth`. Servicios: lectura para el personal, escritura solo admin.
+- **Salidas:** PDF con pdfkit (`presupuesto-pdf.ts`; logo opcional en `backend/assets/logo.png`), enlace público al PDF por token no adivinable (`GET /presupuestos/publico/:token/pdf`), mensaje de WhatsApp con ese enlace, y vista de impresión en `/panel/presupuestos/[id]/imprimir`.
+- **Convertir en solicitud:** solo admin y ventas, con el presupuesto aprobado, teléfono del cliente y al menos un producto o combo. Crea una solicitud de carrito en `contactado` con los productos y combos (los servicios no entran) y deja el evento `desde_presupuesto`. Los asesores no convierten ni eliminan.
+- **Variables:** `API_PUBLIC_URL` (base del enlace al PDF) y `EMPRESA_TELEFONO`.
+
 ## Gestor de paquetes: pnpm
 - Backend y frontend usan **pnpm** (`pnpm-lock.yaml` en cada carpeta; la versión queda fijada en `packageManager`). En un equipo nuevo: `corepack enable` y luego `pnpm install`.
 - Comandos: `pnpm start:dev`, `pnpm test`, `pnpm migration:run`, `pnpm migration:generate src/migrations/Nombre` (sin `--`). Los scripts de migración llaman directo a la CLI de TypeORM porque pnpm reenvía el `--` literalmente.

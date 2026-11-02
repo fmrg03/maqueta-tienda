@@ -15,7 +15,7 @@ import {
   type Solicitud,
 } from "@/lib/panel/carrito";
 
-export function Modal({ titulo, onCerrar, children }: { titulo: string; onCerrar: () => void; children: React.ReactNode }) {
+export function Modal({ titulo, onCerrar, children, ancho = "max-w-md" }: { titulo: string; onCerrar: () => void; children: React.ReactNode; ancho?: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export function Modal({ titulo, onCerrar, children }: { titulo: string; onCerrar
         aria-modal="true"
         aria-label={titulo}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-full w-full max-w-md overflow-y-auto bg-piedra p-6 outline-none"
+        className={`max-h-full w-full ${ancho} overflow-y-auto bg-piedra p-6 outline-none`}
       >
         <h2 className="mb-4 font-serif text-xl font-semibold">{titulo}</h2>
         {children}

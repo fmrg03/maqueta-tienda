@@ -47,8 +47,8 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-piedra text-negro md:flex-row">
-      <aside className="bg-negro text-texto-claro md:w-64 md:shrink-0">
+    <div className="flex min-h-screen flex-col bg-piedra text-negro md:flex-row print:block print:bg-white">
+      <aside className="bg-negro text-texto-claro md:w-64 md:shrink-0 print:hidden">
         <div className="border-b border-negro-suave px-5 py-5">
           <Link href="/" className="font-serif text-lg font-bold tracking-wide text-dorado-claro">
             Revestimiento Élite RY
@@ -91,7 +91,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-piedra-oscura px-6 py-4">
+        <header className="flex items-center justify-between border-b border-piedra-oscura px-6 py-4 print:hidden">
           <p className="text-sm">
             Hola, <strong>{usuario.nombre}</strong>
           </p>
@@ -104,7 +104,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-6 py-8">
+        <main className="flex-1 px-6 py-8 print:p-0">
           {permitido ? (
             children
           ) : (

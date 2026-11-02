@@ -258,6 +258,7 @@ export const ETIQUETA_EVENTO: Record<string, string> = {
   cerrada: "Venta cerrada",
   cancelada: "Cancelada",
   anulada: "Venta anulada",
+  desde_presupuesto: "Creada desde un presupuesto",
 };
 
 /** Misma cuenta que el backend (calcularCobro) para mostrar la vista previa antes de cerrar. */

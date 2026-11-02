@@ -22,5 +22,6 @@ import { NotificacionesModule } from '../../common/notificaciones/notificaciones
   ],
   controllers: [CarritoController],
   providers: [CarritoService],
+  exports: [CarritoService],
 })
 export class CarritoModule {}

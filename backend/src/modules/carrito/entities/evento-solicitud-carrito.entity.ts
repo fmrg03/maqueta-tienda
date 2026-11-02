@@ -9,7 +9,8 @@ export type TipoEventoCarrito =
   | 'pendiente_stock'
   | 'cerrada'
   | 'cancelada'
-  | 'anulada';
+  | 'anulada'
+  | 'desde_presupuesto';
 
 /** Historial de la solicitud: quién hizo qué y cuándo (auditoría de dinero). */
 @Entity('eventos_solicitud_carrito')

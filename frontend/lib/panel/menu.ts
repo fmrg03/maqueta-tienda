@@ -15,10 +15,12 @@ export interface ItemMenu {
 export const MENU_PANEL: ItemMenu[] = [
   { href: "/panel", label: "Resumen", descripcion: "Tu punto de partida", roles: ["admin", "ventas", "asesor"], disponible: true },
   { href: "/panel/carrito", label: "Solicitudes de carrito", descripcion: "Consultas de clientes por contactar", roles: ["admin", "ventas"], disponible: true },
+  { href: "/panel/presupuestos", label: "Presupuestos", descripcion: "Cotizaciones con productos y servicios", roles: ["admin", "ventas", "asesor"], disponible: true },
   { href: "/panel/asesorias", label: "Asesorías", descripcion: "Llamadas agendadas por clientes", roles: ["admin", "asesor"], disponible: true },
   { href: "/panel/mis-horarios", label: "Mis horarios", descripcion: "Cuándo puedes atender llamadas", roles: ["asesor"], disponible: true },
   { href: "/panel/materiales", label: "Materiales", descripcion: "Productos, presentaciones y precios", roles: ["admin"], disponible: true },
   { href: "/panel/movimientos", label: "Movimientos", descripcion: "Entradas y salidas de inventario", roles: ["admin"], disponible: true },
+  { href: "/panel/servicios", label: "Servicios", descripcion: "Lista de servicios y precios base", roles: ["admin"], disponible: true },
   { href: "/panel/combos", label: "Combos", descripcion: "Paquetes de productos", roles: ["admin"], disponible: true },
   { href: "/panel/proveedores", label: "Proveedores", descripcion: "Proveedores y costos", roles: ["admin"], disponible: true },
   { href: "/panel/reportes", label: "Reportes", descripcion: "Inventario y ganancias por período", roles: ["admin"], disponible: true },

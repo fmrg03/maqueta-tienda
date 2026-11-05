@@ -160,6 +160,12 @@ export function EditorPedido({
   ]);
   const totalNum = totalTexto.trim() === "" ? null : aPrecio(totalTexto);
   const totalMostrado = totalNum ?? suma;
+  // Ya cobrada (cerrada o pendiente de stock): se muestra el total, el descuento y lo realmente cobrado.
+  const cobrado =
+    (solicitud.estado === "cerrada" || solicitud.estado === "pendiente_stock") && solicitud.montoCobrado !== null
+      ? solicitud.montoCobrado
+      : null;
+  const ajuste = cobrado !== null ? Math.round((totalMostrado - cobrado) * 100) / 100 : 0;
   const genericos = lineas.filter((l) => l.tipo === "material");
 
   const opciones = useMemo(
@@ -568,13 +574,39 @@ export function EditorPedido({
           ) : (
             <span />
           )}
-          <p className="text-right">
-            <span className="text-sm text-[#8A8272]">Total{totalNum !== null ? " acordado" : ""}</span>
-            <br />
-            <strong className="font-mono text-xl">{dinero(totalMostrado)}</strong>
-            <PrecioBs usd={totalMostrado} className="block font-mono text-xs text-[#8A8272]" />
-            {parcial && totalNum === null && <span className="block text-xs text-vino">hay ítems sin precio</span>}
-          </p>
+          {cobrado !== null ? (
+            <dl className="ml-auto min-w-[16rem] space-y-1 text-right text-sm">
+              <div className="flex justify-between gap-6">
+                <dt className="text-[#8A8272]">Total{totalNum !== null ? " acordado" : " del pedido"}</dt>
+                <dd className="font-mono">{dinero(totalMostrado)}</dd>
+              </div>
+              {ajuste > 0.005 && (
+                <div className="flex justify-between gap-6 text-esmeralda">
+                  <dt>
+                    {solicitud.descuentoPct !== null ? `Descuento por divisas (${solicitud.descuentoPct}%)` : "Ajuste al cobrar"}
+                  </dt>
+                  <dd className="font-mono">−{dinero(solicitud.descuentoMonto ?? ajuste)}</dd>
+                </div>
+              )}
+              <div className="flex justify-between gap-6 border-t border-piedra-oscura pt-1">
+                <dt className="font-medium">Total cobrado</dt>
+                <dd><strong className="font-mono text-xl">{dinero(cobrado)}</strong></dd>
+              </div>
+              {solicitud.montoCobradoBs !== null && (
+                <p className="font-mono text-xs text-[#8A8272]">
+                  {`Bs. ${new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2 }).format(solicitud.montoCobradoBs)}`}
+                </p>
+              )}
+            </dl>
+          ) : (
+            <p className="text-right">
+              <span className="text-sm text-[#8A8272]">Total{totalNum !== null ? " acordado" : ""}</span>
+              <br />
+              <strong className="font-mono text-xl">{dinero(totalMostrado)}</strong>
+              <PrecioBs usd={totalMostrado} className="block font-mono text-xs text-[#8A8272]" />
+              {parcial && totalNum === null && <span className="block text-xs text-vino">hay ítems sin precio</span>}
+            </p>
+          )}
         </div>
       </section>
 

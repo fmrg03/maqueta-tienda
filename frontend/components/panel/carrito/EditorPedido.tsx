@@ -20,8 +20,10 @@ import {
   presentacionItem,
   totalDeItems,
   type ItemEdicion,
+  type ServicioEdicion,
   type Solicitud,
 } from "@/lib/panel/carrito";
+import { DialogoServicio, type DatosLineaServicio } from "@/components/panel/presupuestos/DialogoServicio";
 import { DialogoCancelar, DialogoCierre } from "./Dialogos";
 
 export interface Aviso {
@@ -39,6 +41,16 @@ interface Linea {
   cantidad: string;
   precio: string;
   stock?: number;
+}
+
+// Servicios (mano de obra): cantidad y precio como texto para poder escribir decimales.
+interface LineaServicio {
+  clave: string;
+  servicioId?: string | null;
+  descripcion: string;
+  unidad: string;
+  cantidad: string;
+  precio: string;
 }
 
 let contador = 0;
@@ -60,8 +72,27 @@ function lineasIniciales(s: Solicitud): Linea[] {
   });
 }
 
-const firma = (lineas: Linea[], total: string) =>
-  JSON.stringify([lineas.map((l) => [l.tipo, l.refId, l.cantidad, l.precio]), total.trim()]);
+function serviciosIniciales(s: Solicitud): LineaServicio[] {
+  return (s.servicios ?? []).map((v) => ({
+    clave: v.id ?? nuevaClave(),
+    servicioId: v.servicioId,
+    descripcion: v.descripcion,
+    unidad: v.unidad,
+    cantidad: String(v.cantidad),
+    precio: v.precioUnitario.toFixed(2),
+  }));
+}
+
+const firma = (lineas: Linea[], total: string, servicios: LineaServicio[]) =>
+  JSON.stringify([
+    lineas.map((l) => [l.tipo, l.refId, l.cantidad, l.precio]),
+    total.trim(),
+    servicios.map((v) => [v.descripcion, v.unidad, v.cantidad, v.precio]),
+  ]);
+const aDecimalPositivo = (t: string) => {
+  const n = Number(t.trim().replace(",", "."));
+  return t.trim() !== "" && !Number.isNaN(n) && n > 0 ? n : null;
+};
 
 const aEntero = (t: string) => (/^\d+$/.test(t.trim()) && Number(t) >= 1 ? Number(t) : null);
 const aPrecio = (t: string) => (t.trim() !== "" && !Number.isNaN(Number(t)) && Number(t) >= 0 ? Number(t) : null);
@@ -84,7 +115,11 @@ export function EditorPedido({
 
   const [lineas, setLineas] = useState<Linea[]>(() => lineasIniciales(solicitud));
   const [totalTexto, setTotalTexto] = useState(solicitud.totalFinal !== null ? solicitud.totalFinal.toFixed(2) : "");
-  const [base] = useState(() => firma(lineasIniciales(solicitud), solicitud.totalFinal !== null ? solicitud.totalFinal.toFixed(2) : ""));
+  const [servicios, setServicios] = useState<LineaServicio[]>(() => serviciosIniciales(solicitud));
+  const [dialogoServicio, setDialogoServicio] = useState(false);
+  const [base] = useState(() =>
+    firma(lineasIniciales(solicitud), solicitud.totalFinal !== null ? solicitud.totalFinal.toFixed(2) : "", serviciosIniciales(solicitud)),
+  );
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [dialogo, setDialogo] = useState<"cierre" | "cancelar" | null>(null);
@@ -108,12 +143,21 @@ export function EditorPedido({
     };
   }, [abierta]);
 
-  const sucio = firma(lineas, totalTexto) !== base;
+  const sucio = firma(lineas, totalTexto, servicios) !== base;
   const parseadas = lineas.map((l) => ({ cantidad: aEntero(l.cantidad), precio: aPrecio(l.precio) }));
-  const hayInvalidas = parseadas.some((p) => p.cantidad === null) || lineas.length === 0;
-  const { total: suma, parcial } = totalDeItems(
-    lineas.map((l, i) => ({ cantidad: parseadas[i].cantidad ?? 0, precioUnitario: parseadas[i].precio })),
-  );
+  const parseadosServ = servicios.map((v) => ({
+    descripcion: v.descripcion.trim(),
+    cantidad: aDecimalPositivo(v.cantidad),
+    precio: aPrecio(v.precio.replace(",", ".")),
+  }));
+  const hayInvalidas =
+    parseadas.some((p) => p.cantidad === null) ||
+    parseadosServ.some((v) => v.cantidad === null || v.precio === null || v.descripcion.length < 2) ||
+    lineas.length + servicios.length === 0;
+  const { total: suma, parcial } = totalDeItems([
+    ...lineas.map((l, i) => ({ cantidad: parseadas[i].cantidad ?? 0, precioUnitario: parseadas[i].precio })),
+    ...parseadosServ.map((v) => ({ cantidad: v.cantidad ?? 0, precioUnitario: v.precio ?? 0 })),
+  ]);
   const totalNum = totalTexto.trim() === "" ? null : aPrecio(totalTexto);
   const totalMostrado = totalNum ?? suma;
   const genericos = lineas.filter((l) => l.tipo === "material");
@@ -207,7 +251,14 @@ export function EditorPedido({
       setError("El total acordado no es válido.");
       return;
     }
-    const s = await ejecutar("guardar", () => guardarItems(solicitud.id, items, totalFinal));
+    const serviciosEnvio: ServicioEdicion[] = servicios.map((v, i) => ({
+      ...(v.servicioId ? { servicioId: v.servicioId } : {}),
+      descripcion: v.descripcion.trim(),
+      unidad: v.unidad.trim() || "unidad",
+      cantidad: parseadosServ[i].cantidad as number,
+      precioUnitario: parseadosServ[i].precio as number,
+    }));
+    const s = await ejecutar("guardar", () => guardarItems(solicitud.id, items, totalFinal, serviciosEnvio));
     if (s) onActualizada(s, { texto: "Cambios guardados. Recuerda enviarle el detalle actualizado al cliente." });
   }
 
@@ -238,7 +289,7 @@ export function EditorPedido({
 
   const motivoNoCerrar = !abierta
     ? null
-    : lineas.length === 0
+    : lineas.length + servicios.length === 0
       ? "El pedido no tiene ítems."
       : sucio
         ? "Guarda los cambios antes de cerrar."
@@ -286,8 +337,9 @@ export function EditorPedido({
           <h2 className="font-semibold text-esmeralda">Venta cerrada</h2>
           <p className="mt-1 text-[#4A4538]">
             Cobrado {solicitud.montoCobrado !== null ? dinero(solicitud.montoCobrado) : "—"}
+            {solicitud.montoServicios !== null && solicitud.montoServicios > 0 && ` (servicios - mano de obra: ${dinero(solicitud.montoServicios)})`}
             {solicitud.metodoPago && ` · ${ETIQUETA_METODO[solicitud.metodoPago] ?? solicitud.metodoPago}`}
-            {solicitud.referenciaPago && ` · ref. ${solicitud.referenciaPago}`}. El inventario ya fue descontado.
+            {solicitud.referenciaPago && ` · ref. ${solicitud.referenciaPago}`}. {lineas.length > 0 ? "El inventario ya fue descontado." : "No hubo productos: no se movió inventario."}
           </p>
           {solicitud.descuentoPct !== null && solicitud.descuentoMonto !== null && (
             <p className="mt-1 text-[#4A4538]">
@@ -441,6 +493,60 @@ export function EditorPedido({
           </div>
         )}
 
+        <h3 id="servicios-pedido" className="mb-2 mt-6 font-semibold">Servicios (mano de obra)</h3>
+        {servicios.length === 0 ? (
+          <p className="bg-white p-3 text-sm text-[#8A8272]">Sin servicios en este pedido.</p>
+        ) : (
+          <ul aria-labelledby="servicios-pedido" className="divide-y divide-piedra-oscura bg-white">
+            {servicios.map((v, i) => {
+              const p = parseadosServ[i];
+              const importe = p.cantidad !== null && p.precio !== null ? p.cantidad * p.precio : null;
+              const campo =
+                "w-full rounded-sm border border-piedra-oscura bg-white px-2 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-dorado";
+              const cambiar = (c: Partial<LineaServicio>) => setServicios((ls) => ls.map((x) => (x.clave === v.clave ? { ...x, ...c } : x)));
+              return abierta ? (
+                <li key={v.clave} className="grid gap-x-3 gap-y-2 p-3 md:grid-cols-[1fr_84px_84px_100px_92px_auto] md:items-end">
+                  <div>
+                    <label htmlFor={`sd-${v.clave}`} className="mb-1 block text-xs text-[#8A8272]">Descripción</label>
+                    <input id={`sd-${v.clave}`} className={campo} value={v.descripcion} maxLength={300} onChange={(e) => cambiar({ descripcion: e.target.value })} />
+                  </div>
+                  <div>
+                    <label htmlFor={`su-${v.clave}`} className="mb-1 block text-xs text-[#8A8272]">Unidad</label>
+                    <input id={`su-${v.clave}`} className={campo} value={v.unidad} maxLength={30} onChange={(e) => cambiar({ unidad: e.target.value })} />
+                  </div>
+                  <div>
+                    <label htmlFor={`sc-${v.clave}`} className="mb-1 block text-xs text-[#8A8272]">Cantidad</label>
+                    <input id={`sc-${v.clave}`} className={`${campo} text-right font-mono`} inputMode="decimal" value={v.cantidad} onChange={(e) => cambiar({ cantidad: e.target.value })} />
+                  </div>
+                  <div>
+                    <label htmlFor={`sp-${v.clave}`} className="mb-1 block text-xs text-[#8A8272]">Precio (USD)</label>
+                    <input id={`sp-${v.clave}`} className={`${campo} text-right font-mono`} inputMode="decimal" value={v.precio} onChange={(e) => cambiar({ precio: e.target.value })} />
+                  </div>
+                  <p className="text-right font-mono text-sm md:pb-2" aria-label="Importe">{importe !== null ? dinero(importe) : "—"}</p>
+                  <button
+                    type="button"
+                    aria-label={`Quitar ${v.descripcion || "servicio"}`}
+                    onClick={() => setServicios((ls) => ls.filter((x) => x.clave !== v.clave))}
+                    className="justify-self-end rounded-sm border border-piedra-oscura px-2.5 py-2 text-sm text-vino hover:border-vino"
+                  >
+                    Quitar
+                  </button>
+                </li>
+              ) : (
+                <li key={v.clave} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                  <span>{v.descripcion}</span>
+                  <span className="font-mono">{v.cantidad} {v.unidad} × {dinero(Number(v.precio))} = {importe !== null ? dinero(importe) : "—"}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {abierta && (
+          <div className="mt-3">
+            <Button type="button" variante="secundario" onClick={() => setDialogoServicio(true)}>Agregar servicio</Button>
+          </div>
+        )}
+
         {genericos.length > 0 && abierta && (
           <p className="mt-3 text-sm text-vino">
             {genericos.map((g) => g.nombre).join(", ")}: el cliente no eligió presentación. Elígela en el selector del ítem.
@@ -510,6 +616,18 @@ export function EditorPedido({
         </section>
       )}
 
+      {dialogoServicio && (
+        <DialogoServicio
+          onCerrar={() => setDialogoServicio(false)}
+          onAgregar={(d: DatosLineaServicio) => {
+            setServicios((ls) => [
+              ...ls,
+              { clave: nuevaClave(), servicioId: d.servicioId, descripcion: d.descripcion, unidad: d.unidad, cantidad: String(d.cantidad), precio: String(d.precioUnitario) },
+            ]);
+            setDialogoServicio(false);
+          }}
+        />
+      )}
       {dialogo === "cierre" && (
         <DialogoCierre
           solicitud={solicitud}

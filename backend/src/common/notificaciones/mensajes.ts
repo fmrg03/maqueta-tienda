@@ -166,8 +166,12 @@ export function mensajeNuevaSolicitudAsesoria(
 export function mensajeDetalleCliente(s: SolicitudCarrito): MensajeNotificacion {
   const nombre = unaLinea(s.clienteNombre);
   const lineas = (s.items ?? []).map(lineaItem);
-  const items = lineas.map((l) => l.texto);
-  const { total, parcial } = totalCarrito(lineas);
+  const servicios = (s.servicios ?? []).map((sv) => ({
+    texto: `Servicio: ${sv.descripcion} — ${Number(sv.cantidad)} ${sv.unidad} × ${dinero(Number(sv.precioUnitario))} = ${dinero(Number(sv.cantidad) * Number(sv.precioUnitario))}`,
+    subtotal: Number(sv.cantidad) * Number(sv.precioUnitario),
+  }));
+  const items = [...lineas, ...servicios].map((l) => l.texto);
+  const { total, parcial } = totalCarrito([...lineas, ...servicios]);
   const fijo = s.totalFinal !== null && s.totalFinal !== undefined ? Number(s.totalFinal) : null;
   const lineaTotal =
     fijo !== null

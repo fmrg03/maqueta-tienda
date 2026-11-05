@@ -50,6 +50,11 @@ export enum CanalEnvio {
   FORMULARIO = 'formulario',
 }
 
+const decimal = {
+  to: (v: number) => v,
+  from: (v: string | null) => (v === null || v === undefined ? v : Number(v)),
+};
+
 @Entity('solicitudes_carrito')
 export class SolicitudCarrito {
   @PrimaryGeneratedColumn('uuid')
@@ -72,6 +77,12 @@ export class SolicitudCarrito {
     cascade: true,
   })
   items: ItemSolicitudCarrito[];
+
+  // Servicios (mano de obra): se cobran con el pedido pero no mueven inventario.
+  @OneToMany(() => ServicioSolicitud, (servicio) => servicio.solicitud, {
+    cascade: true,
+  })
+  servicios: ServicioSolicitud[];
 
   @Column({
     type: 'enum',
@@ -108,6 +119,10 @@ export class SolicitudCarrito {
   // % y monto de descuento por divisas aplicados (congelados al cerrar).
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   descuentoPct?: number | null;
+
+  // Parte de lo cobrado que corresponde a servicios (mano de obra), congelada al cerrar.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, transformer: decimal })
+  montoServicios?: number | null;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   descuentoMonto?: number | null;
@@ -167,4 +182,34 @@ export class ItemSolicitudCarrito {
   // Precio pactado por unidad (editable). null = a confirmar.
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   precioUnitario?: number | null;
+}
+
+@Entity('servicios_solicitud')
+export class ServicioSolicitud {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @ManyToOne(() => SolicitudCarrito, (solicitud) => solicitud.servicios, {
+    onDelete: 'CASCADE',
+  })
+  solicitud: SolicitudCarrito;
+
+  // Servicio de la lista guardada (si vino de ahí); la línea guarda su propia copia.
+  @Column({ type: 'uuid', nullable: true })
+  servicioId?: string | null;
+
+  @Column({ type: 'varchar', length: 300 })
+  descripcion: string;
+
+  @Column({ type: 'varchar', length: 30, default: 'unidad' })
+  unidad: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, transformer: decimal })
+  cantidad: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, transformer: decimal })
+  precioUnitario: number;
+
+  @Column({ type: 'int', default: 0 })
+  orden: number;
 }

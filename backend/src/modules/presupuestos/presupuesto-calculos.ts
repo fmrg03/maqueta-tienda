@@ -47,9 +47,3 @@ export function calcularTotales(lineas: LineaCalculo[], descuentoPct: number | s
     total: r2(subtotal - descuentoMonto),
   };
 }
-
-/** Total de solo los productos y combos, con el mismo descuento (lo que pasa al carrito). */
-export function totalProductosConDescuento(lineas: LineaCalculo[], descuentoPct: number | string = 0): number {
-  const t = calcularTotales(lineas.filter((l) => l.tipo !== 'servicio'), descuentoPct);
-  return t.total;
-}

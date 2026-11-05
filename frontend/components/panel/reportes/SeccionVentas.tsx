@@ -15,12 +15,13 @@ function Diario({ dia }: { dia: string }) {
   const v = datos ?? [];
   const ventas = v.reduce((a, x) => a + x.ventas, 0);
   const ganancia = v.reduce((a, x) => a + x.ganancia, 0);
+  const servicios = v.reduce((a, x) => a + x.servicios, 0);
   return (
     <div className="space-y-6">
       <Estado cargando={cargando} error={error} />
       {datos && (
         <>
-          <Kpis items={[["Ventas", dinero(ventas)], ["Ganancia", dinero(ganancia)], ["Margen", pct(ganancia, ventas)], ["Pedidos", String(v.length)]]} />
+          <Kpis items={[["Ventas", dinero(ventas)], ["Ganancia", dinero(ganancia)], ["Margen", pct(ganancia, ventas)], ["Pedidos", String(v.length)], ["Servicios - mano de obra", dinero(servicios)]]} />
           <section>
             <h2 className="mb-3 font-serif text-lg font-semibold">Ventas del día</h2>
             {v.length === 0 ? (
@@ -29,7 +30,7 @@ function Diario({ dia }: { dia: string }) {
               <div className="overflow-x-auto bg-white">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-piedra-oscura text-xs uppercase text-[#8A8272]">
-                    <tr><th className="px-4 py-2">Pedido</th><th className="px-4 py-2">Hora</th><th className="px-4 py-2">Cliente</th><th className="px-4 py-2">Pago</th><th className="px-4 py-2 text-right">Vendido</th><th className="px-4 py-2 text-right">Ganancia</th></tr>
+                    <tr><th className="px-4 py-2">Pedido</th><th className="px-4 py-2">Hora</th><th className="px-4 py-2">Cliente</th><th className="px-4 py-2">Pago</th><th className="px-4 py-2 text-right">Vendido</th><th className="px-4 py-2 text-right">Mano de obra</th><th className="px-4 py-2 text-right">Ganancia</th></tr>
                   </thead>
                   <tbody className="divide-y divide-piedra-oscura">
                     {v.map((x) => (
@@ -39,6 +40,7 @@ function Diario({ dia }: { dia: string }) {
                         <td className="px-4 py-3">{x.cliente}</td>
                         <td className="px-4 py-3 text-xs">{x.metodoPago ? ETIQUETA_METODO[x.metodoPago as MetodoPago] ?? x.metodoPago : "—"}{x.referenciaPago && <span className="block font-mono text-[#8A8272]">Ref. {x.referenciaPago}</span>}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{dinero(x.ventas)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{x.servicios > 0 ? dinero(x.servicios) : "—"}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{dinero(x.ganancia)}</td>
                       </tr>
                     ))}
@@ -61,7 +63,7 @@ function Periodos({ desde, hasta, agrupacion }: { desde: string; hasta: string; 
       <Estado cargando={cargando} error={error} />
       {datos && (
         <>
-          <Kpis items={[["Ventas", dinero(datos.totalVentas)], ["Costo", dinero(datos.totalCosto)], ["Ganancia", dinero(datos.ganancia)], ["Margen", pct(datos.ganancia, datos.totalVentas)]]} />
+          <Kpis items={[["Ventas", dinero(datos.totalVentas)], ["Costo", dinero(datos.totalCosto)], ["Ganancia", dinero(datos.ganancia)], ["Margen", pct(datos.ganancia, datos.totalVentas)], ["Servicios - mano de obra", dinero(datos.totalServicios)]]} />
           <section>
             <h2 className="mb-1 font-serif text-lg font-semibold">Ventas y ganancia</h2>
             <p className="mb-3 flex gap-4 text-xs text-[#8A8272]"><span><i className="mr-1 inline-block h-2.5 w-2.5 bg-dorado-oscuro" />Ventas</span><span><i className="mr-1 inline-block h-2.5 w-2.5 bg-esmeralda" />Ganancia</span></p>

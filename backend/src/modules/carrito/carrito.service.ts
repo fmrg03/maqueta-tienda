@@ -10,6 +10,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import {
   SolicitudCarrito,
   ItemSolicitudCarrito,
+  ServicioSolicitud,
   EstadoSolicitudCarrito,
   ESTADOS_EDITABLES,
 } from './entities/solicitud-carrito.entity';
@@ -30,7 +31,9 @@ import {
   calcularFaltantes,
   CarritoNoCerrableError,
   planificarSalidas,
+  repartirCobro,
   totalItems,
+  totalServicios,
 } from './carrito-calculos';
 import { lineaItem } from '../../common/notificaciones/mensajes';
 import { Material } from '../inventario/entities/material.entity';
@@ -51,6 +54,7 @@ const RELACIONES_DETALLE = [
   'items.combo',
   'items.combo.items',
   'items.combo.items.variante',
+  'servicios',
 ];
 
 @Injectable()
@@ -161,7 +165,7 @@ export class CarritoService {
 
   /**
    * Crea una solicitud ya en contacto a partir de un presupuesto aprobado
-   * (solo productos y combos, con el precio pactado en el presupuesto).
+   * (productos, combos y servicios, con el precio pactado en el presupuesto).
    */
   async crearDesdePresupuesto(
     datos: {
@@ -170,6 +174,7 @@ export class CarritoService {
       clienteTelefono: string;
       clienteEmail?: string;
       items: Array<{ varianteId?: string; comboId?: string; cantidad: number; precioUnitario: number }>;
+      servicios?: Array<{ servicioId?: string; descripcion: string; unidad: string; cantidad: number; precioUnitario: number }>;
       totalFinal: number | null;
       notas: string;
     },
@@ -192,6 +197,16 @@ export class CarritoService {
         notas: datos.notas,
         totalFinal: datos.totalFinal,
         items,
+        servicios: (datos.servicios ?? []).map((d, orden) =>
+          Object.assign(new ServicioSolicitud(), {
+            servicioId: d.servicioId ?? null,
+            descripcion: d.descripcion,
+            unidad: d.unidad,
+            cantidad: d.cantidad,
+            precioUnitario: d.precioUnitario,
+            orden,
+          }),
+        ),
       }),
     );
     await this.registrarEvento(guardada, 'desde_presupuesto', usuarioId, { presupuesto: datos.numeroPresupuesto });
@@ -259,12 +274,19 @@ export class CarritoService {
     });
   }
 
-  private resumenItems(items: ItemSolicitudCarrito[]) {
-    return items.map((i) => ({
-      texto: lineaItem(i).texto,
-      cantidad: i.cantidad,
-      precioUnitario: i.precioUnitario === null || i.precioUnitario === undefined ? null : Number(i.precioUnitario),
-    }));
+  private resumenItems(items: ItemSolicitudCarrito[], servicios: ServicioSolicitud[] = []) {
+    return [
+      ...items.map((i) => ({
+        texto: lineaItem(i).texto,
+        cantidad: i.cantidad,
+        precioUnitario: i.precioUnitario === null || i.precioUnitario === undefined ? null : Number(i.precioUnitario),
+      })),
+      ...servicios.map((sv) => ({
+        texto: `Servicio: ${sv.descripcion} (${sv.unidad})`,
+        cantidad: Number(sv.cantidad),
+        precioUnitario: Number(sv.precioUnitario),
+      })),
+    ];
   }
 
   /**
@@ -283,7 +305,7 @@ export class CarritoService {
     if (!ESTADOS_EDITABLES.includes(solicitud.estado)) {
       throw new ConflictException(`La solicitud está ${solicitud.estado} y ya no se puede editar`);
     }
-    const antes = this.resumenItems(solicitud.items);
+    const antes = this.resumenItems(solicitud.items, solicitud.servicios);
 
     const nuevos: ItemSolicitudCarrito[] = [];
     for (const d of dto.items) {
@@ -323,8 +345,30 @@ export class CarritoService {
       nuevos.push(item);
     }
 
+    // Servicios: si no vienen, se conservan los que ya tenía el pedido.
+    const servicios = dto.servicios
+      ? dto.servicios.map((d, orden) =>
+          Object.assign(new ServicioSolicitud(), {
+            servicioId: d.servicioId ?? null,
+            descripcion: d.descripcion.trim(),
+            unidad: (d.unidad ?? 'unidad').trim() || 'unidad',
+            cantidad: d.cantidad,
+            precioUnitario: d.precioUnitario,
+            orden,
+            solicitud: { id } as SolicitudCarrito,
+          }),
+        )
+      : null;
+    if (nuevos.length === 0 && (servicios ?? solicitud.servicios ?? []).length === 0) {
+      throw new BadRequestException('El pedido necesita al menos un producto, combo o servicio');
+    }
+
     await m.getRepository(ItemSolicitudCarrito).delete({ solicitud: { id } } as any);
     await m.getRepository(ItemSolicitudCarrito).save(nuevos);
+    if (servicios) {
+      await m.getRepository(ServicioSolicitud).delete({ solicitud: { id } } as any);
+      await m.getRepository(ServicioSolicitud).save(servicios);
+    }
 
     const cambios: Partial<SolicitudCarrito> = { modificadaDesdeEnvio: true };
     if (dto.totalFinal !== undefined) cambios.totalFinal = dto.totalFinal;
@@ -333,7 +377,7 @@ export class CarritoService {
     const actualizada = await this.findOne(id);
     await this.registrarEvento(actualizada, 'items_editados', usuarioId, {
       antes,
-      despues: this.resumenItems(actualizada.items),
+      despues: this.resumenItems(actualizada.items, actualizada.servicios),
       totalFinal: actualizada.totalFinal ?? null,
     });
     return actualizada;
@@ -382,7 +426,9 @@ export class CarritoService {
       );
     }
 
-    const { total } = totalItems(solicitud.items as any);
+    const { total: totalProductos } = totalItems(solicitud.items as any);
+    const totalServ = totalServicios(solicitud.servicios);
+    const total = totalProductos + totalServ;
     const fijo = solicitud.totalFinal !== null && solicitud.totalFinal !== undefined ? Number(solicitud.totalFinal) : null;
     const base = fijo ?? total;
 
@@ -402,22 +448,29 @@ export class CarritoService {
     });
     const monto = cobro.monto;
 
+    // Lo cobrado se reparte entre productos (movimientos de inventario) y servicios (mano de obra).
+    const reparto = repartirCobro(monto, totalProductos, totalServ);
+
     let salidas;
     try {
-      salidas = planificarSalidas(solicitud.items as any, monto);
+      salidas = planificarSalidas(solicitud.items as any, reparto.productos);
     } catch (error) {
       if (error instanceof CarritoNoCerrableError) throw new BadRequestException(error.message);
       throw error;
     }
 
     const ids = salidas.map((s) => s.variante.id).sort();
-    const variantes = await m
-      .getRepository(VarianteMaterial)
-      .createQueryBuilder('v')
-      .setLock('pessimistic_write')
-      .where('v.id IN (:...ids)', { ids })
-      .orderBy('v.id')
-      .getMany();
+    // Un pedido solo de servicios no mueve inventario.
+    const variantes =
+      ids.length === 0
+        ? []
+        : await m
+            .getRepository(VarianteMaterial)
+            .createQueryBuilder('v')
+            .setLock('pessimistic_write')
+            .where('v.id IN (:...ids)', { ids })
+            .orderBy('v.id')
+            .getMany();
     const stock = new Map(variantes.map((v) => [v.id, v.stock]));
     const faltantes = calcularFaltantes(salidas, stock);
 
@@ -425,6 +478,7 @@ export class CarritoService {
       metodoPago: dto.metodoPago,
       referenciaPago: dto.referenciaPago ?? null,
       montoCobrado: monto,
+      montoServicios: reparto.servicios,
       descuentoPct: cobro.descuentoPct,
       descuentoMonto: cobro.descuentoMonto,
       tasaBcv: tasa,

@@ -3,6 +3,8 @@ import {
   calcularFaltantes,
   CarritoNoCerrableError,
   planificarSalidas,
+  repartirCobro,
+  totalServicios,
   totalItems,
   type VarianteCalculo,
 } from './carrito-calculos';
@@ -127,5 +129,29 @@ describe('carrito-calculos', () => {
       expect(r.monto).toBe(30.83);
       expect(r.montoBs).toBeCloseTo(30.83 * 36.1234, 2);
     });
+  });
+});
+
+describe('servicios (mano de obra)', () => {
+  it('totalServicios suma cantidad × precio con decimales', () => {
+    expect(totalServicios([{ cantidad: 12.5, precioUnitario: 6.4 }, { cantidad: '2', precioUnitario: '10.00' }])).toBe(100);
+    expect(totalServicios(undefined)).toBe(0);
+  });
+
+  it('repartirCobro divide lo cobrado en proporción y suma exacto', () => {
+    const r = repartirCobro(90, 100, 100);
+    expect(r).toEqual({ productos: 45, servicios: 45 });
+    const t = repartirCobro(93.6, 24, 80);
+    expect(t.productos + t.servicios).toBeCloseTo(93.6, 2);
+    expect(t.servicios).toBe(72);
+  });
+
+  it('repartirCobro: solo productos o solo servicios', () => {
+    expect(repartirCobro(50, 50, 0)).toEqual({ productos: 50, servicios: 0 });
+    expect(repartirCobro(50, 0, 50)).toEqual({ productos: 0, servicios: 50 });
+  });
+
+  it('planificarSalidas sin ítems no genera salidas', () => {
+    expect(planificarSalidas([], 0)).toEqual([]);
   });
 });

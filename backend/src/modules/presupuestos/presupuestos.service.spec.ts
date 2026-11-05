@@ -42,21 +42,21 @@ const base = (extra: Record<string, unknown> = {}) => ({
 });
 
 describe('PresupuestosService.convertir', () => {
-  it('pasa solo productos y combos al carrito con el precio del presupuesto', async () => {
+  it('pasa productos, combos y servicios al carrito con el precio del presupuesto', async () => {
     const { s, carrito, repo } = crearServicio(base());
     const r = await s.convertir('p1', 'u1');
     expect(r).toEqual({ solicitudId: 'sol-1', numeroSolicitud: 7 });
     const arg = carrito.crearDesdePresupuesto.mock.calls[0][0];
     expect(arg.items).toEqual([{ varianteId: 'v1', comboId: undefined, cantidad: 10, precioUnitario: 8 }]);
+    expect(arg.servicios).toEqual([{ servicioId: undefined, descripcion: 'Pegado', unidad: 'm²', cantidad: 12.5, precioUnitario: 6.4 }]);
     expect(arg.totalFinal).toBeNull();
-    expect(arg.notas).toContain('servicios no se incluyen');
     expect(repo.update).toHaveBeenCalledWith({ id: 'p1' }, expect.objectContaining({ estado: 'convertido', solicitudId: 'sol-1' }));
   });
 
-  it('con descuento fija el total final de los productos', async () => {
+  it('con descuento fija el total final de productos y servicios', async () => {
     const { s, carrito } = crearServicio(base({ descuentoPct: 10 }));
     await s.convertir('p1');
-    expect(carrito.crearDesdePresupuesto.mock.calls[0][0].totalFinal).toBe(72);
+    expect(carrito.crearDesdePresupuesto.mock.calls[0][0].totalFinal).toBe(144);
   });
 
   it('exige que esté aprobado', async () => {
@@ -74,8 +74,16 @@ describe('PresupuestosService.convertir', () => {
     await expect(s.convertir('p1')).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('rechaza presupuestos de solo servicios', async () => {
-    const { s } = crearServicio(base({ items: [base().items[1]] }));
+  it('convierte un presupuesto de solo servicios (sin productos)', async () => {
+    const { s, carrito } = crearServicio(base({ items: [base().items[1]] }));
+    await s.convertir('p1');
+    const arg = carrito.crearDesdePresupuesto.mock.calls[0][0];
+    expect(arg.items).toEqual([]);
+    expect(arg.servicios).toHaveLength(1);
+  });
+
+  it('rechaza un presupuesto sin líneas', async () => {
+    const { s } = crearServicio(base({ items: [] }));
     await expect(s.convertir('p1')).rejects.toBeInstanceOf(BadRequestException);
   });
 

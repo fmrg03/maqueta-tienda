@@ -57,6 +57,34 @@ export function totalItems(items: ItemCalculo[]): { total: number; parcial: bool
   return { total: redondear(total, 2), parcial };
 }
 
+export interface ServicioCalculo {
+  cantidad: number | string;
+  precioUnitario: number | string;
+}
+
+/** Total de los servicios (mano de obra) de un pedido. */
+export function totalServicios(servicios: ServicioCalculo[] | null | undefined): number {
+  let total = 0;
+  for (const s of servicios ?? []) total += (aNumero(s.cantidad) ?? 0) * (aNumero(s.precioUnitario) ?? 0);
+  return redondear(total, 2);
+}
+
+/**
+ * Reparte lo cobrado entre productos y servicios en proporción a sus totales
+ * de lista, para que el reporte de productos (que sale de los movimientos de
+ * inventario) y el de servicios sumen exactamente el dinero cobrado.
+ */
+export function repartirCobro(
+  montoCobrado: number,
+  totalProductos: number,
+  totalServ: number,
+): { productos: number; servicios: number } {
+  if (totalServ <= 0) return { productos: redondear(montoCobrado, 2), servicios: 0 };
+  if (totalProductos <= 0) return { productos: 0, servicios: redondear(montoCobrado, 2) };
+  const servicios = redondear((montoCobrado * totalServ) / (totalProductos + totalServ), 2);
+  return { productos: redondear(montoCobrado - servicios, 2), servicios };
+}
+
 /**
  * Convierte los ítems en salidas de inventario por variante.
  * - Variante: sale directo. Combo: se expande a sus variantes componentes.

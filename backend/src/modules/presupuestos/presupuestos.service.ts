@@ -5,7 +5,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Presupuesto, PresupuestoItem, type EstadoPresupuesto } from './entities/presupuesto.entity';
 import { Servicio } from './entities/servicio.entity';
 import { GuardarPresupuestoDto, ItemPresupuestoDto } from './dto/guardar-presupuesto.dto';
-import { calcularTotales, totalProductosConDescuento, type TotalesPresupuesto } from './presupuesto-calculos';
+import { calcularTotales, type TotalesPresupuesto } from './presupuesto-calculos';
 import { construirPdfPresupuesto, numeroFormateado } from './presupuesto-pdf';
 import { VarianteMaterial } from '../inventario/entities/variante-material.entity';
 import { Combo } from '../inventario/entities/combo.entity';
@@ -242,7 +242,8 @@ export class PresupuestosService {
     if (p.estado !== 'aprobado') throw new ConflictException('Solo se puede convertir un presupuesto aprobado');
     if (!p.clienteTelefono) throw new BadRequestException('Agrega el teléfono del cliente antes de convertir el presupuesto');
     const productos = p.items.filter((i) => i.tipo !== 'servicio');
-    if (productos.length === 0) throw new BadRequestException('El presupuesto no tiene productos ni combos: solo servicios');
+    const servicios = p.items.filter((i) => i.tipo === 'servicio');
+    if (productos.length === 0 && servicios.length === 0) throw new BadRequestException('El presupuesto no tiene líneas');
     const huerfano = productos.find((i) => !i.varianteId && !i.comboId);
     if (huerfano) throw new ConflictException(`"${huerfano.descripcion}" ya no existe en el catálogo: quítalo o cámbialo antes de convertir`);
 
@@ -258,8 +259,15 @@ export class PresupuestosService {
           cantidad: i.cantidad,
           precioUnitario: i.precioUnitario,
         })),
-        totalFinal: p.descuentoPct > 0 ? totalProductosConDescuento(p.items, p.descuentoPct) : null,
-        notas: `Desde el presupuesto N° ${numeroFormateado(p.numero)}.${p.items.some((i) => i.tipo === 'servicio') ? ' Los servicios no se incluyen en esta solicitud.' : ''}`,
+        servicios: servicios.map((i) => ({
+          servicioId: i.servicioId ?? undefined,
+          descripcion: i.descripcion,
+          unidad: i.unidad,
+          cantidad: i.cantidad,
+          precioUnitario: i.precioUnitario,
+        })),
+        totalFinal: p.descuentoPct > 0 ? calcularTotales(p.items, p.descuentoPct).total : null,
+        notas: `Desde el presupuesto N° ${numeroFormateado(p.numero)}.`,
       },
       usuarioId,
     );

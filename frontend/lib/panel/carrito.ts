@@ -60,6 +60,16 @@ export interface ItemSolicitud {
   combo?: { id: string; nombre: string; precioCombo: number } | null;
 }
 
+/** Servicio (mano de obra) del pedido: se cobra pero no mueve inventario. */
+export interface ServicioPedido {
+  id?: string;
+  servicioId?: string | null;
+  descripcion: string;
+  unidad: string;
+  cantidad: number;
+  precioUnitario: number;
+}
+
 export interface Faltante {
   varianteId: string;
   sku: string;
@@ -75,6 +85,7 @@ export interface Solicitud {
   clienteTelefono: string;
   clienteEmail?: string | null;
   items: ItemSolicitud[];
+  servicios: ServicioPedido[];
   estado: EstadoCarrito;
   canalEnvio: string;
   notas?: string | null;
@@ -83,6 +94,8 @@ export interface Solicitud {
   metodoPago?: MetodoPago | null;
   referenciaPago?: string | null;
   montoCobrado: number | null;
+  /** De lo cobrado, la parte que corresponde a servicios (mano de obra). */
+  montoServicios: number | null;
   descuentoPct: number | null;
   descuentoMonto: number | null;
   tasaBcv: number | null;
@@ -111,6 +124,9 @@ function normalizar(s: Solicitud): Solicitud {
     ...s,
     totalFinal: num(s.totalFinal),
     montoCobrado: num(s.montoCobrado),
+    montoServicios: num(s.montoServicios),
+    servicios: (s.servicios ?? [])
+      .map((v) => ({ ...v, cantidad: Number(v.cantidad), precioUnitario: Number(v.precioUnitario) })),
     descuentoPct: num(s.descuentoPct),
     descuentoMonto: num(s.descuentoMonto),
     tasaBcv: num(s.tasaBcv),
@@ -150,12 +166,22 @@ export interface ItemEdicion {
   precioUnitario?: number;
 }
 
+export interface ServicioEdicion {
+  servicioId?: string;
+  descripcion: string;
+  unidad: string;
+  cantidad: number;
+  precioUnitario: number;
+}
+
 export async function guardarItems(
   id: string,
   items: ItemEdicion[],
   totalFinal?: number | null,
+  servicios?: ServicioEdicion[],
 ): Promise<Solicitud> {
-  const body: { items: ItemEdicion[]; totalFinal?: number | null } = { items };
+  const body: { items: ItemEdicion[]; totalFinal?: number | null; servicios?: ServicioEdicion[] } = { items };
+  if (servicios !== undefined) body.servicios = servicios;
   if (totalFinal !== undefined) body.totalFinal = totalFinal;
   return normalizar(await apiFetch<Solicitud>(`${BASE}/${id}/items`, { method: "PUT", body: JSON.stringify(body) }));
 }
@@ -227,7 +253,10 @@ export function totalDeItems(items: Array<{ cantidad: number; precioUnitario: nu
 }
 
 export function totalSolicitud(s: Solicitud): { total: number; parcial: boolean } {
-  const calc = totalDeItems(s.items);
+  const calc = totalDeItems([
+    ...s.items,
+    ...(s.servicios ?? []).map((v) => ({ cantidad: v.cantidad, precioUnitario: v.precioUnitario })),
+  ]);
   return s.totalFinal !== null ? { total: s.totalFinal, parcial: false } : calc;
 }
 

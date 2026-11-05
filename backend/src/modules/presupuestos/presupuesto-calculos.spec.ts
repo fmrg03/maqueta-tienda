@@ -1,4 +1,4 @@
-import { calcularTotales, importeLinea, totalProductosConDescuento } from './presupuesto-calculos';
+import { calcularTotales, importeLinea } from './presupuesto-calculos';
 
 describe('presupuesto-calculos', () => {
   const lineas = [
@@ -35,10 +35,5 @@ describe('presupuesto-calculos', () => {
 
   it('presupuesto vacío da cero', () => {
     expect(calcularTotales([]).total).toBe(0);
-  });
-
-  it('el total que pasa al carrito excluye servicios y respeta el descuento', () => {
-    expect(totalProductosConDescuento(lineas, 10)).toBe(84.6);
-    expect(totalProductosConDescuento(lineas)).toBe(94);
   });
 });

@@ -78,7 +78,13 @@ export function repartirCobro(
   montoCobrado: number,
   totalProductos: number,
   totalServ: number,
+  /** Si el descuento no tocó los servicios, estos conservan exactamente su parte. */
+  serviciosFijos?: number,
 ): { productos: number; servicios: number } {
+  if (serviciosFijos !== undefined && totalServ > 0) {
+    const servicios = redondear(Math.min(serviciosFijos, montoCobrado), 2);
+    return { productos: redondear(montoCobrado - servicios, 2), servicios };
+  }
   if (totalServ <= 0) return { productos: redondear(montoCobrado, 2), servicios: 0 };
   if (totalProductos <= 0) return { productos: 0, servicios: redondear(montoCobrado, 2) };
   const servicios = redondear((montoCobrado * totalServ) / (totalProductos + totalServ), 2);
@@ -212,6 +218,8 @@ export function calcularCobro(p: {
   porcentaje: number;
   montoManual?: number | null;
   tasa: number;
+  /** Parte de `base` sobre la que se calcula el descuento (por defecto toda). */
+  baseDescontable?: number;
 }): CobroCalculado {
   let monto = redondear(p.base, 2);
   let descuentoPct: number | null = null;
@@ -221,7 +229,7 @@ export function calcularCobro(p: {
     monto = redondear(p.montoManual, 2);
   } else if (p.divisas && p.aplicarDescuento && p.porcentaje > 0) {
     descuentoPct = p.porcentaje;
-    descuentoMonto = redondear((p.base * p.porcentaje) / 100, 2);
+    descuentoMonto = redondear(((p.baseDescontable ?? p.base) * p.porcentaje) / 100, 2);
     monto = redondear(p.base - descuentoMonto, 2);
   }
   return { monto, descuentoPct, descuentoMonto, montoBs: redondear(monto * p.tasa, 2) };

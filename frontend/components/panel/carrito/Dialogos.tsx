@@ -64,6 +64,7 @@ export function DialogoCierre({
   const [metodo, setMetodo] = useState<MetodoPago>(solicitud.metodoPago ?? "pago_movil");
   const [referencia, setReferencia] = useState(solicitud.referenciaPago ?? "");
   const [aplicarDescuento, setAplicarDescuento] = useState(true);
+  const [descuentoServicios, setDescuentoServicios] = useState(true);
   // null = usar la tasa vigente (o la ya registrada en un cierre anterior)
   const [tasaTexto, setTasaTexto] = useState<string | null>(null);
   const [montoTexto, setMontoTexto] = useState("");
@@ -78,8 +79,14 @@ export function DialogoCierre({
   const montoInvalido = montoManual !== null && (Number.isNaN(montoManual) || montoManual < 0);
 
   const esDivisas = metodosDescuento.includes(metodo);
+  // Parte del total que son servicios (si el descuento los excluye, se calcula solo sobre productos).
+  const totalServ = (solicitud.servicios ?? []).reduce((a, v) => a + v.cantidad * v.precioUnitario, 0);
+  const totalProd = solicitud.items.reduce((a, i) => a + (i.precioUnitario ?? 0) * i.cantidad, 0);
+  const hayServicios = totalServ > 0;
+  const baseServicios = hayServicios && totalProd + totalServ > 0 ? (total * totalServ) / (totalProd + totalServ) : 0;
   const vista = calcularCobroPreview({
     base: total,
+    baseDescontable: hayServicios && !descuentoServicios ? total - baseServicios : undefined,
     metodo,
     metodosDescuento,
     aplicarDescuento,
@@ -106,6 +113,7 @@ export function DialogoCierre({
           referenciaPago: referencia.trim() || undefined,
           montoCobrado: montoManual ?? undefined,
           aplicarDescuento: esDivisas ? aplicarDescuento : undefined,
+          aplicarDescuentoServicios: esDivisas && aplicarDescuento && hayServicios ? descuentoServicios : undefined,
           tasaBcv: tasaTexto !== null || solicitud.tasaBcv !== null ? tasaValida : undefined,
         }),
       );
@@ -142,6 +150,15 @@ export function DialogoCierre({
             <input type="checkbox" checked={aplicarDescuento} onChange={(e) => setAplicarDescuento(e.target.checked)} className="mt-1" />
             <span>
               Aplicar descuento (<strong>{porcentaje.toLocaleString("es-VE")}%</strong>)
+            </span>
+          </label>
+        )}
+        {esDivisas && porcentaje > 0 && aplicarDescuento && hayServicios && (
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={descuentoServicios} onChange={(e) => setDescuentoServicios(e.target.checked)} className="mt-1" />
+            <span>
+              Aplicar el descuento también a los servicios (mano de obra)
+              <span className="block text-xs text-[#8A8272]">Si no, la mano de obra se cobra completa y el descuento solo baja los productos.</span>
             </span>
           </label>
         )}

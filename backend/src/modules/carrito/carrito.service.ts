@@ -438,8 +438,12 @@ export class CarritoService {
         'No hay tasa BCV disponible. Regístrala en Configuración o indícala al cerrar la venta.',
       );
     }
+    // Parte de la base que corresponde a servicios (para poder excluirlos del descuento).
+    const baseSplit = repartirCobro(base, totalProductos, totalServ);
+    const descuentaServicios = dto.aplicarDescuentoServicios ?? true;
     const cobro = calcularCobro({
       base,
+      baseDescontable: totalServ > 0 && !descuentaServicios ? baseSplit.productos : base,
       divisas: (await this.configuracion.descuentoMetodos()).includes(dto.metodoPago),
       aplicarDescuento: dto.aplicarDescuento ?? true,
       porcentaje: await this.configuracion.descuentoDivisasPct(),
@@ -449,7 +453,9 @@ export class CarritoService {
     const monto = cobro.monto;
 
     // Lo cobrado se reparte entre productos (movimientos de inventario) y servicios (mano de obra).
-    const reparto = repartirCobro(monto, totalProductos, totalServ);
+    // Con descuento solo sobre productos, los servicios se cobran completos.
+    const serviciosSinDescuento = totalServ > 0 && !descuentaServicios && cobro.descuentoPct !== null;
+    const reparto = repartirCobro(monto, totalProductos, totalServ, serviciosSinDescuento ? baseSplit.servicios : undefined);
 
     let salidas;
     try {
@@ -479,6 +485,7 @@ export class CarritoService {
       referenciaPago: dto.referenciaPago ?? null,
       montoCobrado: monto,
       montoServicios: reparto.servicios,
+      descuentoIncluyeServicios: cobro.descuentoPct === null || totalServ === 0 ? null : !serviciosSinDescuento,
       descuentoPct: cobro.descuentoPct,
       descuentoMonto: cobro.descuentoMonto,
       tasaBcv: tasa,
@@ -522,6 +529,31 @@ export class CarritoService {
     const cerrada = await this.findOne(id);
     await this.registrarEvento(cerrada, 'cerrada', usuarioId, { ...datosPago, unidades: salidas.reduce((a, s) => a + s.cantidad, 0) });
     return cerrada;
+  }
+
+  /**
+   * Registra (o quita, con null) lo pagado a trabajadores por la mano de obra
+   * del pedido. Se puede hacer antes o después de cerrar la venta, porque el
+   * pago a los trabajadores suele conocerse después.
+   */
+  async registrarCostoServicios(id: string, costo: number | null, usuarioId?: string): Promise<SolicitudCarrito> {
+    const m = this.manager;
+    await m.query(`SELECT id FROM solicitudes_carrito WHERE id = $1 FOR UPDATE`, [id]);
+    const solicitud = await this.findOne(id);
+    if (solicitud.estado === EstadoSolicitudCarrito.CANCELADA) {
+      throw new ConflictException('La solicitud está cancelada');
+    }
+    if ((solicitud.servicios ?? []).length === 0) {
+      throw new BadRequestException('Este pedido no tiene servicios');
+    }
+    const nuevo = costo ?? null;
+    await m.getRepository(SolicitudCarrito).update({ id }, { costoServicios: nuevo } as any);
+    const actualizada = await this.findOne(id);
+    await this.registrarEvento(actualizada, 'costo_servicios', usuarioId, {
+      antes: solicitud.costoServicios ?? null,
+      despues: nuevo,
+    });
+    return actualizada;
   }
 
   /**

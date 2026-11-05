@@ -20,17 +20,13 @@ export interface ReporteInventarioItem {
 
 export interface GananciaPeriodo {
   periodo: string;
-  /** Total vendido: productos + servicios (mano de obra). */
   ventas: number;
-  /** De `ventas`, la parte que corresponde a servicios (mano de obra). */
-  servicios: number;
   costo: number;
   ganancia: number;
 }
 
 export interface ReporteGananciasItem {
   totalVentas: number;
-  totalServicios: number;
   totalCosto: number;
   ganancia: number;
   serie: GananciaPeriodo[];
@@ -41,7 +37,28 @@ export const UMBRAL_POCO_STOCK = 5;
 export interface VentaReporte {
   solicitudId: string; numero: number; fecha: string; cliente: string;
   metodoPago: string | null; referenciaPago: string | null;
-  ventas: number; servicios: number; costo: number; ganancia: number;
+  ventas: number; costo: number; ganancia: number;
+}
+/** Un pedido con servicios (mano de obra): lo cobrado, lo pagado a trabajadores y el resultado. */
+export interface ServicioPedidoReporte {
+  solicitudId: string;
+  numero: number;
+  fecha: string;
+  cliente: string;
+  ingreso: number;
+  /** null = aún no se ha registrado lo pagado a trabajadores. */
+  costo: number | null;
+  /** ingreso − costo; null mientras falte el costo. */
+  resultado: number | null;
+}
+export interface ReporteServicios {
+  ingreso: number;
+  costo: number;
+  resultado: number;
+  pedidos: number;
+  /** Pedidos con servicios a los que todavía no se les registró el costo. */
+  sinCosto: number;
+  detalle: ServicioPedidoReporte[];
 }
 export interface CompraDetalle {
   fecha: string; proveedorId: string | null; proveedor: string | null; material: string; sku: string;
@@ -152,36 +169,15 @@ export class ReportesService {
       .orderBy('periodo', 'ASC')
       .getRawMany();
 
-    // Servicios (mano de obra): ingreso de los pedidos cerrados, sin costo de
-    // inventario. Una venta anulada pasa a 'cancelada' y deja de contar.
-    const filasServ: Array<{ periodo: string; servicios: string }> = await this.manager().query(
-      `SELECT to_char(date_trunc('${trunc}', s."cerradaAt" AT TIME ZONE 'America/Caracas'), 'YYYY-MM-DD') AS periodo,
-              SUM(s."montoServicios") AS servicios
-         FROM solicitudes_carrito s
-        WHERE s.estado = 'cerrada' AND s."montoServicios" > 0 AND s."cerradaAt" BETWEEN $1 AND $2
-        GROUP BY periodo`,
-      [desde, hasta],
-    );
-    const porPeriodo = new Map<string, GananciaPeriodo>();
-    for (const f of filas) {
+    const serie: GananciaPeriodo[] = filas.map((f) => {
       const ventas = Number(f.ventas ?? 0);
       const costo = Number(f.costo ?? 0);
-      porPeriodo.set(f.periodo, { periodo: f.periodo, ventas, servicios: 0, costo, ganancia: ventas - costo });
-    }
-    for (const f of filasServ) {
-      const monto = Number(f.servicios);
-      const actual = porPeriodo.get(f.periodo) ?? { periodo: f.periodo, ventas: 0, servicios: 0, costo: 0, ganancia: 0 };
-      actual.ventas += monto;
-      actual.servicios += monto;
-      actual.ganancia = actual.ventas - actual.costo;
-      porPeriodo.set(f.periodo, actual);
-    }
-    const serie = [...porPeriodo.values()].sort((a, b) => a.periodo.localeCompare(b.periodo));
+      return { periodo: f.periodo, ventas, costo, ganancia: ventas - costo };
+    });
     const totalVentas = serie.reduce((a, f) => a + f.ventas, 0);
-    const totalServicios = serie.reduce((a, f) => a + f.servicios, 0);
     const totalCosto = serie.reduce((a, f) => a + f.costo, 0);
 
-    return { totalVentas, totalServicios, totalCosto, ganancia: totalVentas - totalCosto, serie };
+    return { totalVentas, totalCosto, ganancia: totalVentas - totalCosto, serie };
   }
   private manager() {
     return getRlsManager() ?? this.movimientoRepository.manager;
@@ -203,11 +199,10 @@ export class ReportesService {
         LIMIT 1000`,
       [desde, hasta],
     );
-    const porPedido = new Map<string, VentaReporte>();
-    for (const f of filas as any[]) {
+    return filas.map((f: any) => {
       const ventas = Number(f.ventas);
       const costo = Number(f.costo);
-      porPedido.set(f.id, {
+      return {
         solicitudId: f.id,
         numero: Number(f.numero),
         fecha: new Date(f.fecha).toISOString(),
@@ -215,43 +210,53 @@ export class ReportesService {
         metodoPago: f.metodoPago ?? null,
         referenciaPago: f.referenciaPago ?? null,
         ventas,
-        servicios: 0,
         costo,
         ganancia: ventas - costo,
-      });
-    }
-    // Servicios (mano de obra) de pedidos cerrados: se suman a su pedido o, si el
-    // pedido era solo de servicios (sin movimientos de inventario), lo crean.
-    const filasServ = await this.manager().query(
-      `SELECT s.id, s."numero", s."clienteNombre", s."metodoPago", s."referenciaPago", s."cerradaAt" AS fecha, s."montoServicios" AS servicios
+      };
+    });
+  }
+
+  /**
+   * Servicios (mano de obra) de los pedidos cerrados del rango. No forman parte
+   * de la ganancia de productos: aquí se ve el ingreso, lo pagado a trabajadores
+   * y el resultado. Una venta anulada (estado cancelada) deja de contar.
+   */
+  async reporteServicios(desde: string, hasta: string): Promise<ReporteServicios> {
+    const filas: any[] = await this.manager().query(
+      `SELECT s.id, s."numero", s."clienteNombre", s."cerradaAt" AS fecha,
+              s."montoServicios" AS ingreso, s."costoServicios" AS costo
          FROM solicitudes_carrito s
         WHERE s.estado = 'cerrada' AND s."montoServicios" > 0 AND s."cerradaAt" BETWEEN $1 AND $2
+        ORDER BY s."cerradaAt" DESC
         LIMIT 1000`,
       [desde, hasta],
     );
-    for (const f of filasServ as any[]) {
-      const monto = Number(f.servicios);
-      const v = porPedido.get(f.id);
-      if (v) {
-        v.ventas += monto;
-        v.servicios = monto;
-        v.ganancia = v.ventas - v.costo;
-      } else {
-        porPedido.set(f.id, {
-          solicitudId: f.id,
-          numero: Number(f.numero),
-          fecha: new Date(f.fecha).toISOString(),
-          cliente: f.clienteNombre,
-          metodoPago: f.metodoPago ?? null,
-          referenciaPago: f.referenciaPago ?? null,
-          ventas: monto,
-          servicios: monto,
-          costo: 0,
-          ganancia: monto,
-        });
-      }
-    }
-    return [...porPedido.values()].sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const detalle: ServicioPedidoReporte[] = filas.map((f) => {
+      const ingreso = Number(f.ingreso);
+      const costo = f.costo === null ? null : Number(f.costo);
+      return {
+        solicitudId: f.id,
+        numero: Number(f.numero),
+        fecha: new Date(f.fecha).toISOString(),
+        cliente: f.clienteNombre,
+        ingreso,
+        costo,
+        resultado: costo === null ? null : Math.round((ingreso - costo) * 100) / 100,
+      };
+    });
+    const conCosto = detalle.filter((d) => d.costo !== null);
+    const ingreso = Math.round(detalle.reduce((a, d) => a + d.ingreso, 0) * 100) / 100;
+    const costo = Math.round(conCosto.reduce((a, d) => a + (d.costo as number), 0) * 100) / 100;
+    // El resultado solo cuenta los pedidos con costo registrado: no se infla con los pendientes.
+    const ingresoConCosto = conCosto.reduce((a, d) => a + d.ingreso, 0);
+    return {
+      ingreso,
+      costo,
+      resultado: Math.round((ingresoConCosto - costo) * 100) / 100,
+      pedidos: detalle.length,
+      sinCosto: detalle.length - conCosto.length,
+      detalle,
+    };
   }
 
   /** Lo comprado (entradas) en el rango: resumen por proveedor y detalle. */

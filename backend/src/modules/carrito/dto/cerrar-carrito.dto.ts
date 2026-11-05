@@ -24,11 +24,24 @@ export class CerrarCarritoDto {
   @IsOptional()
   aplicarDescuento?: boolean;
 
+  // Si el descuento por divisas también se aplica a los servicios (por defecto sí).
+  @IsBoolean()
+  @IsOptional()
+  aplicarDescuentoServicios?: boolean;
+
   // Tasa BCV a registrar; si no viene se usa la vigente.
   @IsNumber({ maxDecimalPlaces: 4 })
   @Min(0.0001)
   @IsOptional()
   tasaBcv?: number;
+}
+
+export class CostoServiciosDto {
+  // null quita el costo registrado.
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  costo: number | null;
 }
 
 export class CancelarCarritoDto {

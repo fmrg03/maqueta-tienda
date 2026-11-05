@@ -8,6 +8,7 @@ export type TipoEventoCarrito =
   | 'detalle_enviado'
   | 'pendiente_stock'
   | 'cerrada'
+  | 'costo_servicios'
   | 'cancelada'
   | 'anulada'
   | 'desde_presupuesto';

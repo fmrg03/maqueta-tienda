@@ -1,15 +1,23 @@
 import { apiFetch, descargarArchivo } from "../api/client";
 
 export type Agrupacion = "semana" | "mes" | "anio";
-export type SeccionReporte = "ventas" | "mercancia" | "proveedores" | "asesorias";
+export type SeccionReporte = "ventas" | "servicios" | "mercancia" | "proveedores" | "asesorias";
 
-export interface GananciaPeriodo { periodo: string; ventas: number; servicios: number; costo: number; ganancia: number }
-export interface ReporteGanancias { totalVentas: number; totalServicios: number; totalCosto: number; ganancia: number; serie: GananciaPeriodo[] }
+export interface GananciaPeriodo { periodo: string; ventas: number; costo: number; ganancia: number }
+export interface ReporteGanancias { totalVentas: number; totalCosto: number; ganancia: number; serie: GananciaPeriodo[] }
+export interface ServicioPedidoReporte {
+  solicitudId: string; numero: number; fecha: string; cliente: string;
+  ingreso: number;
+  /** null = aún no se registró lo pagado a trabajadores. */
+  costo: number | null;
+  resultado: number | null;
+}
+export interface ReporteServicios { ingreso: number; costo: number; resultado: number; pedidos: number; sinCosto: number; detalle: ServicioPedidoReporte[] }
 export interface InventarioPeriodo { periodo: string; entradas: number; salidas: number }
 export interface VentaReporte {
   solicitudId: string; numero: number; fecha: string; cliente: string;
   metodoPago: string | null; referenciaPago: string | null;
-  ventas: number; servicios: number; costo: number; ganancia: number;
+  ventas: number; costo: number; ganancia: number;
 }
 export interface CompraDetalle {
   fecha: string; proveedorId: string | null; proveedor: string | null; material: string; sku: string;
@@ -27,7 +35,7 @@ const rango = (desde: string, hasta: string) =>
 
 export async function reporteGanancias(desde: string, hasta: string, agrupacion: Agrupacion): Promise<ReporteGanancias> {
   const r = await apiFetch<ReporteGanancias>(`/api/v1/reportes/ganancias?${rango(desde, hasta)}&agrupacion=${agrupacion}`);
-  return { ...r, totalVentas: Number(r.totalVentas), totalServicios: Number(r.totalServicios ?? 0), totalCosto: Number(r.totalCosto), ganancia: Number(r.ganancia) };
+  return { ...r, totalVentas: Number(r.totalVentas), totalCosto: Number(r.totalCosto), ganancia: Number(r.ganancia) };
 }
 
 export const reporteInventario = (desde: string, hasta: string, agrupacion: Agrupacion) =>
@@ -35,6 +43,9 @@ export const reporteInventario = (desde: string, hasta: string, agrupacion: Agru
 
 export const reporteVentas = (desde: string, hasta: string) =>
   apiFetch<VentaReporte[]>(`/api/v1/reportes/ventas?${rango(desde, hasta)}`);
+
+export const reporteServicios = (desde: string, hasta: string) =>
+  apiFetch<ReporteServicios>(`/api/v1/reportes/servicios?${rango(desde, hasta)}`);
 
 export const reporteCompras = (desde: string, hasta: string) =>
   apiFetch<ReporteCompras>(`/api/v1/reportes/compras?${rango(desde, hasta)}`);

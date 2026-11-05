@@ -7,9 +7,10 @@ import { exportarReporte, hoyVE, type Agrupacion, type SeccionReporte } from "@/
 import { SeccionMercancia } from "./SeccionMercancia";
 import { SeccionAsesorias } from "./SeccionAsesorias";
 import { SeccionProveedores } from "./SeccionProveedores";
+import { SeccionServicios } from "./SeccionServicios";
 import { SeccionVentas, type ModoVentas } from "./SeccionVentas";
 
-const SECCIONES: Array<[SeccionReporte, string]> = [["ventas", "Ventas y ganancia"], ["mercancia", "Mercancía"], ["proveedores", "Proveedores"], ["asesorias", "Asesorías"]];
+const SECCIONES: Array<[SeccionReporte, string]> = [["ventas", "Ventas y ganancia"], ["servicios", "Servicios"], ["mercancia", "Mercancía"], ["proveedores", "Proveedores"], ["asesorias", "Asesorías"]];
 const MODOS_VENTAS: Array<[ModoVentas, string]> = [["dia", "Diario"], ["semana", "Por semana"], ["mes", "Por mes"], ["anio", "Por año"]];
 const MODOS_MERCANCIA: Array<[Agrupacion, string]> = [["semana", "Por semana"], ["mes", "Por mes"], ["anio", "Por año"]];
 
@@ -59,7 +60,7 @@ export function Reportes() {
     <div className="max-w-5xl">
       <h1 className="font-serif text-[26px] font-semibold">Reportes</h1>
       <div className="my-3.5 h-0.5 w-12 bg-gradient-to-r from-dorado-claro to-dorado-oscuro" />
-      <p className="mb-6 text-[#8A8272]">Ventas y ganancia, movimiento de mercancía, lo pagado a proveedores y las citas de asesoría. Todo se puede descargar en Excel.</p>
+      <p className="mb-6 text-[#8A8272]">Ventas y ganancia de productos, servicios (mano de obra), movimiento de mercancía, lo pagado a proveedores y las citas de asesoría. Todo se puede descargar en Excel.</p>
 
       <div role="tablist" aria-label="Secciones del reporte" className="mb-4 flex flex-wrap gap-2 border-b border-piedra-oscura">
         {SECCIONES.map(([v, l]) => (
@@ -111,6 +112,8 @@ export function Reportes() {
         <p role="alert" className="text-vino">Revisa las fechas: «Desde» no puede ser posterior a «Hasta».</p>
       ) : seccion === "ventas" ? (
         <SeccionVentas modo={modo} desde={d1} hasta={d2} />
+      ) : seccion === "servicios" ? (
+        <SeccionServicios desde={d1} hasta={d2} />
       ) : seccion === "mercancia" ? (
         <SeccionMercancia desde={d1} hasta={d2} agrupacion={agrupMerc} />
       ) : seccion === "asesorias" ? (

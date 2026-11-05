@@ -154,4 +154,18 @@ describe('servicios (mano de obra)', () => {
   it('planificarSalidas sin ítems no genera salidas', () => {
     expect(planificarSalidas([], 0)).toEqual([]);
   });
+
+  it('descuento solo sobre productos: los servicios conservan su parte completa', () => {
+    // pedido de 100 en productos + 100 en servicios, 10% de descuento solo en productos
+    const cobro = calcularCobro({ base: 200, baseDescontable: 100, divisas: true, aplicarDescuento: true, porcentaje: 10, tasa: 300 });
+    expect(cobro.descuentoMonto).toBe(10);
+    expect(cobro.monto).toBe(190);
+    expect(repartirCobro(190, 100, 100, 100)).toEqual({ productos: 90, servicios: 100 });
+  });
+
+  it('descuento sobre todo reparte proporcionalmente', () => {
+    const cobro = calcularCobro({ base: 200, divisas: true, aplicarDescuento: true, porcentaje: 10, tasa: 300 });
+    expect(cobro.monto).toBe(180);
+    expect(repartirCobro(180, 100, 100)).toEqual({ productos: 90, servicios: 90 });
+  });
 });

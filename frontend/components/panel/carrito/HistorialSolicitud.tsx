@@ -12,6 +12,8 @@ function resumen(e: Evento): string {
     case "cerrada":
     case "pendiente_stock":
       return `${ETIQUETA_METODO[d.metodoPago as MetodoPago] ?? d.metodoPago ?? ""} · ${d.montoCobrado != null ? dinero(Number(d.montoCobrado)) : ""}`.trim();
+    case "costo_servicios":
+      return d.despues == null ? "Se quitó el pago registrado" : `${dinero(Number(d.despues))} pagados a trabajadores`;
     case "cancelada":
     case "anulada":
       return String(d.motivo ?? "");

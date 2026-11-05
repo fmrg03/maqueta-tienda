@@ -112,7 +112,7 @@ export function DetalleSolicitud({ id }: { id: string }) {
 
       {/* key: al guardar o recargar, el editor se reinicia con los datos del servidor */}
       <EditorPedido
-        key={`${solicitud.id}-${solicitud.estado}-${JSON.stringify(solicitud.items.map((i) => [i.id, i.cantidad, i.precioUnitario]))}-${JSON.stringify((solicitud.servicios ?? []).map((v) => [v.id, v.cantidad, v.precioUnitario, v.descripcion]))}-${solicitud.totalFinal}-${solicitud.modificadaDesdeEnvio}`}
+        key={`${solicitud.id}-${solicitud.estado}-${JSON.stringify(solicitud.items.map((i) => [i.id, i.cantidad, i.precioUnitario]))}-${JSON.stringify((solicitud.servicios ?? []).map((v) => [v.id, v.cantidad, v.precioUnitario, v.descripcion]))}-${solicitud.totalFinal}-${solicitud.costoServicios}-${solicitud.modificadaDesdeEnvio}`}
         solicitud={solicitud}
         esAdmin={usuario.rol === "admin"}
         onActualizada={actualizada}

@@ -96,6 +96,10 @@ export interface Solicitud {
   montoCobrado: number | null;
   /** De lo cobrado, la parte que corresponde a servicios (mano de obra). */
   montoServicios: number | null;
+  /** Lo pagado a trabajadores por la mano de obra de este pedido (null = sin registrar). */
+  costoServicios: number | null;
+  /** Si el descuento por divisas se aplicó también a los servicios (null = sin descuento). */
+  descuentoIncluyeServicios: boolean | null;
   descuentoPct: number | null;
   descuentoMonto: number | null;
   tasaBcv: number | null;
@@ -125,6 +129,8 @@ function normalizar(s: Solicitud): Solicitud {
     totalFinal: num(s.totalFinal),
     montoCobrado: num(s.montoCobrado),
     montoServicios: num(s.montoServicios),
+    costoServicios: num(s.costoServicios),
+    descuentoIncluyeServicios: s.descuentoIncluyeServicios ?? null,
     servicios: (s.servicios ?? [])
       .map((v) => ({ ...v, cantidad: Number(v.cantidad), precioUnitario: Number(v.precioUnitario) })),
     descuentoPct: num(s.descuentoPct),
@@ -202,6 +208,11 @@ export async function enviarDetalle(id: string): Promise<RespuestaEnvio> {
   return apiFetch<RespuestaEnvio>(`${BASE}/${id}/enviar-detalle`, { method: "POST" });
 }
 
+/** Registra (o quita, con null) lo pagado a trabajadores por la mano de obra del pedido. */
+export async function registrarCostoServicios(id: string, costo: number | null): Promise<Solicitud> {
+  return normalizar(await apiFetch<Solicitud>(`${BASE}/${id}/costo-servicios`, { method: "PATCH", body: JSON.stringify({ costo }) }));
+}
+
 export async function cerrarVenta(
   id: string,
   datos: {
@@ -209,6 +220,7 @@ export async function cerrarVenta(
     referenciaPago?: string;
     montoCobrado?: number;
     aplicarDescuento?: boolean;
+    aplicarDescuentoServicios?: boolean;
     tasaBcv?: number;
   },
 ): Promise<Solicitud> {
@@ -288,6 +300,7 @@ export const ETIQUETA_EVENTO: Record<string, string> = {
   cancelada: "Cancelada",
   anulada: "Venta anulada",
   desde_presupuesto: "Creada desde un presupuesto",
+  costo_servicios: "Pago a trabajadores registrado",
 };
 
 /** Misma cuenta que el backend (calcularCobro) para mostrar la vista previa antes de cerrar. */
@@ -300,13 +313,15 @@ export function calcularCobroPreview(p: {
   porcentaje: number;
   montoManual: number | null;
   tasa: number | null;
+  /** Parte de `base` sobre la que se calcula el descuento (por defecto toda). */
+  baseDescontable?: number;
 }) {
   const r2 = (n: number) => Math.round(n * 100) / 100;
   let monto = r2(p.base);
   let descuentoMonto: number | null = null;
   if (p.montoManual !== null) monto = r2(p.montoManual);
   else if (p.metodosDescuento.includes(p.metodo) && p.aplicarDescuento && p.porcentaje > 0) {
-    descuentoMonto = r2((p.base * p.porcentaje) / 100);
+    descuentoMonto = r2(((p.baseDescontable ?? p.base) * p.porcentaje) / 100);
     monto = r2(p.base - descuentoMonto);
   }
   return { monto, descuentoMonto, montoBs: p.tasa ? r2(monto * p.tasa) : null };

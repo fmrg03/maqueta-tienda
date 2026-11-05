@@ -16,7 +16,7 @@ import { Throttle } from '@nestjs/throttler';
 import { CarritoService } from './carrito.service';
 import { CreateSolicitudCarritoDto } from './dto/create-solicitud-carrito.dto';
 import { EditarItemsCarritoDto } from './dto/editar-items-carrito.dto';
-import { CancelarCarritoDto, CerrarCarritoDto } from './dto/cerrar-carrito.dto';
+import { CancelarCarritoDto, CerrarCarritoDto, CostoServiciosDto } from './dto/cerrar-carrito.dto';
 import { ActualizarEstadoCarritoDto } from './dto/actualizar-estado-carrito.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -106,6 +106,18 @@ export class CarritoController {
     @Req() request: any,
   ) {
     return this.carritoService.cerrar(id, dto, request.user?.id);
+  }
+
+  @Patch('solicitudes/:id/costo-servicios')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  costoServicios(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CostoServiciosDto,
+    @Req() request: any,
+  ) {
+    return this.carritoService.registrarCostoServicios(id, dto.costo ?? null, request.user?.id);
   }
 
   @Post('solicitudes/:id/cancelar')

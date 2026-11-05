@@ -1,8 +1,8 @@
 import * as ExcelJS from 'exceljs';
 import { ReportesService } from './reportes.service';
 
-export type SeccionReporte = 'ventas' | 'mercancia' | 'proveedores' | 'asesorias';
-export const SECCIONES: SeccionReporte[] = ['ventas', 'mercancia', 'proveedores', 'asesorias'];
+export type SeccionReporte = 'ventas' | 'servicios' | 'mercancia' | 'proveedores' | 'asesorias';
+export const SECCIONES: SeccionReporte[] = ['ventas', 'servicios', 'mercancia', 'proveedores', 'asesorias'];
 const ESTADOS_ASESORIA: Record<string, string> = { pendiente: 'Pendiente', llamada_realizada: 'Llamada realizada', visita_pactada: 'Visita pactada', no_procede: 'No procede', cancelada: 'Cancelada' };
 
 const USD = '"$"#,##0.00';
@@ -49,17 +49,30 @@ export async function construirLibro(
       { header: 'Método de pago', key: 'metodo', width: 20 },
       { header: 'Ref. de pago', key: 'ref', width: 18 },
       { header: 'Ventas (USD)', key: 'ventas', width: 14, formato: USD },
-      { header: 'Servicios - mano de obra (USD)', key: 'servicios', width: 18, formato: USD },
       { header: 'Costo (USD)', key: 'costo', width: 14, formato: USD },
       { header: 'Ganancia (USD)', key: 'ganancia', width: 14, formato: USD },
-    ], ventas.map((v) => ({ numero: v.numero, fecha: fechaVE(v.fecha), cliente: v.cliente, metodo: v.metodoPago ? METODOS[v.metodoPago] ?? v.metodoPago : '', ref: v.referenciaPago ?? '', ventas: v.ventas, servicios: v.servicios, costo: v.costo, ganancia: v.ganancia })));
+    ], ventas.map((v) => ({ numero: v.numero, fecha: fechaVE(v.fecha), cliente: v.cliente, metodo: v.metodoPago ? METODOS[v.metodoPago] ?? v.metodoPago : '', ref: v.referenciaPago ?? '', ventas: v.ventas, costo: v.costo, ganancia: v.ganancia })));
     hoja(wb, 'Por período', [
       { header: 'Período (inicio)', key: 'p', width: 18 },
       { header: 'Ventas (USD)', key: 'v', width: 14, formato: USD },
-      { header: 'Servicios - mano de obra (USD)', key: 's', width: 18, formato: USD },
       { header: 'Costo (USD)', key: 'c', width: 14, formato: USD },
       { header: 'Ganancia (USD)', key: 'g', width: 14, formato: USD },
-    ], [...g.serie.map((s) => ({ p: s.periodo, v: s.ventas, s: s.servicios, c: s.costo, g: s.ganancia })), { p: 'TOTAL', v: g.totalVentas, s: g.totalServicios, c: g.totalCosto, g: g.ganancia }]);
+    ], [...g.serie.map((s) => ({ p: s.periodo, v: s.ventas, c: s.costo, g: s.ganancia })), { p: 'TOTAL', v: g.totalVentas, c: g.totalCosto, g: g.ganancia }]);
+  }
+
+  if (seccion === 'servicios') {
+    const sv = await svc.reporteServicios(desde, hasta);
+    hoja(wb, 'Servicios', [
+      { header: 'Nº pedido', key: 'numero', width: 10 },
+      { header: 'Fecha', key: 'fecha', width: 18 },
+      { header: 'Cliente', key: 'cliente', width: 28 },
+      { header: 'Cobrado por servicios (USD)', key: 'ingreso', width: 22, formato: USD },
+      { header: 'Pagado a trabajadores (USD)', key: 'costo', width: 22, formato: USD },
+      { header: 'Resultado (USD)', key: 'resultado', width: 16, formato: USD },
+    ], [
+      ...sv.detalle.map((d) => ({ numero: d.numero, fecha: fechaVE(d.fecha), cliente: d.cliente, ingreso: d.ingreso, costo: d.costo ?? 'Sin registrar', resultado: d.resultado ?? '' })),
+      { cliente: 'TOTAL', ingreso: sv.ingreso, costo: sv.costo, resultado: sv.resultado },
+    ]);
   }
 
   if (seccion === 'mercancia') {

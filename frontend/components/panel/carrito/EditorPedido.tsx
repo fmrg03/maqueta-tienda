@@ -15,6 +15,7 @@ import {
   ESTADOS_ABIERTOS,
   ETIQUETA_METODO,
   guardarItems,
+  registrarCostoServicios,
   nombreItem,
   obtenerSolicitud,
   presentacionItem,
@@ -115,6 +116,8 @@ export function EditorPedido({
 
   const [lineas, setLineas] = useState<Linea[]>(() => lineasIniciales(solicitud));
   const [totalTexto, setTotalTexto] = useState(solicitud.totalFinal !== null ? solicitud.totalFinal.toFixed(2) : "");
+  const [costoTexto, setCostoTexto] = useState(solicitud.costoServicios !== null ? solicitud.costoServicios.toFixed(2) : "");
+  const [costoError, setCostoError] = useState<string | null>(null);
   const [servicios, setServicios] = useState<LineaServicio[]>(() => serviciosIniciales(solicitud));
   const [dialogoServicio, setDialogoServicio] = useState(false);
   const [base] = useState(() =>
@@ -266,6 +269,19 @@ export function EditorPedido({
     }));
     const s = await ejecutar("guardar", () => guardarItems(solicitud.id, items, totalFinal, serviciosEnvio));
     if (s) onActualizada(s, { texto: "Cambios guardados. Recuerda enviarle el detalle actualizado al cliente." });
+  }
+
+  const costoNum = costoTexto.trim() === "" ? null : Number(costoTexto.replace(",", "."));
+  const costoCambio = costoNum !== solicitud.costoServicios && !(costoNum === null && solicitud.costoServicios === null);
+
+  async function guardarCosto() {
+    if (costoNum !== null && (Number.isNaN(costoNum) || costoNum < 0)) {
+      setCostoError("Escribe un monto válido (0 o más).");
+      return;
+    }
+    setCostoError(null);
+    const s = await ejecutar("costo", () => registrarCostoServicios(solicitud.id, costoNum));
+    if (s) onActualizada(s, { texto: costoNum === null ? "Se quitó el pago a trabajadores." : "Pago a trabajadores registrado." });
   }
 
   async function enviar() {
@@ -552,6 +568,28 @@ export function EditorPedido({
             <Button type="button" variante="secundario" onClick={() => setDialogoServicio(true)}>Agregar servicio</Button>
           </div>
         )}
+        {servicios.length > 0 && solicitud.estado !== "cancelada" && (
+          <section aria-labelledby="pago-trabajadores" className="mt-4 bg-white p-4">
+            <h4 id="pago-trabajadores" className="font-medium">Pago a trabajadores</h4>
+            <p className="mt-1 text-sm text-[#8A8272]">
+              Lo que se paga por la mano de obra de este pedido. No es parte del precio al cliente: sirve para ver el resultado de los servicios en Reportes.
+            </p>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div className="w-44">
+                <Input label="Monto pagado (USD)" name="costo-servicios" inputMode="decimal" value={costoTexto} placeholder="Sin registrar" onChange={(e) => setCostoTexto(e.target.value)} />
+              </div>
+              <Button type="button" variante="secundario" onClick={guardarCosto} disabled={!costoCambio || ocupado !== null}>
+                {ocupado === "costo" ? "Guardando…" : "Guardar pago"}
+              </Button>
+              {solicitud.costoServicios !== null && solicitud.montoServicios !== null && (
+                <p className="font-mono text-sm text-[#4A4538]">
+                  Resultado de servicios: {dinero(solicitud.montoServicios - solicitud.costoServicios)}
+                </p>
+              )}
+            </div>
+            {costoError && <p role="alert" className="mt-2 text-sm text-vino">{costoError}</p>}
+          </section>
+        )}
 
         {genericos.length > 0 && abierta && (
           <p className="mt-3 text-sm text-vino">
@@ -583,7 +621,9 @@ export function EditorPedido({
               {ajuste > 0.005 && (
                 <div className="flex justify-between gap-6 text-esmeralda">
                   <dt>
-                    {solicitud.descuentoPct !== null ? `Descuento por divisas (${solicitud.descuentoPct}%)` : "Ajuste al cobrar"}
+                    {solicitud.descuentoPct !== null
+                      ? `Descuento por divisas (${solicitud.descuentoPct}%${solicitud.descuentoIncluyeServicios === false ? ", solo productos" : ""})`
+                      : "Ajuste al cobrar"}
                   </dt>
                   <dd className="font-mono">−{dinero(solicitud.descuentoMonto ?? ajuste)}</dd>
                 </div>

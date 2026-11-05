@@ -124,6 +124,14 @@ export class SolicitudCarrito {
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, transformer: decimal })
   montoServicios?: number | null;
 
+  // Lo pagado a trabajadores por la mano de obra de este pedido (lo registra el personal).
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, transformer: decimal })
+  costoServicios?: number | null;
+
+  // Si el descuento por divisas se aplicó también a los servicios (null = sin descuento).
+  @Column({ type: 'boolean', nullable: true })
+  descuentoIncluyeServicios?: boolean | null;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   descuentoMonto?: number | null;
 

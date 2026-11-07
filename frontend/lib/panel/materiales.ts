@@ -11,6 +11,8 @@ export interface VarianteAdmin {
   stock: number;
   precioVenta: number;
   precioCosto: number;
+  /** Precio pagando en divisas (solo interno). null = igual al de venta. */
+  precioDivisas?: number | null;
 }
 
 export interface MaterialAdmin {
@@ -33,6 +35,7 @@ const normVariante = (v: VarianteAdmin): VarianteAdmin => ({
   stock: Number(v.stock),
   precioVenta: Number(v.precioVenta),
   precioCosto: Number(v.precioCosto),
+  precioDivisas: v.precioDivisas === null || v.precioDivisas === undefined ? null : Number(v.precioDivisas),
 });
 const norm = (m: MaterialAdmin): MaterialAdmin => ({ ...m, variantes: (m.variantes ?? []).map(normVariante) });
 
@@ -75,6 +78,9 @@ export interface DatosVariante {
   atributos: Record<string, string>;
   precioVenta: number;
   precioCosto: number;
+  precioDivisas?: number | null;
+  proveedorId?: string;
+  tiempoEntregaDias?: number;
 }
 
 export async function crearVariante(materialId: string, d: DatosVariante & { stock?: number }): Promise<VarianteAdmin> {

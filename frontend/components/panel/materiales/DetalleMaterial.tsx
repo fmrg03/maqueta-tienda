@@ -165,6 +165,7 @@ export function DetalleMaterial({ id, recienCreado }: { id: string; recienCreado
                       <td className="p-3 text-right font-mono">
                         {dinero(v.precioVenta)}
                         <PrecioBs usd={v.precioVenta} className="block text-xs text-[#8A8272]" />
+                        {v.precioDivisas != null && <span className="block font-mono text-xs text-esmeralda">{dinero(v.precioDivisas)} divisas</span>}
                       </td>
                       <td className="p-3 text-right font-mono">{dinero(v.precioCosto)}</td>
                       <td className={`p-3 text-right font-mono ${m !== null && m < 0 ? "text-vino" : ""}`}>{m === null ? "—" : `${m}%`}</td>

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { PrecioBs } from "@/components/ui/PrecioBs";
-import { AvisoDescuentoDivisas } from "@/components/ui/AvisoDescuentoDivisas";
 import { useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -169,9 +168,6 @@ export function ConsultaCliente() {
             ${total.toFixed(2)}
             <PrecioBs usd={total} className="block text-xs text-[#8A8272]" />
           </span>
-        </li>
-        <li className="py-3">
-          <AvisoDescuentoDivisas />
         </li>
       </ul>
 

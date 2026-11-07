@@ -21,6 +21,7 @@ type Filtro = "abiertas" | EstadoCarrito | "todas";
 const FILTROS: Array<{ id: Filtro; label: string }> = [
   { id: "abiertas", label: "Por atender" },
   { id: "nueva", label: "Nuevas" },
+  { id: "reservada", label: "Reservadas" },
   { id: "pendiente_stock", label: "Pendiente por stock" },
   { id: "cerrada", label: "Cerradas" },
   { id: "cancelada", label: "Canceladas" },

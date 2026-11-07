@@ -28,6 +28,8 @@ export function FormularioCombo({ inicial }: { inicial?: ComboAdmin }) {
 
   const itemsValidos = filas.map((f) => ({ cantidad: /^\d+$/.test(f.cantidad.trim()) ? Number(f.cantidad) : 0, variante: f.variante }));
   const { referencia, costo } = totalesItems(itemsValidos);
+  const [divisas, setDivisas] = useState(inicial?.precioDivisas != null ? String(inicial.precioDivisas) : "");
+  const divisasNum = divisas.trim() === "" ? null : aNumero(divisas);
   const precioNum = aNumero(precio);
   const ahorro = precioNum !== null && referencia > 0 ? referencia - precioNum : null;
 
@@ -36,6 +38,7 @@ export function FormularioCombo({ inicial }: { inicial?: ComboAdmin }) {
     const nuevos: typeof errores = {};
     if (!nombre.trim()) nuevos.nombre = "Escribe el nombre del combo.";
     if (precioNum === null || precioNum < 0) nuevos.precio = "Escribe el precio del combo (ej. 45.00).";
+    if (divisas.trim() !== "" && (divisasNum === null || divisasNum < 0)) nuevos.precio = "El precio en divisas no es válido.";
     if (filas.length === 0) nuevos.items = "Agrega al menos un producto.";
     else if (itemsValidos.some((i) => i.cantidad < 1)) nuevos.items = "Cada producto necesita una cantidad entera de 1 o más.";
     setErrores(nuevos);
@@ -47,6 +50,7 @@ export function FormularioCombo({ inicial }: { inicial?: ComboAdmin }) {
       nombre: nombre.trim(),
       descripcion: descripcion.trim() || undefined,
       precioCombo: precioNum as number,
+      precioDivisas: divisasNum === null ? (inicial ? null : undefined) : divisasNum,
       items: itemsValidos.map((i) => ({ varianteId: i.variante.id, cantidad: i.cantidad })),
     };
     try {
@@ -120,8 +124,9 @@ export function FormularioCombo({ inicial }: { inicial?: ComboAdmin }) {
         {errores.items && <p role="alert" className="mt-2 text-xs text-vino">{errores.items}</p>}
       </section>
 
-      <div className="max-w-xs">
+      <div className="grid max-w-xl gap-4 sm:grid-cols-2">
         <Input label="Precio del combo ($)" name="precio" inputMode="decimal" value={precio} onChange={(e) => setPrecio(e.target.value)} error={errores.precio} />
+        <Input label="Precio en divisas ($, interno)" name="precioDivisas" inputMode="decimal" placeholder="Igual al del combo" value={divisas} onChange={(e) => setDivisas(e.target.value)} />
       </div>
 
       {filas.length > 0 && (

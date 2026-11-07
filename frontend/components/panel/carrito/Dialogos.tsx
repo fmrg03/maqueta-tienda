@@ -4,16 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/lib/api/client";
-import { formatoBs, useConfigDescuento, useTasaBcv } from "@/lib/tasas/tasas";
 import {
   cancelarSolicitud,
-  cerrarVenta,
-  dinero,
-  ETIQUETA_METODO,
-  calcularCobroPreview,
-  type MetodoPago,
   type Solicitud,
 } from "@/lib/panel/carrito";
+
+export const msgError = (e: unknown) =>
+  e instanceof ApiError ? e.message : "No pudimos completar la acción. Revisa tu conexión e inténtalo de nuevo.";
 
 export function Modal({ titulo, onCerrar, children, ancho = "max-w-md" }: { titulo: string; onCerrar: () => void; children: React.ReactNode; ancho?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -46,147 +43,6 @@ export function Modal({ titulo, onCerrar, children, ancho = "max-w-md" }: { titu
 const msg = (e: unknown) =>
   e instanceof ApiError ? e.message : "No pudimos completar la acción. Revisa tu conexión e inténtalo de nuevo.";
 
-export function DialogoCierre({
-  solicitud,
-  total,
-  onCerrar,
-  onResultado,
-}: {
-  solicitud: Solicitud;
-  total: number;
-  onCerrar: () => void;
-  onResultado: (s: Solicitud) => void;
-}) {
-  const tasaVigente = useTasaBcv();
-  const { descuentoDivisasPct: porcentaje, descuentoMetodos } = useConfigDescuento();
-  const metodosDescuento = descuentoMetodos as MetodoPago[];
-
-  const [metodo, setMetodo] = useState<MetodoPago>(solicitud.metodoPago ?? "pago_movil");
-  const [referencia, setReferencia] = useState(solicitud.referenciaPago ?? "");
-  const [aplicarDescuento, setAplicarDescuento] = useState(true);
-  const [descuentoServicios, setDescuentoServicios] = useState(true);
-  // null = usar la tasa vigente (o la ya registrada en un cierre anterior)
-  const [tasaTexto, setTasaTexto] = useState<string | null>(null);
-  const [montoTexto, setMontoTexto] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
-
-  const tasaBase = solicitud.tasaBcv ?? tasaVigente?.valor ?? null;
-  const tasaMostrada = tasaTexto ?? (tasaBase !== null ? String(tasaBase) : "");
-  const tasaNum = tasaMostrada.trim() === "" ? null : Number(tasaMostrada.replace(",", "."));
-  const tasaValida = tasaNum !== null && !Number.isNaN(tasaNum) && tasaNum > 0 ? tasaNum : null;
-  const montoManual = montoTexto.trim() === "" ? null : Number(montoTexto.replace(",", "."));
-  const montoInvalido = montoManual !== null && (Number.isNaN(montoManual) || montoManual < 0);
-
-  const esDivisas = metodosDescuento.includes(metodo);
-  // Parte del total que son servicios (si el descuento los excluye, se calcula solo sobre productos).
-  const totalServ = (solicitud.servicios ?? []).reduce((a, v) => a + v.cantidad * v.precioUnitario, 0);
-  const totalProd = solicitud.items.reduce((a, i) => a + (i.precioUnitario ?? 0) * i.cantidad, 0);
-  const hayServicios = totalServ > 0;
-  const baseServicios = hayServicios && totalProd + totalServ > 0 ? (total * totalServ) / (totalProd + totalServ) : 0;
-  const vista = calcularCobroPreview({
-    base: total,
-    baseDescontable: hayServicios && !descuentoServicios ? total - baseServicios : undefined,
-    metodo,
-    metodosDescuento,
-    aplicarDescuento,
-    porcentaje,
-    montoManual: montoInvalido ? null : montoManual,
-    tasa: tasaValida,
-  });
-
-  async function confirmar() {
-    if (montoInvalido) {
-      setError("El monto manual no es válido.");
-      return;
-    }
-    if (tasaValida === null) {
-      setError("No hay tasa BCV disponible. Escríbela en el campo de tasa o fíjala en Configuración.");
-      return;
-    }
-    setEnviando(true);
-    setError(null);
-    try {
-      onResultado(
-        await cerrarVenta(solicitud.id, {
-          metodoPago: metodo,
-          referenciaPago: referencia.trim() || undefined,
-          montoCobrado: montoManual ?? undefined,
-          aplicarDescuento: esDivisas ? aplicarDescuento : undefined,
-          aplicarDescuentoServicios: esDivisas && aplicarDescuento && hayServicios ? descuentoServicios : undefined,
-          tasaBcv: tasaTexto !== null || solicitud.tasaBcv !== null ? tasaValida : undefined,
-        }),
-      );
-    } catch (e) {
-      console.error(e);
-      setError(msg(e));
-      setEnviando(false);
-    }
-  }
-
-  return (
-    <Modal titulo="Cerrar venta" onCerrar={onCerrar}>
-      <p className="mb-4 text-sm text-[#4A4538]">
-        Confirma que el pago ya fue verificado. Al cerrar se descuenta el inventario y el monto cobrado cuenta como ingreso.
-        Si falta mercancía no se descuenta nada y la venta queda pendiente por stock.
-      </p>
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="metodo" className="text-sm font-medium">Método de pago</label>
-          <select
-            id="metodo"
-            value={metodo}
-            onChange={(e) => setMetodo(e.target.value as MetodoPago)}
-            className="rounded-sm border border-piedra-oscura bg-white px-3 py-2.5 text-sm"
-          >
-            {Object.entries(ETIQUETA_METODO).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
-        </div>
-
-        {esDivisas && porcentaje > 0 && (
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" checked={aplicarDescuento} onChange={(e) => setAplicarDescuento(e.target.checked)} className="mt-1" />
-            <span>
-              Aplicar descuento (<strong>{porcentaje.toLocaleString("es-VE")}%</strong>)
-            </span>
-          </label>
-        )}
-        {esDivisas && porcentaje > 0 && aplicarDescuento && hayServicios && (
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" checked={descuentoServicios} onChange={(e) => setDescuentoServicios(e.target.checked)} className="mt-1" />
-            <span>
-              Aplicar el descuento también a los servicios (mano de obra)
-              <span className="block text-xs text-[#8A8272]">Si no, la mano de obra se cobra completa y el descuento solo baja los productos.</span>
-            </span>
-          </label>
-        )}
-
-        <Input label="Referencia del pago (opcional)" name="referencia" value={referencia} maxLength={100} onChange={(e) => setReferencia(e.target.value)} />
-        <Input label="Tasa BCV (Bs por USD)" name="tasa" inputMode="decimal" value={tasaMostrada} placeholder="Sin tasa: escríbela" onChange={(e) => setTasaTexto(e.target.value)} />
-        <Input label="Ajustar monto cobrado (opcional)" name="monto" inputMode="decimal" value={montoTexto} placeholder={vista.monto.toFixed(2)} onChange={(e) => setMontoTexto(e.target.value)} />
-
-        <dl className="space-y-1 border-t border-piedra-oscura pt-3 font-mono text-sm">
-          <div className="flex justify-between"><dt>Total del pedido</dt><dd>{dinero(total)}</dd></div>
-          {vista.descuentoMonto !== null && (
-            <div className="flex justify-between text-esmeralda"><dt>Descuento {porcentaje.toLocaleString("es-VE")}%</dt><dd>−{dinero(vista.descuentoMonto)}</dd></div>
-          )}
-          <div className="flex justify-between text-base font-semibold"><dt>A cobrar</dt><dd>{dinero(vista.monto)}</dd></div>
-          {vista.montoBs !== null && tasaValida !== null && (
-            <div className="flex justify-between text-[#8A8272]"><dt>En bolívares</dt><dd>{formatoBs(vista.monto, tasaValida)}</dd></div>
-          )}
-        </dl>
-      </div>
-      {error && <p role="alert" className="mt-4 text-sm text-vino">{error}</p>}
-      <div className="mt-6 flex justify-end gap-3">
-        <Button variante="secundario" onClick={onCerrar} disabled={enviando}>Volver</Button>
-        <Button onClick={confirmar} disabled={enviando}>{enviando ? "Cerrando…" : "Confirmar cierre"}</Button>
-      </div>
-    </Modal>
-  );
-}
-
 export function DialogoCancelar({
   solicitud,
   onCerrar,
@@ -197,9 +53,9 @@ export function DialogoCancelar({
   onResultado: (s: Solicitud) => void;
 }) {
   const anulacion = solicitud.estado === "cerrada";
-  const huboPago = anulacion || solicitud.estado === "pendiente_stock";
+  const huboPago = anulacion || solicitud.pagos.length > 0;
   const [motivo, setMotivo] = useState("");
-  const [reembolso, setReembolso] = useState(huboPago && solicitud.montoCobrado !== null ? solicitud.montoCobrado.toFixed(2) : "");
+  const [reembolso, setReembolso] = useState(huboPago && solicitud.resumenCobro.recibido > 0 ? solicitud.resumenCobro.recibido.toFixed(2) : "");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 

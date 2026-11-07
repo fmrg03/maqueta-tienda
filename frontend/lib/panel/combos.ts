@@ -12,6 +12,7 @@ export interface ComboAdmin {
   nombre: string;
   descripcion?: string | null;
   precioCombo: number;
+  precioDivisas?: number | null;
   activo: boolean;
   items: ItemComboAdmin[];
 }
@@ -21,6 +22,7 @@ export type FiltroEstadoCombo = "activos" | "inactivos" | "todos";
 const norm = (c: ComboAdmin): ComboAdmin => ({
   ...c,
   precioCombo: Number(c.precioCombo),
+  precioDivisas: c.precioDivisas == null ? null : Number(c.precioDivisas),
   items: (c.items ?? []).map((i) => ({
     ...i,
     cantidad: Number(i.cantidad),
@@ -45,6 +47,7 @@ export interface DatosCombo {
   nombre: string;
   descripcion?: string;
   precioCombo: number;
+  precioDivisas?: number | null;
   activo?: boolean;
   items: Array<{ varianteId: string; cantidad: number }>;
 }

@@ -7,14 +7,13 @@ import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/lib/api/client";
 import {
   actualizarTasa,
-  descuentoGlobal,
-  fijarDescuentoGlobal,
+  fijarReservaDias,
+  reservaDias,
   fijarTasaManual,
   historialTasas,
   tasaVigente,
   type FilaTasa,
 } from "@/lib/panel/configuracion";
-import { ETIQUETA_METODO, type MetodoPago } from "@/lib/panel/carrito";
 import { fechaTasa, type TasaBcv } from "@/lib/tasas/tasas";
 
 const msg = (e: unknown) => (e instanceof ApiError ? e.message : "No pudimos completar la acción. Inténtalo de nuevo.");
@@ -22,9 +21,8 @@ const msg = (e: unknown) => (e instanceof ApiError ? e.message : "No pudimos com
 export function ConfiguracionPanel() {
   const [tasa, setTasa] = useState<TasaBcv | null | undefined>(undefined);
   const [historial, setHistorial] = useState<FilaTasa[]>([]);
-  const [pct, setPct] = useState<string | null>(null);
-  const [pctActual, setPctActual] = useState<number | null>(null);
-  const [metodos, setMetodos] = useState<MetodoPago[] | null>(null);
+  const [diasTexto, setDiasTexto] = useState<string | null>(null);
+  const [diasActual, setDiasActual] = useState<number | null>(null);
   const [manual, setManual] = useState("");
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,13 +32,7 @@ export function ConfiguracionPanel() {
     let vigente = true;
     tasaVigente().then((t) => vigente && setTasa(t));
     historialTasas().then((h) => vigente && setHistorial(h)).catch(() => undefined);
-    descuentoGlobal()
-      .then((d) => {
-        if (!vigente) return;
-        setPctActual(d.porcentaje);
-        setMetodos(d.metodos);
-      })
-      .catch(() => undefined);
+    reservaDias().then((d) => vigente && setDiasActual(d)).catch(() => undefined);
     return () => {
       vigente = false;
     };
@@ -62,8 +54,6 @@ export function ConfiguracionPanel() {
 
   const recargarHistorial = () => historialTasas().then(setHistorial).catch(() => undefined);
 
-  const pctTexto = pct ?? (pctActual !== null ? String(pctActual) : "");
-
   return (
     <div className="max-w-3xl">
       <h1 className="font-serif text-[26px] font-semibold">Configuración</h1>
@@ -73,56 +63,34 @@ export function ConfiguracionPanel() {
       {error && <p role="alert" className="mb-4 text-vino">{error}</p>}
       {aviso && <p role="status" className="mb-4 border-l-4 border-esmeralda bg-white px-3 py-2 text-sm">{aviso}</p>}
 
-      <section aria-labelledby="desc" className="mb-10 bg-white p-5">
-        <h2 id="desc" className="font-semibold">Descuento global</h2>
+      <section aria-labelledby="reserva" className="mb-10 bg-white p-5">
+        <h2 id="reserva" className="font-semibold">Reserva de mercancía</h2>
         <p className="mt-1 text-sm text-[#4A4538]">
-          Porcentaje que se descuenta al cerrar una venta pagada con alguno de los métodos que marques abajo. El
-          asesor puede desmarcarlo en una venta puntual. Cambiarlo no altera ventas ya cerradas. Con 0, o sin ningún método marcado, no se aplica ni se anuncia en la web.
+          Con el primer abono, el stock del pedido queda apartado (no se descuenta hasta cobrar todo). Pasados estos días, el pedido aparece como
+          vencido para que el personal decida si prorroga o libera la reserva. Nada se libera solo.
         </p>
         <form
           className="mt-4 flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            const n = Number(pctTexto);
-            if (pctTexto.trim() === "" || Number.isNaN(n) || n < 0 || n > 100) {
-              setError("Escribe un porcentaje entre 0 y 100.");
+            const n = Number(diasTexto ?? (diasActual !== null ? String(diasActual) : ""));
+            if (!Number.isInteger(n) || n < 1 || n > 365) {
+              setError("Escribe un número de días entre 1 y 365.");
               return;
             }
-            ejecutar("pct", async () => {
-              const v = await fijarDescuentoGlobal(n, metodos ?? []);
-              setPctActual(v.porcentaje);
-              setMetodos(v.metodos);
-              setPct(null);
-              setAviso(`Descuento fijado en ${v.porcentaje}% para ${v.metodos.length} método(s) de pago.`);
+            ejecutar("dias", async () => {
+              const v = await fijarReservaDias(n);
+              setDiasActual(v);
+              setDiasTexto(null);
+              setAviso(`Las reservas vencen a los ${v} días del primer abono.`);
             });
           }}
         >
           <div className="w-40">
-            <Input label="Porcentaje (%)" name="pct" inputMode="decimal" value={pctTexto} onChange={(e) => setPct(e.target.value)} />
+            <Input label="Días de reserva" name="dias" inputMode="numeric" value={diasTexto ?? (diasActual !== null ? String(diasActual) : "")} onChange={(e) => setDiasTexto(e.target.value)} />
           </div>
-          <fieldset className="w-full">
-            <legend className="mb-2 text-sm font-medium">Aplica a estos métodos de pago</legend>
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {(Object.entries(ETIQUETA_METODO) as [MetodoPago, string][]).map(([valor, etiqueta]) => (
-                <label key={valor} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={metodos?.includes(valor) ?? false}
-                    disabled={metodos === null}
-                    onChange={(e) =>
-                      setMetodos((actual) =>
-                        e.target.checked ? [...(actual ?? []), valor] : (actual ?? []).filter((m) => m !== valor),
-                      )
-                    }
-                    className="h-4 w-4 accent-dorado-oscuro"
-                  />
-                  {etiqueta}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <Button type="submit" disabled={ocupado !== null || pctActual === null || metodos === null}>
-            {ocupado === "pct" ? "Guardando…" : "Guardar"}
+          <Button type="submit" disabled={ocupado !== null || diasActual === null}>
+            {ocupado === "dias" ? "Guardando…" : "Guardar"}
           </Button>
         </form>
       </section>

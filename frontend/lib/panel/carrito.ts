@@ -5,6 +5,7 @@ export type EstadoCarrito =
   | "nueva"
   | "contactado"
   | "pago_en_verificacion"
+  | "reservada"
   | "pendiente_stock"
   | "cerrada"
   | "cancelada";
@@ -15,6 +16,7 @@ export const ETIQUETA_ESTADO: Record<EstadoCarrito, string> = {
   nueva: "Nueva",
   contactado: "Contactado",
   pago_en_verificacion: "Pago en verificación",
+  reservada: "Reservada (con abonos)",
   pendiente_stock: "Pendiente por stock",
   cerrada: "Cerrada",
   cancelada: "Cancelada",
@@ -24,6 +26,7 @@ export const TONO_ESTADO: Record<EstadoCarrito, "neutro" | "exito" | "alerta" | 
   nueva: "dorado",
   contactado: "neutro",
   pago_en_verificacion: "dorado",
+  reservada: "dorado",
   pendiente_stock: "alerta",
   cerrada: "exito",
   cancelada: "neutro",
@@ -45,13 +48,18 @@ export const ESTADOS_ABIERTOS: EstadoCarrito[] = [
   "nueva",
   "contactado",
   "pago_en_verificacion",
+  "reservada",
   "pendiente_stock",
 ];
+
+export const METODOS_DIVISAS: MetodoPago[] = ["efectivo_divisas", "zelle", "binance"];
+export const METODOS_BOLIVARES: MetodoPago[] = ["efectivo", "pago_movil", "transferencia"];
 
 export interface ItemSolicitud {
   id: string;
   cantidad: number;
   precioUnitario: number | null;
+  precioDivisasUnitario?: number | null;
   material?: { id: string; nombre: string } | null;
   variante?: (Omit<VarianteMaterial, "precioVenta"> & {
     precioVenta: number;
@@ -76,6 +84,32 @@ export interface Faltante {
   requerido: number;
   disponible: number;
   faltan: number;
+}
+
+export interface PagoPedido {
+  id: string;
+  metodo: MetodoPago;
+  /** Dinero recibido (USD). */
+  monto: number;
+  /** Deuda en dólares BCV que cubre. */
+  abona: number;
+  tasaBcv: number | null;
+  montoBs: number | null;
+  referencia?: string | null;
+  createdAt: string;
+}
+
+export interface ResumenCobro {
+  bcv: number;
+  divisas: number;
+  factor: number;
+  productosBcv: number;
+  serviciosBcv: number;
+  recibido: number;
+  abonado: number;
+  saldo: number;
+  saldoDivisas: number;
+  pagadoCompleto: boolean;
 }
 
 export interface Solicitud {
@@ -109,6 +143,9 @@ export interface Solicitud {
   faltantes?: Faltante[] | null;
   cerradaAt?: string | null;
   createdAt: string;
+  pagos: PagoPedido[];
+  reservaVenceAt?: string | null;
+  resumenCobro: ResumenCobro;
 }
 
 export interface Evento {
@@ -138,9 +175,11 @@ function normalizar(s: Solicitud): Solicitud {
     tasaBcv: num(s.tasaBcv),
     montoCobradoBs: num(s.montoCobradoBs),
     montoReembolsado: num(s.montoReembolsado),
+    pagos: (s.pagos ?? []).map((p) => ({ ...p, monto: Number(p.monto), abona: Number(p.abona), tasaBcv: num(p.tasaBcv), montoBs: num(p.montoBs) })),
     items: (s.items ?? []).map((i) => ({
       ...i,
       precioUnitario: num(i.precioUnitario),
+      precioDivisasUnitario: num(i.precioDivisasUnitario),
       variante: i.variante
         ? { ...i.variante, stock: Number(i.variante.stock), precioVenta: Number(i.variante.precioVenta) }
         : i.variante,
@@ -213,18 +252,30 @@ export async function registrarCostoServicios(id: string, costo: number | null):
   return normalizar(await apiFetch<Solicitud>(`${BASE}/${id}/costo-servicios`, { method: "PATCH", body: JSON.stringify({ costo }) }));
 }
 
-export async function cerrarVenta(
-  id: string,
-  datos: {
-    metodoPago: MetodoPago;
-    referenciaPago?: string;
-    montoCobrado?: number;
-    aplicarDescuento?: boolean;
-    aplicarDescuentoServicios?: boolean;
-    tasaBcv?: number;
-  },
-): Promise<Solicitud> {
-  return normalizar(await apiFetch<Solicitud>(`${BASE}/${id}/cerrar`, { method: "POST", body: JSON.stringify(datos) }));
+export interface DatosPago {
+  metodo: MetodoPago;
+  monto: number;
+  abona?: number;
+  referencia?: string;
+  tasaBcv?: number;
+}
+
+/** Registra un cobro (parcial o total). Al cubrir todo, la venta se cierra sola. */
+export async function registrarPago(id: string, pago: DatosPago): Promise<Solicitud> {
+  return normalizar(await apiFetch<Solicitud>(`${BASE}/${id}/pagos`, { method: "POST", body: JSON.stringify(pago) }));
+}
+
+export async function eliminarPago(id: string, pagoId: string): Promise<Solicitud> {
+  return normalizar(await apiFetch<Solicitud>(`${BASE}/${id}/pagos/${pagoId}`, { method: "DELETE" }));
+}
+
+export async function prorrogarReserva(id: string, dias: number): Promise<Solicitud> {
+  return normalizar(await apiFetch<Solicitud>(`${BASE}/${id}/reserva`, { method: "PATCH", body: JSON.stringify({ dias }) }));
+}
+
+/** Cierra con lo ya cobrado (reintento tras "pendiente por stock"). */
+export async function cerrarVenta(id: string): Promise<Solicitud> {
+  return normalizar(await apiFetch<Solicitud>(`${BASE}/${id}/cerrar`, { method: "POST", body: JSON.stringify({}) }));
 }
 
 export async function cancelarSolicitud(
@@ -301,28 +352,7 @@ export const ETIQUETA_EVENTO: Record<string, string> = {
   anulada: "Venta anulada",
   desde_presupuesto: "Creada desde un presupuesto",
   costo_servicios: "Pago a trabajadores registrado",
+  pago: "Pago registrado",
+  pago_eliminado: "Pago eliminado",
+  reserva: "Reserva",
 };
-
-/** Misma cuenta que el backend (calcularCobro) para mostrar la vista previa antes de cerrar. */
-export function calcularCobroPreview(p: {
-  base: number;
-  metodo: MetodoPago;
-  /** Métodos con descuento según Configuración. */
-  metodosDescuento: MetodoPago[];
-  aplicarDescuento: boolean;
-  porcentaje: number;
-  montoManual: number | null;
-  tasa: number | null;
-  /** Parte de `base` sobre la que se calcula el descuento (por defecto toda). */
-  baseDescontable?: number;
-}) {
-  const r2 = (n: number) => Math.round(n * 100) / 100;
-  let monto = r2(p.base);
-  let descuentoMonto: number | null = null;
-  if (p.montoManual !== null) monto = r2(p.montoManual);
-  else if (p.metodosDescuento.includes(p.metodo) && p.aplicarDescuento && p.porcentaje > 0) {
-    descuentoMonto = r2(((p.baseDescontable ?? p.base) * p.porcentaje) / 100);
-    monto = r2(p.base - descuentoMonto);
-  }
-  return { monto, descuentoMonto, montoBs: p.tasa ? r2(monto * p.tasa) : null };
-}

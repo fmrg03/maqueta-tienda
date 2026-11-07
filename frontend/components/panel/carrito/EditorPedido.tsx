@@ -25,7 +25,8 @@ import {
   type Solicitud,
 } from "@/lib/panel/carrito";
 import { DialogoServicio, type DatosLineaServicio } from "@/components/panel/presupuestos/DialogoServicio";
-import { DialogoCancelar, DialogoCierre } from "./Dialogos";
+import { DialogoCancelar } from "./Dialogos";
+import { PanelCobro } from "./PanelCobro";
 
 export interface Aviso {
   texto: string;
@@ -125,7 +126,7 @@ export function EditorPedido({
   );
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
-  const [dialogo, setDialogo] = useState<"cierre" | "cancelar" | null>(null);
+  const [dialogo, setDialogo] = useState<"cancelar" | null>(null);
 
   const [materiales, setMateriales] = useState<Material[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
@@ -652,6 +653,14 @@ export function EditorPedido({
 
       {error && <p role="alert" className="mt-4 text-vino">{error}</p>}
 
+      {solicitud.estado !== "cancelada" && (solicitud.estado !== "cerrada" || solicitud.pagos.length > 0) && (
+        <PanelCobro
+          solicitud={solicitud}
+          bloqueo={motivoNoCerrar}
+          onActualizada={(s, texto) => onActualizada(s, texto ? { texto } : undefined)}
+        />
+      )}
+
       {abierta && (
         <section aria-label="Acciones" className="mt-6 flex flex-wrap items-center gap-3">
           <Button variante="secundario" onClick={guardar} disabled={!sucio || hayInvalidas || ocupado !== null}>
@@ -670,13 +679,9 @@ export function EditorPedido({
               Pago en verificación
             </Button>
           )}
-          <Button onClick={() => setDialogo("cierre")} disabled={motivoNoCerrar !== null || ocupado !== null}>
-            {solicitud.estado === "pendiente_stock" ? "Reintentar cierre" : "Cerrar venta"}
-          </Button>
           <button onClick={() => setDialogo("cancelar")} className="text-sm text-vino underline">
             Cancelar solicitud
           </button>
-          {motivoNoCerrar && <p className="basis-full text-sm text-[#8A8272]">{motivoNoCerrar}</p>}
         </section>
       )}
 
@@ -697,22 +702,6 @@ export function EditorPedido({
               { clave: nuevaClave(), servicioId: d.servicioId, descripcion: d.descripcion, unidad: d.unidad, cantidad: String(d.cantidad), precio: String(d.precioUnitario) },
             ]);
             setDialogoServicio(false);
-          }}
-        />
-      )}
-      {dialogo === "cierre" && (
-        <DialogoCierre
-          solicitud={solicitud}
-          total={totalMostrado}
-          onCerrar={() => setDialogo(null)}
-          onResultado={(s) => {
-            setDialogo(null);
-            onActualizada(
-              s,
-              s.estado === "pendiente_stock"
-                ? { texto: "El pago quedó registrado, pero falta mercancía: la solicitud quedó pendiente por stock." }
-                : { texto: "Venta cerrada: se descontó el inventario y se registró el ingreso." },
-            );
           }}
         />
       )}

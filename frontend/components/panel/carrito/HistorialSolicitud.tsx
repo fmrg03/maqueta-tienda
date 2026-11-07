@@ -12,6 +12,11 @@ function resumen(e: Evento): string {
     case "cerrada":
     case "pendiente_stock":
       return `${ETIQUETA_METODO[d.metodoPago as MetodoPago] ?? d.metodoPago ?? ""} · ${d.montoCobrado != null ? dinero(Number(d.montoCobrado)) : ""}`.trim();
+    case "pago":
+    case "pago_eliminado":
+      return `${ETIQUETA_METODO[d.metodo as MetodoPago] ?? d.metodo ?? ""} · ${dinero(Number(d.monto))}${d.referencia ? ` · ref. ${d.referencia}` : ""}`;
+    case "reserva":
+      return d.venceAt ? `Vence ${fechaCorta(String(d.venceAt))}` : "";
     case "costo_servicios":
       return d.despues == null ? "Se quitó el pago registrado" : `${dinero(Number(d.despues))} pagados a trabajadores`;
     case "cancelada":

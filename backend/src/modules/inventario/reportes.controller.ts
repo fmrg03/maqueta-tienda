@@ -32,6 +32,11 @@ export class ReportesController {
     return this.reportesService.reporteVentas(q.desde, q.hasta);
   }
 
+  @Get('detalle-ventas')
+  detalleVentas(@Query() q: ReporteQueryDto) {
+    return this.reportesService.reporteDetalleVentas(q.desde, q.hasta);
+  }
+
   @Get('servicios')
   servicios(@Query() q: ReporteQueryDto) {
     return this.reportesService.reporteServicios(q.desde, q.hasta);

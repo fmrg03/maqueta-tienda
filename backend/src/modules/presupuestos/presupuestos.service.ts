@@ -238,6 +238,7 @@ export class PresupuestosService {
     const mensaje =
       `Hola ${p.clienteNombre}, te compartimos el presupuesto N° ${numeroFormateado(p.numero)} de Revestimiento Élite RY.\n` +
       `Total: $${total.toFixed(2)}${bs}.\n` +
+      (p.totales.totalDivisas < total - 0.004 ? `Pagando en divisas (efectivo USD, Zelle, Binance): $${p.totales.totalDivisas.toFixed(2)}.\n` : '') +
       `Válido por ${p.validezDias} días.\n` +
       `Puedes verlo y descargarlo aquí: ${enlace}`;
     return { mensaje, telefono: p.clienteTelefono ?? null, enlace, estado: p.estado === 'borrador' ? 'enviado' : p.estado };

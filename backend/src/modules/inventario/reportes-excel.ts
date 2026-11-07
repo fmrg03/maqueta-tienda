@@ -1,8 +1,8 @@
 import * as ExcelJS from 'exceljs';
 import { ReportesService } from './reportes.service';
 
-export type SeccionReporte = 'ventas' | 'servicios' | 'mercancia' | 'proveedores' | 'asesorias';
-export const SECCIONES: SeccionReporte[] = ['ventas', 'servicios', 'mercancia', 'proveedores', 'asesorias'];
+export type SeccionReporte = 'ventas' | 'detalle' | 'servicios' | 'mercancia' | 'proveedores' | 'asesorias';
+export const SECCIONES: SeccionReporte[] = ['ventas', 'detalle', 'servicios', 'mercancia', 'proveedores', 'asesorias'];
 const ESTADOS_ASESORIA: Record<string, string> = { pendiente: 'Pendiente', llamada_realizada: 'Llamada realizada', visita_pactada: 'Visita pactada', no_procede: 'No procede', cancelada: 'Cancelada' };
 
 const USD = '"$"#,##0.00';
@@ -58,6 +58,39 @@ export async function construirLibro(
       { header: 'Costo (USD)', key: 'c', width: 14, formato: USD },
       { header: 'Ganancia (USD)', key: 'g', width: 14, formato: USD },
     ], [...g.serie.map((s) => ({ p: s.periodo, v: s.ventas, c: s.costo, g: s.ganancia })), { p: 'TOTAL', v: g.totalVentas, c: g.totalCosto, g: g.ganancia }]);
+  }
+
+  if (seccion === 'detalle') {
+    const d = await svc.reporteDetalleVentas(desde, hasta);
+    hoja(wb, 'Por método de pago', [
+      { header: 'Método', key: 'm', width: 22 },
+      { header: 'Pagos', key: 'n', width: 10 },
+      { header: 'Recibido (USD)', key: 'u', width: 16, formato: USD },
+      { header: 'Recibido (Bs)', key: 'b', width: 18, formato: '#,##0.00' },
+    ], d.porMetodo.map((x) => ({ m: METODOS[x.metodo] ?? x.metodo, n: x.pagos, u: x.monto, b: x.montoBs })));
+    hoja(wb, 'Productos vendidos', [
+      { header: 'Producto', key: 'p', width: 34 },
+      { header: 'Presentación', key: 'a', width: 24 },
+      { header: 'SKU', key: 'k', width: 16 },
+      { header: 'Unidades', key: 'u', width: 12 },
+      { header: 'Vendido (USD)', key: 'v', width: 16, formato: USD },
+    ], d.productos.map((x) => ({ p: x.producto, a: attrs(x.atributos), k: x.sku, u: x.unidades, v: x.ventas })));
+    const filas: Array<Record<string, unknown>> = [];
+    for (const v of d.detalle) {
+      for (const p of v.productos) filas.push({ n: v.numero, f: fechaVE(v.fecha), c: v.cliente, t: 'Producto', d: `${p.producto}${attrs(p.atributos) ? ' — ' + attrs(p.atributos) : ''}`, q: p.cantidad, pu: p.precioUnitario, tot: p.total });
+      for (const sv of v.servicios) filas.push({ n: v.numero, f: fechaVE(v.fecha), c: v.cliente, t: 'Servicio', d: sv.descripcion, q: sv.cantidad, pu: sv.precioUnitario, tot: sv.total });
+      for (const p of v.pagos) filas.push({ n: v.numero, f: fechaVE(v.fecha), c: v.cliente, t: 'Pago', d: `${METODOS[p.metodo] ?? p.metodo}${p.referencia ? ' · ref. ' + p.referencia : ''}`, q: '', pu: '', tot: p.monto });
+    }
+    hoja(wb, 'Detalle por venta', [
+      { header: 'Nº pedido', key: 'n', width: 10 },
+      { header: 'Fecha cierre', key: 'f', width: 18 },
+      { header: 'Cliente', key: 'c', width: 26 },
+      { header: 'Tipo', key: 't', width: 10 },
+      { header: 'Descripción', key: 'd', width: 46 },
+      { header: 'Cantidad', key: 'q', width: 10 },
+      { header: 'Precio unit. (USD)', key: 'pu', width: 16, formato: USD },
+      { header: 'Total (USD)', key: 'tot', width: 14, formato: USD },
+    ], filas);
   }
 
   if (seccion === 'servicios') {

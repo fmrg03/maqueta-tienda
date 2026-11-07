@@ -60,6 +60,22 @@ export interface ReporteServicios {
   sinCosto: number;
   detalle: ServicioPedidoReporte[];
 }
+export interface PagoDetalle {
+  metodo: string; monto: number; abona: number; montoBs: number | null; tasaBcv: number | null; referencia: string | null; fecha: string;
+}
+export interface VentaDetalle {
+  solicitudId: string; numero: number; fecha: string; cliente: string; cobrado: number;
+  productos: Array<{ producto: string; sku: string; atributos: Record<string, string>; cantidad: number; precioUnitario: number; total: number }>;
+  servicios: Array<{ descripcion: string; unidad: string; cantidad: number; precioUnitario: number; total: number }>;
+  pagos: PagoDetalle[];
+}
+export interface ReporteDetalleVentas {
+  ventas: number;
+  cobrado: number;
+  porMetodo: Array<{ metodo: string; pagos: number; monto: number; montoBs: number }>;
+  productos: Array<{ producto: string; sku: string; atributos: Record<string, string>; unidades: number; ventas: number }>;
+  detalle: VentaDetalle[];
+}
 export interface CompraDetalle {
   fecha: string; proveedorId: string | null; proveedor: string | null; material: string; sku: string;
   atributos: Record<string, string>; unidades: number; costoUnitario: number | null; total: number | null; motivo: string | null;
@@ -255,6 +271,113 @@ export class ReportesService {
       resultado: Math.round((ingresoConCosto - costo) * 100) / 100,
       pedidos: detalle.length,
       sinCosto: detalle.length - conCosto.length,
+      detalle,
+    };
+  }
+
+  /**
+   * Detalle de las ventas cerradas del rango: qué productos se vendieron, con qué
+   * métodos se recibió el dinero y el desglose de cada venta (productos, servicios
+   * y cada pago). Las ventas anteriores a los pagos múltiples muestran un solo pago.
+   */
+  async reporteDetalleVentas(desde: string, hasta: string): Promise<ReporteDetalleVentas> {
+    const m = this.manager();
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const ventas: any[] = await m.query(
+      `SELECT s.id, s."numero", s."clienteNombre", s."cerradaAt" AS fecha, s."metodoPago", s."referenciaPago",
+              s."montoCobrado", s."montoCobradoBs", s."tasaBcv"
+         FROM solicitudes_carrito s
+        WHERE s.estado = 'cerrada' AND s."cerradaAt" BETWEEN $1 AND $2
+        ORDER BY s."cerradaAt" DESC
+        LIMIT 1000`,
+      [desde, hasta],
+    );
+    const ids = ventas.map((v) => v.id);
+    const vacio = { rows: [] as any[] };
+    const [productos, servicios, pagos]: any[][] = ids.length
+      ? await Promise.all([
+          m.query(
+            `SELECT m."solicitudId" AS sid, mat.nombre, v."skuVariante" AS sku, v.atributos,
+                    SUM(m.cantidad) AS cantidad, SUM(m.cantidad * m."precioVentaUnitario") AS total
+               FROM movimientos_inventario m
+               JOIN variantes_material v ON v.id = m."varianteId"
+               JOIN materiales mat ON mat.id = v."materialId"
+              WHERE m.tipo = 'salida' AND m."solicitudId" = ANY($1)
+              GROUP BY m."solicitudId", mat.nombre, v."skuVariante", v.atributos`,
+            [ids],
+          ),
+          m.query(
+            `SELECT "solicitudId" AS sid, descripcion, unidad, cantidad, "precioUnitario"
+               FROM servicios_solicitud WHERE "solicitudId" = ANY($1) ORDER BY orden`,
+            [ids],
+          ),
+          m.query(
+            `SELECT "solicitudId" AS sid, metodo, monto, abona, "montoBs", "tasaBcv", referencia, "createdAt"
+               FROM pagos_solicitud WHERE "solicitudId" = ANY($1) ORDER BY "createdAt"`,
+            [ids],
+          ),
+        ])
+      : [vacio.rows, vacio.rows, vacio.rows];
+
+    const por = <T extends { sid: string }>(filas: T[]) => {
+      const mapa = new Map<string, T[]>();
+      for (const f of filas) mapa.set(f.sid, [...(mapa.get(f.sid) ?? []), f]);
+      return mapa;
+    };
+    const prod = por(productos), serv = por(servicios), pag = por(pagos);
+
+    const detalle: VentaDetalle[] = ventas.map((v) => {
+      const lista = pag.get(v.id) ?? [];
+      const pagosVenta: PagoDetalle[] = lista.length
+        ? lista.map((p: any) => ({
+            metodo: p.metodo, monto: Number(p.monto), abona: Number(p.abona),
+            montoBs: p.montoBs === null ? null : Number(p.montoBs), tasaBcv: p.tasaBcv === null ? null : Number(p.tasaBcv),
+            referencia: p.referencia ?? null, fecha: new Date(p.createdAt).toISOString(),
+          }))
+        : v.metodoPago
+          ? [{
+              metodo: v.metodoPago, monto: Number(v.montoCobrado ?? 0), abona: Number(v.montoCobrado ?? 0),
+              montoBs: v.montoCobradoBs === null ? null : Number(v.montoCobradoBs), tasaBcv: v.tasaBcv === null ? null : Number(v.tasaBcv),
+              referencia: v.referenciaPago ?? null, fecha: new Date(v.fecha).toISOString(),
+            }]
+          : [];
+      return {
+        solicitudId: v.id,
+        numero: Number(v.numero),
+        fecha: new Date(v.fecha).toISOString(),
+        cliente: v.clienteNombre,
+        cobrado: Number(v.montoCobrado ?? 0),
+        productos: (prod.get(v.id) ?? []).map((p: any) => ({
+          producto: p.nombre, sku: p.sku, atributos: p.atributos ?? {}, cantidad: Number(p.cantidad),
+          precioUnitario: r2(Number(p.total) / Number(p.cantidad)), total: r2(Number(p.total)),
+        })),
+        servicios: (serv.get(v.id) ?? []).map((x: any) => ({
+          descripcion: x.descripcion, unidad: x.unidad, cantidad: Number(x.cantidad),
+          precioUnitario: Number(x.precioUnitario), total: r2(Number(x.cantidad) * Number(x.precioUnitario)),
+        })),
+        pagos: pagosVenta,
+      };
+    });
+
+    const metodos = new Map<string, { pagos: number; monto: number; montoBs: number }>();
+    const agregados = new Map<string, { producto: string; sku: string; atributos: Record<string, string>; unidades: number; ventas: number }>();
+    for (const d of detalle) {
+      for (const p of d.pagos) {
+        const a = metodos.get(p.metodo) ?? { pagos: 0, monto: 0, montoBs: 0 };
+        a.pagos++; a.monto += p.monto; a.montoBs += p.montoBs ?? 0;
+        metodos.set(p.metodo, a);
+      }
+      for (const p of d.productos) {
+        const a = agregados.get(p.sku) ?? { producto: p.producto, sku: p.sku, atributos: p.atributos, unidades: 0, ventas: 0 };
+        a.unidades += p.cantidad; a.ventas += p.total;
+        agregados.set(p.sku, a);
+      }
+    }
+    return {
+      ventas: detalle.length,
+      cobrado: r2(detalle.reduce((a, d) => a + d.cobrado, 0)),
+      porMetodo: [...metodos.entries()].map(([metodo, a]) => ({ metodo, pagos: a.pagos, monto: r2(a.monto), montoBs: r2(a.montoBs) })).sort((a, b) => b.monto - a.monto),
+      productos: [...agregados.values()].map((a) => ({ ...a, ventas: r2(a.ventas) })).sort((a, b) => b.ventas - a.ventas),
       detalle,
     };
   }

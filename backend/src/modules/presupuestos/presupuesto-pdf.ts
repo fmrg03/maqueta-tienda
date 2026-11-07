@@ -160,6 +160,12 @@ export function construirPdfPresupuesto(d: DatosPdfPresupuesto): Promise<Buffer>
     doc.moveTo(xEt, y - 2).lineTo(MARGEN + ANCHO, y - 2).lineWidth(1).strokeColor(ORO).stroke();
     y += 4;
     fila('TOTAL (USD)', usd(t.total), true);
+    if (t.totalDivisas < t.total - 0.004) {
+      fila('Total en divisas', usd(t.totalDivisas), true);
+      doc.font('Helvetica').fontSize(8.5).fillColor(SUAVE);
+      doc.text('Si pagas en divisas (efectivo USD, Zelle o Binance).', xEt - 30, y - 4, { width: 260, align: 'right' });
+      y = doc.y + 8;
+    }
     if (d.tasaBcv && d.tasaBcv > 0) {
       doc.font('Helvetica').fontSize(9).fillColor(SUAVE);
       doc.text(`Referencia: ${bs(t.total * d.tasaBcv)} (tasa BCV ${d.tasaBcv.toLocaleString('es-VE', { minimumFractionDigits: 2 })})`, xEt - 30, y, { width: 260, align: 'right' });

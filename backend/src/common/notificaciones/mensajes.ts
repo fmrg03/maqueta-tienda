@@ -1,4 +1,5 @@
 import type { SolicitudCarrito, ItemSolicitudCarrito } from '../../modules/carrito/entities/solicitud-carrito.entity';
+import { resumenCobro, totalesPedido } from '../../modules/carrito/carrito-calculos';
 import type { SolicitudAsesoria } from '../../modules/asesorias/entities/asesoria.entity';
 
 export interface MensajeNotificacion {
@@ -179,15 +180,26 @@ export function mensajeDetalleCliente(s: SolicitudCarrito): MensajeNotificacion 
       : `Total: ${dinero(total)}${parcial ? ' (parcial: hay ítems con precio por confirmar)' : ''}`;
   const saludo = `Hola ${nombre}, este es el detalle actualizado de tu pedido en Revestimiento Élite RY:`;
   const cierre = 'Si estás de acuerdo, respóndenos para continuar con el pago.';
+  const totales = totalesPedido(s.items as any, s.servicios, s.totalFinal);
+  const resumen = resumenCobro(totales, s.pagos ?? []);
+  const extra: string[] = [];
+  if (!parcial && totales.divisas < totales.bcv - 0.004) {
+    extra.push(`Pagando en dólares BCV (Bs, pago móvil, transferencia): ${dinero(totales.bcv)}`);
+    extra.push(`Pagando en divisas (efectivo USD, Zelle, Binance): ${dinero(totales.divisas)}`);
+  }
+  if (resumen.recibido > 0) {
+    extra.push(`Abonado: ${dinero(resumen.recibido)} — saldo pendiente: ${dinero(resumen.saldo)} a precio BCV` +
+      (totales.divisas < totales.bcv - 0.004 ? ` (${dinero(resumen.saldoDivisas)} en divisas)` : ''));
+  }
 
   return {
     asunto: 'Detalle actualizado de tu pedido — Revestimiento Élite RY',
-    texto: [saludo, ...items.map((i) => `- ${i}`), lineaTotal, cierre].join('\n'),
+    texto: [saludo, ...items.map((i) => `- ${i}`), lineaTotal, ...extra, cierre].join('\n'),
     html: envolverHtml(
       'Detalle actualizado de tu pedido',
       [escaparHtml(saludo)],
       items.map(escaparHtml),
-      `<strong>${escaparHtml(lineaTotal)}</strong><br>${escaparHtml(cierre)}`,
+      [`<strong>${escaparHtml(lineaTotal)}</strong>`, ...extra.map(escaparHtml), escaparHtml(cierre)].join('<br>'),
     ),
   };
 }

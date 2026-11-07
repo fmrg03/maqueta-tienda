@@ -624,7 +624,7 @@ export function EditorPedido({
                   <dt>
                     {solicitud.descuentoPct !== null
                       ? `Descuento por divisas (${solicitud.descuentoPct}%${solicitud.descuentoIncluyeServicios === false ? ", solo productos" : ""})`
-                      : "Ajuste al cobrar"}
+                      : solicitud.pagos.length > 0 ? "Ahorro por pagar en divisas" : "Ajuste al cobrar"}
                   </dt>
                   <dd className="font-mono">−{dinero(solicitud.descuentoMonto ?? ajuste)}</dd>
                 </div>

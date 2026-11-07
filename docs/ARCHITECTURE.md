@@ -435,7 +435,9 @@ El asesor gestiona su propia disponibilidad desde `/panel/mis-horarios`. `GET /a
 - Catálogo: búsqueda (`buscar`), chips de categoría (`categoria`) y orden (`orden`) en la URL; detalle con relacionados y barra fija "Agregar a mi consulta" en móvil.
 - API pública: `GET /catalogo/materiales` limita `pagina` (≥1) y `porPagina` (1–100).
 
-## Método de pago Binance y descuento global por método
+## Método de pago Binance y descuento global por método (histórico)
+
+> Reemplazado por «Pagos, abonos y reserva»: el descuento global ya no existe; las ventas cerradas antiguas conservan sus columnas `descuento*`.
 - `MetodoPago.BINANCE` (migración `1788800000000-MetodoPagoBinance`).
 - El descuento global ya no está atado a "divisas": Configuración guarda el % (`descuento_divisas_pct`) y la lista de métodos que lo reciben (`descuento_metodos`, en `configuracion`). Sin elección del admin valen `efectivo_divisas` y `zelle` (comportamiento anterior); lista vacía = no aplica a ninguno.
 - `PUT /configuracion/descuento-divisas` acepta `{ porcentaje, metodos? }`; `GET /configuracion/publica` devuelve `descuentoDivisasPct` y `descuentoMetodos`. Al cerrar una venta, `CarritoService` consulta la lista vigente; el aviso público y el diálogo de cierre usan la misma lista.
@@ -460,3 +462,12 @@ Módulo solo del panel (admin, ventas y asesores) para armar cotizaciones a medi
 - Los scripts de instalación solo se ejecutan para dependencias autorizadas (`pnpm.onlyBuiltDependencies`: `bcrypt` en el backend, `unrs-resolver` en el frontend).
 - pnpm exigió declarar `express` (dependencia directa) y `@types/express`, que antes funcionaban solo porque npm los dejaba a la vista.
 - No mezclar con npm: no se versionan `package-lock.json`.
+
+## Pagos, abonos y reserva (migraciones 1789200000000 y 1789300000000)
+
+- **Precio en divisas** (`precioDivisas` en variante y combo, nullable): solo interno, nunca sale en el catálogo público (`CatalogoService` lo quita, y la respuesta pública del pedido también). Al armar un pedido/presupuesto se congela `precioDivisasUnitario` por línea (solo si se vende al precio de lista). `totalesPedido` calcula total BCV y total en divisas (los servicios valen igual); `factor = divisas/bcv`.
+- **Pagos** (`pagos_solicitud`): cada cobro tiene `metodo`, `monto` (dinero recibido, USD) y `abona` (deuda en USD BCV que cubre; en divisas por defecto `monto/factor`). Bolívares: `tasaBcv` + `montoBs`. `POST/DELETE /carrito/solicitudes/:id/pagos`.
+- **Reserva**: el primer abono pasa el pedido a `reservada`; el stock físico no se descuenta, pero otras ventas lo ven apartado (`GET /carrito/reservas`). Si no alcanza, `pendiente_stock`. `reservaVenceAt` (config `reserva_dias`, default 7) es solo aviso; `PATCH …/reserva` la prorroga. Cancelar libera la reserva.
+- **Cierre automático**: al cubrir el total (±0.01) se descuenta el stock y se registra el ingreso (`montoCobrado` = dinero recibido). `POST …/cerrar` registra pagos opcionales y reintenta el cierre.
+- **Reporte «Detalle de ventas»** (`GET /reportes/detalle-ventas`, Excel `exportar/detalle`): productos vendidos, ingreso por método de pago y desglose por venta.
+- **Carga masiva** (`/inventario/importacion`: plantilla, `excel`, `validar`, importación todo-o-nada) y proveedor al crear una presentación.

@@ -1,7 +1,7 @@
 import { apiFetch, descargarArchivo } from "../api/client";
 
 export type Agrupacion = "semana" | "mes" | "anio";
-export type SeccionReporte = "ventas" | "servicios" | "mercancia" | "proveedores" | "asesorias";
+export type SeccionReporte = "ventas" | "detalle" | "servicios" | "mercancia" | "proveedores" | "asesorias";
 
 export interface GananciaPeriodo { periodo: string; ventas: number; costo: number; ganancia: number }
 export interface ReporteGanancias { totalVentas: number; totalCosto: number; ganancia: number; serie: GananciaPeriodo[] }
@@ -13,6 +13,19 @@ export interface ServicioPedidoReporte {
   resultado: number | null;
 }
 export interface ReporteServicios { ingreso: number; costo: number; resultado: number; pedidos: number; sinCosto: number; detalle: ServicioPedidoReporte[] }
+export interface PagoDetalle { metodo: string; monto: number; abona: number; montoBs: number | null; tasaBcv: number | null; referencia: string | null; fecha: string }
+export interface VentaDetalle {
+  solicitudId: string; numero: number; fecha: string; cliente: string; cobrado: number;
+  productos: Array<{ producto: string; sku: string; atributos: Record<string, string>; cantidad: number; precioUnitario: number; total: number }>;
+  servicios: Array<{ descripcion: string; unidad: string; cantidad: number; precioUnitario: number; total: number }>;
+  pagos: PagoDetalle[];
+}
+export interface ReporteDetalleVentas {
+  ventas: number; cobrado: number;
+  porMetodo: Array<{ metodo: string; pagos: number; monto: number; montoBs: number }>;
+  productos: Array<{ producto: string; sku: string; atributos: Record<string, string>; unidades: number; ventas: number }>;
+  detalle: VentaDetalle[];
+}
 export interface InventarioPeriodo { periodo: string; entradas: number; salidas: number }
 export interface VentaReporte {
   solicitudId: string; numero: number; fecha: string; cliente: string;
@@ -43,6 +56,9 @@ export const reporteInventario = (desde: string, hasta: string, agrupacion: Agru
 
 export const reporteVentas = (desde: string, hasta: string) =>
   apiFetch<VentaReporte[]>(`/api/v1/reportes/ventas?${rango(desde, hasta)}`);
+
+export const reporteDetalleVentas = (desde: string, hasta: string) =>
+  apiFetch<ReporteDetalleVentas>(`/api/v1/reportes/detalle-ventas?${rango(desde, hasta)}`);
 
 export const reporteServicios = (desde: string, hasta: string) =>
   apiFetch<ReporteServicios>(`/api/v1/reportes/servicios?${rango(desde, hasta)}`);

@@ -7,10 +7,11 @@ import { exportarReporte, hoyVE, type Agrupacion, type SeccionReporte } from "@/
 import { SeccionMercancia } from "./SeccionMercancia";
 import { SeccionAsesorias } from "./SeccionAsesorias";
 import { SeccionProveedores } from "./SeccionProveedores";
+import { SeccionDetalleVentas } from "./SeccionDetalleVentas";
 import { SeccionServicios } from "./SeccionServicios";
 import { SeccionVentas, type ModoVentas } from "./SeccionVentas";
 
-const SECCIONES: Array<[SeccionReporte, string]> = [["ventas", "Ventas y ganancia"], ["servicios", "Servicios"], ["mercancia", "Mercancía"], ["proveedores", "Proveedores"], ["asesorias", "Asesorías"]];
+const SECCIONES: Array<[SeccionReporte, string]> = [["ventas", "Ventas y ganancia"], ["detalle", "Detalle de ventas"], ["servicios", "Servicios"], ["mercancia", "Mercancía"], ["proveedores", "Proveedores"], ["asesorias", "Asesorías"]];
 const MODOS_VENTAS: Array<[ModoVentas, string]> = [["dia", "Diario"], ["semana", "Por semana"], ["mes", "Por mes"], ["anio", "Por año"]];
 const MODOS_MERCANCIA: Array<[Agrupacion, string]> = [["semana", "Por semana"], ["mes", "Por mes"], ["anio", "Por año"]];
 
@@ -112,6 +113,8 @@ export function Reportes() {
         <p role="alert" className="text-vino">Revisa las fechas: «Desde» no puede ser posterior a «Hasta».</p>
       ) : seccion === "ventas" ? (
         <SeccionVentas modo={modo} desde={d1} hasta={d2} />
+      ) : seccion === "detalle" ? (
+        <SeccionDetalleVentas desde={d1} hasta={d2} />
       ) : seccion === "servicios" ? (
         <SeccionServicios desde={d1} hasta={d2} />
       ) : seccion === "mercancia" ? (

@@ -64,12 +64,20 @@ export function ListaMateriales() {
     <div className="max-w-5xl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="font-serif text-[26px] font-semibold">Materiales</h1>
+        <div className="flex flex-wrap gap-2">
+        <Link
+          href="/panel/materiales/importar"
+          className="rounded-sm border border-piedra-oscura px-5 py-2.5 text-sm font-semibold hover:border-negro"
+        >
+          Carga masiva
+        </Link>
         <Link
           href="/panel/materiales/nuevo"
           className="rounded-sm bg-gradient-to-br from-dorado-claro to-dorado-oscuro px-5 py-2.5 text-sm font-semibold text-negro hover:brightness-105"
         >
           Nuevo material
         </Link>
+        </div>
       </div>
       <div className="my-3.5 h-0.5 w-12 bg-gradient-to-r from-dorado-claro to-dorado-oscuro" />
       <p className="mb-6 text-[#8A8272]">Productos del catálogo con sus presentaciones, precios y stock.</p>

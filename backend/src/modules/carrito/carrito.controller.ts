@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -16,7 +17,7 @@ import { Throttle } from '@nestjs/throttler';
 import { CarritoService } from './carrito.service';
 import { CreateSolicitudCarritoDto } from './dto/create-solicitud-carrito.dto';
 import { EditarItemsCarritoDto } from './dto/editar-items-carrito.dto';
-import { CancelarCarritoDto, CerrarCarritoDto, CostoServiciosDto } from './dto/cerrar-carrito.dto';
+import { CancelarCarritoDto, CerrarCarritoDto, CostoServiciosDto, PagoDto, ReservaDto } from './dto/cerrar-carrito.dto';
 import { ActualizarEstadoCarritoDto } from './dto/actualizar-estado-carrito.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -106,6 +107,51 @@ export class CarritoController {
     @Req() request: any,
   ) {
     return this.carritoService.cerrar(id, dto, request.user?.id);
+  }
+
+  @Post('solicitudes/:id/pagos')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  registrarPago(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: PagoDto,
+    @Req() request: any,
+  ) {
+    return this.carritoService.registrarPago(id, dto, request.user?.id);
+  }
+
+  @Delete('solicitudes/:id/pagos/:pagoId')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  eliminarPago(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('pagoId', ParseUUIDPipe) pagoId: string,
+    @Req() request: any,
+  ) {
+    return this.carritoService.eliminarPago(id, pagoId, request.user?.id);
+  }
+
+  @Patch('solicitudes/:id/reserva')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  reserva(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReservaDto,
+    @Req() request: any,
+  ) {
+    return this.carritoService.prorrogarReserva(id, dto.dias, request.user?.id);
+  }
+
+  // Unidades apartadas por reservas activas, por presentación.
+  @Get('reservas')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  reservas() {
+    return this.carritoService.reservas();
   }
 
   @Patch('solicitudes/:id/costo-servicios')

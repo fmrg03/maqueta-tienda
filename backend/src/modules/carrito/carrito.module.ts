@@ -4,6 +4,7 @@ import {
   SolicitudCarrito,
   ItemSolicitudCarrito,
   ServicioSolicitud,
+  PagoSolicitud,
 } from './entities/solicitud-carrito.entity';
 import { EventoSolicitudCarrito } from './entities/evento-solicitud-carrito.entity';
 import { CarritoService } from './carrito.service';
@@ -15,7 +16,7 @@ import { NotificacionesModule } from '../../common/notificaciones/notificaciones
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SolicitudCarrito, ItemSolicitudCarrito, ServicioSolicitud, EventoSolicitudCarrito]),
+    TypeOrmModule.forFeature([SolicitudCarrito, ItemSolicitudCarrito, ServicioSolicitud, PagoSolicitud, EventoSolicitudCarrito]),
     InventarioModule,
     TasasModule,
     ConfiguracionModule,

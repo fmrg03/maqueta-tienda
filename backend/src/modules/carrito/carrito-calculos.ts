@@ -198,39 +198,91 @@ export function calcularFaltantes(
   return faltantes;
 }
 
-export interface CobroCalculado {
-  monto: number;
-  descuentoPct: number | null;
-  descuentoMonto: number | null;
-  montoBs: number;
+const METODOS_DIVISAS_TXT = ['efectivo_divisas', 'zelle', 'binance'];
+const METODOS_BS_TXT = ['efectivo', 'pago_movil', 'transferencia'];
+export const esMetodoDivisas = (m: string) => METODOS_DIVISAS_TXT.includes(m);
+export const esMetodoBolivares = (m: string) => METODOS_BS_TXT.includes(m);
+
+export interface TotalesPedido {
+  /** Total acordado en dólares BCV (precio de lista, o el total fijado). */
+  bcv: number;
+  /** Lo que costaría si TODO se paga en divisas (los servicios valen igual). */
+  divisas: number;
+  /** divisas / bcv (≤ 1): cuánta deuda cubre cada dólar pagado en divisas. */
+  factor: number;
+  productosBcv: number;
+  serviciosBcv: number;
+  parcial: boolean;
 }
 
 /**
- * Cuánto se cobra y cómo queda registrado.
- * - `montoManual` manda sobre todo (el asesor lo fijó a mano; no hay % registrado).
- * - Pagando en divisas con el descuento activo: total − porcentaje.
- * - El monto en bolívares usa la tasa BCV del momento.
+ * Total del pedido a precio BCV y a precio de divisas. Si el asesor fijó un
+ * total final, ese es el BCV y el de divisas se le aplica la misma proporción.
  */
-export function calcularCobro(p: {
-  base: number;
-  divisas: boolean;
-  aplicarDescuento: boolean;
-  porcentaje: number;
-  montoManual?: number | null;
-  tasa: number;
-  /** Parte de `base` sobre la que se calcula el descuento (por defecto toda). */
-  baseDescontable?: number;
-}): CobroCalculado {
-  let monto = redondear(p.base, 2);
-  let descuentoPct: number | null = null;
-  let descuentoMonto: number | null = null;
-
-  if (p.montoManual !== undefined && p.montoManual !== null) {
-    monto = redondear(p.montoManual, 2);
-  } else if (p.divisas && p.aplicarDescuento && p.porcentaje > 0) {
-    descuentoPct = p.porcentaje;
-    descuentoMonto = redondear(((p.baseDescontable ?? p.base) * p.porcentaje) / 100, 2);
-    monto = redondear(p.base - descuentoMonto, 2);
+export function totalesPedido(
+  items: Array<ItemCalculo & { precioDivisasUnitario?: number | string | null }>,
+  servicios: ServicioCalculo[] | null | undefined,
+  totalFinal?: number | string | null,
+): TotalesPedido {
+  const { total: productos, parcial } = totalItems(items);
+  const serv = totalServicios(servicios);
+  let productosDiv = 0;
+  for (const i of items) {
+    const normal = aNumero(i.precioUnitario);
+    if (normal === null) continue;
+    productosDiv += (aNumero(i.precioDivisasUnitario) ?? normal) * i.cantidad;
   }
-  return { monto, descuentoPct, descuentoMonto, montoBs: redondear(monto * p.tasa, 2) };
+  const lista = redondear(productos + serv, 2);
+  const listaDiv = redondear(productosDiv + serv, 2);
+  const fijo = aNumero(totalFinal);
+  const bcv = fijo ?? lista;
+  const factor = lista > 0 ? Math.min(1, listaDiv / lista) : 1;
+  const escala = lista > 0 ? bcv / lista : 1;
+  return {
+    bcv: redondear(bcv, 2),
+    divisas: redondear(listaDiv * escala, 2),
+    factor,
+    productosBcv: redondear(productos * escala, 2),
+    serviciosBcv: redondear(serv * escala, 2),
+    parcial,
+  };
+}
+
+/**
+ * Cuánta deuda cubre un pago por defecto: en divisas, el monto dividido por el
+ * factor (pagar $85 en divisas salda $100 si todo tiene precio de divisas a 85%);
+ * en los demás métodos, el monto tal cual.
+ */
+export function abonoPorDefecto(metodo: string, monto: number, factor: number): number {
+  if (esMetodoDivisas(metodo) && factor > 0 && factor < 1) return redondear(monto / factor, 2);
+  return redondear(monto, 2);
+}
+
+export interface ResumenCobro extends TotalesPedido {
+  /** Dinero recibido (USD). */
+  recibido: number;
+  /** Deuda cubierta (USD BCV). */
+  abonado: number;
+  /** Lo que falta cubrir (USD BCV); nunca negativo. */
+  saldo: number;
+  /** Lo que falta si el resto se paga en divisas. */
+  saldoDivisas: number;
+  pagadoCompleto: boolean;
+}
+
+export const TOLERANCIA_SALDO = 0.01;
+
+export function resumenCobro(totales: TotalesPedido, pagos: Array<{ monto: number | string; abona: number | string }>): ResumenCobro {
+  const recibido = redondear(pagos.reduce((s, p) => s + Number(p.monto), 0), 2);
+  const abonado = redondear(pagos.reduce((s, p) => s + Number(p.abona), 0), 2);
+  const saldoBruto = redondear(totales.bcv - abonado, 2);
+  const saldo = Math.max(0, saldoBruto);
+  return {
+    ...totales,
+    recibido,
+    abonado,
+    saldo,
+    saldoDivisas: redondear(saldo * totales.factor, 2),
+    pagadoCompleto: saldoBruto <= TOLERANCIA_SALDO && totales.bcv > 0,
+  };
 }

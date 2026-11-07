@@ -1,5 +1,7 @@
 import {
-  calcularCobro,
+  abonoPorDefecto,
+  resumenCobro,
+  totalesPedido,
   calcularFaltantes,
   CarritoNoCerrableError,
   planificarSalidas,
@@ -103,31 +105,49 @@ describe('carrito-calculos', () => {
     });
   });
 
-  describe('calcularCobro', () => {
-    const base = { base: 100, divisas: true, aplicarDescuento: true, porcentaje: 10, tasa: 40 };
+  describe('totalesPedido / abonos', () => {
+    const items = [
+      { cantidad: 10, precioUnitario: 10, precioDivisasUnitario: 8 },
+      { cantidad: 2, precioUnitario: 50, precioDivisasUnitario: null },
+    ];
 
-    it('aplica el descuento por divisas y convierte a bolívares', () => {
-      expect(calcularCobro(base)).toEqual({ monto: 90, descuentoPct: 10, descuentoMonto: 10, montoBs: 3600 });
+    it('calcula el total BCV y el de divisas (sin precio de divisas vale el normal)', () => {
+      const t = totalesPedido(items, []);
+      expect(t.bcv).toBe(200);
+      expect(t.divisas).toBe(180);
+      expect(t.factor).toBeCloseTo(0.9, 5);
     });
 
-    it('sin descuento si el método no es en divisas o se desmarca', () => {
-      expect(calcularCobro({ ...base, divisas: false }).monto).toBe(100);
-      expect(calcularCobro({ ...base, aplicarDescuento: false })).toMatchObject({ monto: 100, descuentoPct: null, descuentoMonto: null });
+    it('los servicios valen igual en divisas y en BCV', () => {
+      const t = totalesPedido(items, [{ cantidad: 1, precioUnitario: 100 }]);
+      expect(t.bcv).toBe(300);
+      expect(t.divisas).toBe(280);
+      expect(t.serviciosBcv).toBe(100);
     });
 
-    it('sin descuento si el porcentaje configurado es 0', () => {
-      expect(calcularCobro({ ...base, porcentaje: 0 }).descuentoPct).toBeNull();
+    it('con total fijado aplica la misma proporción a divisas', () => {
+      const t = totalesPedido(items, [], 100);
+      expect(t.bcv).toBe(100);
+      expect(t.divisas).toBe(90);
     });
 
-    it('un monto manual manda sobre el descuento y no registra porcentaje', () => {
-      expect(calcularCobro({ ...base, montoManual: 85 })).toEqual({ monto: 85, descuentoPct: null, descuentoMonto: null, montoBs: 3400 });
+    it('abonoPorDefecto: en divisas un monto menor cubre la misma deuda', () => {
+      expect(abonoPorDefecto('zelle', 90, 0.9)).toBe(100);
+      expect(abonoPorDefecto('pago_movil', 90, 0.9)).toBe(90);
+      expect(abonoPorDefecto('binance', 50, 1)).toBe(50);
     });
 
-    it('redondea a centavos', () => {
-      const r = calcularCobro({ ...base, base: 33.33, porcentaje: 7.5, tasa: 36.1234 });
-      expect(r.descuentoMonto).toBe(2.5);
-      expect(r.monto).toBe(30.83);
-      expect(r.montoBs).toBeCloseTo(30.83 * 36.1234, 2);
+    it('resumenCobro: saldo, cobro completo con tolerancia de centavos', () => {
+      const t = totalesPedido(items, []);
+      const parcial = resumenCobro(t, [{ monto: 60, abona: 60 }, { monto: 45, abona: 50 }]);
+      expect(parcial.recibido).toBe(105);
+      expect(parcial.abonado).toBe(110);
+      expect(parcial.saldo).toBe(90);
+      expect(parcial.saldoDivisas).toBe(81);
+      expect(parcial.pagadoCompleto).toBe(false);
+      const completo = resumenCobro(t, [{ monto: 100, abona: 100 }, { monto: 90, abona: 99.995 }]);
+      expect(completo.pagadoCompleto).toBe(true);
+      expect(completo.saldo).toBe(0);
     });
   });
 });
@@ -155,17 +175,7 @@ describe('servicios (mano de obra)', () => {
     expect(planificarSalidas([], 0)).toEqual([]);
   });
 
-  it('descuento solo sobre productos: los servicios conservan su parte completa', () => {
-    // pedido de 100 en productos + 100 en servicios, 10% de descuento solo en productos
-    const cobro = calcularCobro({ base: 200, baseDescontable: 100, divisas: true, aplicarDescuento: true, porcentaje: 10, tasa: 300 });
-    expect(cobro.descuentoMonto).toBe(10);
-    expect(cobro.monto).toBe(190);
+  it('con servicios fijos el reparto les deja su parte completa', () => {
     expect(repartirCobro(190, 100, 100, 100)).toEqual({ productos: 90, servicios: 100 });
-  });
-
-  it('descuento sobre todo reparte proporcionalmente', () => {
-    const cobro = calcularCobro({ base: 200, divisas: true, aplicarDescuento: true, porcentaje: 10, tasa: 300 });
-    expect(cobro.monto).toBe(180);
-    expect(repartirCobro(180, 100, 100)).toEqual({ productos: 90, servicios: 90 });
   });
 });

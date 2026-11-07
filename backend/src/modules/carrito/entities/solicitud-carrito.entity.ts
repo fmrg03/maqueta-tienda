@@ -14,6 +14,8 @@ export enum EstadoSolicitudCarrito {
   NUEVA = 'nueva',
   CONTACTADO = 'contactado',
   PAGO_EN_VERIFICACION = 'pago_en_verificacion',
+  // Hay abonos: el stock está apartado (no descontado) hasta cobrar todo.
+  RESERVADA = 'reservada',
   // Pago recibido pero falta mercancía: no se descontó nada del inventario.
   PENDIENTE_STOCK = 'pendiente_stock',
   CERRADA = 'cerrada',
@@ -24,6 +26,7 @@ export const ESTADOS_EDITABLES = [
   EstadoSolicitudCarrito.NUEVA,
   EstadoSolicitudCarrito.CONTACTADO,
   EstadoSolicitudCarrito.PAGO_EN_VERIFICACION,
+  EstadoSolicitudCarrito.RESERVADA,
   EstadoSolicitudCarrito.PENDIENTE_STOCK,
 ];
 
@@ -38,11 +41,11 @@ export enum MetodoPago {
   OTRO = 'otro',
 }
 
-/**
- * Métodos que dan derecho al descuento global mientras el admin no elija otros
- * en Configuración (comportamiento original: efectivo en divisas y Zelle).
- */
-export const METODOS_DESCUENTO_POR_DEFECTO: MetodoPago[] = [MetodoPago.EFECTIVO_DIVISAS, MetodoPago.ZELLE];
+/** Métodos que se pagan en divisas: aplican el precio en divisas del producto. */
+export const METODOS_DIVISAS: MetodoPago[] = [MetodoPago.EFECTIVO_DIVISAS, MetodoPago.ZELLE, MetodoPago.BINANCE];
+
+/** Métodos que se reciben en bolívares: llevan tasa BCV y monto en Bs. */
+export const METODOS_BOLIVARES: MetodoPago[] = [MetodoPago.EFECTIVO, MetodoPago.PAGO_MOVIL, MetodoPago.TRANSFERENCIA];
 
 export enum CanalEnvio {
   WHATSAPP = 'whatsapp',
@@ -83,6 +86,14 @@ export class SolicitudCarrito {
     cascade: true,
   })
   servicios: ServicioSolicitud[];
+
+  // Cobros recibidos (combinados y/o por abonos).
+  @OneToMany(() => PagoSolicitud, (pago) => pago.solicitud)
+  pagos: PagoSolicitud[];
+
+  // Fecha en que vence la reserva (aviso; no libera el stock sola).
+  @Column({ type: 'timestamptz', nullable: true })
+  reservaVenceAt?: Date | null;
 
   @Column({
     type: 'enum',
@@ -225,4 +236,39 @@ export class ServicioSolicitud {
 
   @Column({ type: 'int', default: 0 })
   orden: number;
+}
+
+@Entity('pagos_solicitud')
+export class PagoSolicitud {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @ManyToOne(() => SolicitudCarrito, (solicitud) => solicitud.pagos, { onDelete: 'CASCADE' })
+  solicitud: SolicitudCarrito;
+
+  @Column({ type: 'varchar', length: 30 })
+  metodo: MetodoPago;
+
+  // Dinero recibido, en USD.
+  @Column({ type: 'decimal', precision: 12, scale: 2, transformer: decimal })
+  monto: number;
+
+  // Cuánto de la deuda (en dólares BCV) cubre este pago.
+  @Column({ type: 'decimal', precision: 12, scale: 2, transformer: decimal })
+  abona: number;
+
+  @Column({ type: 'decimal', precision: 14, scale: 4, nullable: true, transformer: decimal })
+  tasaBcv?: number | null;
+
+  @Column({ type: 'decimal', precision: 16, scale: 2, nullable: true, transformer: decimal })
+  montoBs?: number | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  referencia?: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  usuarioId?: string | null;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  createdAt: Date;
 }

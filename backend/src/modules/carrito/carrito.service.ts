@@ -12,6 +12,7 @@ import {
   SolicitudCarrito,
   ItemSolicitudCarrito,
   ServicioSolicitud,
+  PagoSolicitud,
   EstadoSolicitudCarrito,
   ESTADOS_EDITABLES,
 } from './entities/solicitud-carrito.entity';
@@ -26,9 +27,13 @@ import {
 import { TasasService } from '../tasas/tasas.service';
 import { ConfiguracionService } from '../configuracion/configuracion.service';
 import { EditarItemsCarritoDto } from './dto/editar-items-carrito.dto';
-import { CancelarCarritoDto, CerrarCarritoDto } from './dto/cerrar-carrito.dto';
+import { CancelarCarritoDto, CerrarCarritoDto, PagoDto } from './dto/cerrar-carrito.dto';
 import {
-  calcularCobro,
+  abonoPorDefecto,
+  esMetodoBolivares,
+  resumenCobro,
+  TOLERANCIA_SALDO,
+  totalesPedido,
   calcularFaltantes,
   CarritoNoCerrableError,
   planificarSalidas,
@@ -56,6 +61,7 @@ const RELACIONES_DETALLE = [
   'items.combo.items',
   'items.combo.items.variante',
   'servicios',
+  'pagos',
 ];
 
 @Injectable()
@@ -237,12 +243,20 @@ export class CarritoService {
     return guardada;
   }
 
+  /** Adjunta (sin guardar) los totales BCV/divisas y el saldo para el panel. */
+  private conResumen<T extends SolicitudCarrito>(solicitud: T): T {
+    solicitud.pagos = [...(solicitud.pagos ?? [])].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
+    (solicitud as any).resumenCobro = resumenCobro(this.totalesDe(solicitud), solicitud.pagos);
+    return solicitud;
+  }
+
   async findAll(estado?: string): Promise<SolicitudCarrito[]> {
-    return this.solicitudRepository.find({
+    const filas = await this.solicitudRepository.find({
       where: estado ? ({ estado } as any) : {},
       relations: RELACIONES_DETALLE,
       order: { createdAt: 'DESC' },
     });
+    return filas.map((f) => this.conResumen(f));
   }
 
   async findOne(id: string): Promise<SolicitudCarrito> {
@@ -253,7 +267,7 @@ export class CarritoService {
     if (!solicitud) {
       throw new NotFoundException(`Solicitud de carrito ${id} no encontrada`);
     }
-    return solicitud;
+    return this.conResumen(solicitud);
   }
 
   async actualizarEstado(
@@ -429,22 +443,196 @@ export class CarritoService {
     return { mensaje: texto, telefono: solicitud.clienteTelefono, emailEnviado };
   }
 
+  private totalesDe(solicitud: SolicitudCarrito) {
+    return totalesPedido((solicitud.items ?? []) as any, solicitud.servicios, solicitud.totalFinal);
+  }
+
+  /** Stock que otras reservas ya tienen apartado, por variante. */
+  private async reservadoPorOtros(excluirId: string): Promise<Map<string, number>> {
+    const otras = await this.manager.getRepository(SolicitudCarrito).find({
+      where: { estado: EstadoSolicitudCarrito.RESERVADA },
+      relations: RELACIONES_DETALLE,
+    });
+    const mapa = new Map<string, number>();
+    for (const o of otras) {
+      if (o.id === excluirId) continue;
+      try {
+        for (const sal of planificarSalidas(o.items as any)) {
+          mapa.set(sal.variante.id, (mapa.get(sal.variante.id) ?? 0) + sal.cantidad);
+        }
+      } catch {
+        // Una reserva con ítems sin definir no aparta nada concreto.
+      }
+    }
+    return mapa;
+  }
+
+  /** Reservado por variante (para mostrar en el panel de inventario). */
+  async reservas(): Promise<Array<{ varianteId: string; reservado: number }>> {
+    return [...(await this.reservadoPorOtros('')).entries()].map(([varianteId, reservado]) => ({ varianteId, reservado }));
+  }
+
+  /** Faltantes del pedido contra el stock físico menos lo apartado por otras reservas. */
+  private async faltantesDe(solicitud: SolicitudCarrito, lock = false) {
+    const salidas = planificarSalidas(solicitud.items as any);
+    const ids = salidas.map((x) => x.variante.id).sort();
+    let variantes: VarianteMaterial[] = [];
+    if (ids.length > 0) {
+      const qb = this.manager.getRepository(VarianteMaterial).createQueryBuilder('v').where('v.id IN (:...ids)', { ids }).orderBy('v.id');
+      if (lock) qb.setLock('pessimistic_write');
+      variantes = await qb.getMany();
+    }
+    const ajeno = await this.reservadoPorOtros(solicitud.id);
+    const stock = new Map(variantes.map((v) => [v.id, v.stock - (ajeno.get(v.id) ?? 0)]));
+    return { salidas, variantes, faltantes: calcularFaltantes(salidas, stock) };
+  }
+
   /**
-   * Cierra la venta con el pago verificado: descuenta el stock y registra
-   * el ingreso, todo en la transacción del request (si algo falla no queda
-   * nada a medias). Si falta mercancía no descuenta nada: deja la venta en
-   * "pendiente por stock" con el detalle de lo que falta, guardando el pago.
+   * Registra un cobro (parcial o total). El primer abono aparta el stock
+   * (estado "reservada", sin descontarlo); al cubrir todo el total se cierra la
+   * venta sola y recién ahí se descuenta el inventario.
    */
-  async cerrar(
-    id: string,
-    dto: CerrarCarritoDto,
-    usuarioId?: string,
-  ): Promise<SolicitudCarrito> {
+  async registrarPago(id: string, dto: PagoDto, usuarioId?: string): Promise<SolicitudCarrito> {
     const m = this.manager;
-    // Bloquea la solicitud: dos cierres simultáneos no descuentan dos veces.
+    await m.query(`SELECT id FROM solicitudes_carrito WHERE id = $1 FOR UPDATE`, [id]);
+    await this.agregarPago(id, dto, usuarioId);
+    return this.reevaluar(id, usuarioId);
+  }
+
+  private async agregarPago(id: string, dto: PagoDto, usuarioId?: string): Promise<void> {
+    const m = this.manager;
+    const solicitud = await this.findOne(id);
+    if (!ESTADOS_EDITABLES.includes(solicitud.estado)) {
+      throw new ConflictException(`La solicitud ya está ${solicitud.estado}`);
+    }
+    if (solicitud.modificadaDesdeEnvio) {
+      throw new BadRequestException(
+        'El pedido tiene cambios que no se han enviado al cliente. Envía el detalle actualizado antes de cobrar.',
+      );
+    }
+    try {
+      planificarSalidas(solicitud.items as any);
+    } catch (error) {
+      if (error instanceof CarritoNoCerrableError) throw new BadRequestException(error.message);
+      throw error;
+    }
+    const totales = this.totalesDe(solicitud);
+    if (totales.bcv <= 0) throw new BadRequestException('El pedido no tiene un total que cobrar');
+    const previo = resumenCobro(totales, solicitud.pagos ?? []);
+
+    const abona = dto.abona ?? abonoPorDefecto(dto.metodo, dto.monto, totales.factor);
+    if (abona > previo.saldo + TOLERANCIA_SALDO) {
+      throw new BadRequestException(
+        `Ese pago cubre $${abona.toFixed(2)} y el saldo del pedido es $${previo.saldo.toFixed(2)}. Ajusta el monto.`,
+      );
+    }
+    let tasa: number | null = null;
+    let montoBs: number | null = null;
+    if (esMetodoBolivares(dto.metodo)) {
+      tasa = dto.tasaBcv ?? (await this.tasas.vigente())?.valor ?? null;
+      if (!tasa) {
+        throw new BadRequestException(
+          'No hay tasa BCV disponible. Regístrala en Configuración o indícala en el pago.',
+        );
+      }
+      montoBs = Math.round(dto.monto * tasa * 100) / 100;
+    }
+    await m.getRepository(PagoSolicitud).insert({
+      solicitud: { id },
+      metodo: dto.metodo,
+      monto: dto.monto,
+      abona,
+      tasaBcv: tasa,
+      montoBs,
+      referencia: dto.referencia ?? null,
+      usuarioId: usuarioId ?? null,
+    } as any);
+    await this.registrarEvento(solicitud, 'pago', usuarioId, {
+      metodo: dto.metodo,
+      monto: dto.monto,
+      abona,
+      referencia: dto.referencia ?? null,
+      saldoAntes: previo.saldo,
+    });
+  }
+
+  /**
+   * Deja el estado coherente con lo cobrado: sin pagos, vuelve a "contactado";
+   * con abonos pendientes, "reservada" (o "pendiente por stock" si no alcanza la
+   * mercancía); con todo cobrado, cierra la venta y descuenta el inventario.
+   */
+  private async reevaluar(id: string, usuarioId?: string): Promise<SolicitudCarrito> {
+    const m = this.manager;
+    const solicitud = await this.findOne(id);
+    const resumen = resumenCobro(this.totalesDe(solicitud), solicitud.pagos ?? []);
+    const repo = m.getRepository(SolicitudCarrito);
+
+    if ((solicitud.pagos ?? []).length === 0) {
+      if (solicitud.estado === EstadoSolicitudCarrito.RESERVADA || solicitud.estado === EstadoSolicitudCarrito.PENDIENTE_STOCK) {
+        await repo.update({ id }, { estado: EstadoSolicitudCarrito.CONTACTADO, reservaVenceAt: null, faltantes: null } as any);
+      } else if (solicitud.reservaVenceAt) {
+        await repo.update({ id }, { reservaVenceAt: null } as any);
+      }
+      return this.findOne(id);
+    }
+
+    if (resumen.pagadoCompleto) return this.finalizar(id, usuarioId);
+
+    const { faltantes } = await this.faltantesDe(solicitud);
+    const venceAt =
+      solicitud.reservaVenceAt ?? new Date(Date.now() + (await this.configuracion.reservaDias()) * 24 * 60 * 60 * 1000);
+    if (faltantes.length > 0) {
+      await repo.update({ id }, { estado: EstadoSolicitudCarrito.PENDIENTE_STOCK, faltantes, reservaVenceAt: venceAt } as any);
+    } else {
+      await repo.update({ id }, { estado: EstadoSolicitudCarrito.RESERVADA, faltantes: null, reservaVenceAt: venceAt } as any);
+      if (solicitud.estado !== EstadoSolicitudCarrito.RESERVADA) {
+        await this.registrarEvento(solicitud, 'reserva', usuarioId, { venceAt: venceAt.toISOString() });
+      }
+    }
+    return this.findOne(id);
+  }
+
+  async eliminarPago(id: string, pagoId: string, usuarioId?: string): Promise<SolicitudCarrito> {
+    const m = this.manager;
     await m.query(`SELECT id FROM solicitudes_carrito WHERE id = $1 FOR UPDATE`, [id]);
     const solicitud = await this.findOne(id);
+    if (!ESTADOS_EDITABLES.includes(solicitud.estado)) {
+      throw new ConflictException(`La solicitud ya está ${solicitud.estado}: no se pueden quitar pagos`);
+    }
+    const pago = (solicitud.pagos ?? []).find((p) => p.id === pagoId);
+    if (!pago) throw new NotFoundException('Pago no encontrado en esta solicitud');
+    await m.getRepository(PagoSolicitud).delete({ id: pagoId });
+    await this.registrarEvento(solicitud, 'pago_eliminado', usuarioId, {
+      metodo: pago.metodo,
+      monto: pago.monto,
+      abona: pago.abona,
+      referencia: pago.referencia ?? null,
+    });
+    return this.reevaluar(id, usuarioId);
+  }
 
+  /** Cambia el vencimiento de la reserva (a N días desde hoy). */
+  async prorrogarReserva(id: string, dias: number, usuarioId?: string): Promise<SolicitudCarrito> {
+    const solicitud = await this.findOne(id);
+    if (solicitud.estado !== EstadoSolicitudCarrito.RESERVADA && solicitud.estado !== EstadoSolicitudCarrito.PENDIENTE_STOCK) {
+      throw new ConflictException('Solo se puede cambiar el vencimiento de una solicitud con abonos');
+    }
+    const venceAt = new Date(Date.now() + dias * 24 * 60 * 60 * 1000);
+    await this.manager.getRepository(SolicitudCarrito).update({ id }, { reservaVenceAt: venceAt } as any);
+    await this.registrarEvento(solicitud, 'reserva', usuarioId, { venceAt: venceAt.toISOString(), prorroga: true });
+    return this.findOne(id);
+  }
+
+  /**
+   * Cierra la venta: requiere todo cobrado. Con `pagos` los registra antes
+   * (cierre en un solo paso: si algo falla no queda nada a medias); sin ellos
+   * reintenta cerrar con lo abonado (útil tras "pendiente por stock").
+   */
+  async cerrar(id: string, dto: CerrarCarritoDto, usuarioId?: string): Promise<SolicitudCarrito> {
+    const m = this.manager;
+    await m.query(`SELECT id FROM solicitudes_carrito WHERE id = $1 FOR UPDATE`, [id]);
+    for (const pago of dto.pagos ?? []) await this.agregarPago(id, pago, usuarioId);
+    const solicitud = await this.findOne(id);
     if (!ESTADOS_EDITABLES.includes(solicitud.estado)) {
       throw new ConflictException(`La solicitud ya está ${solicitud.estado}`);
     }
@@ -453,71 +641,55 @@ export class CarritoService {
         'El pedido tiene cambios que no se han enviado al cliente. Envía el detalle actualizado antes de cerrar.',
       );
     }
-
-    const { total: totalProductos } = totalItems(solicitud.items as any);
-    const totalServ = totalServicios(solicitud.servicios);
-    const total = totalProductos + totalServ;
-    const fijo = solicitud.totalFinal !== null && solicitud.totalFinal !== undefined ? Number(solicitud.totalFinal) : null;
-    const base = fijo ?? total;
-
-    const tasa = dto.tasaBcv ?? (await this.tasas.vigente())?.valor;
-    if (!tasa) {
+    const resumen = resumenCobro(this.totalesDe(solicitud), solicitud.pagos ?? []);
+    if (!resumen.pagadoCompleto) {
       throw new BadRequestException(
-        'No hay tasa BCV disponible. Regístrala en Configuración o indícala al cerrar la venta.',
+        resumen.recibido === 0 && resumen.bcv > 0
+          ? 'Registra el pago antes de cerrar la venta.'
+          : `Falta cobrar $${resumen.saldo.toFixed(2)} (a precio BCV) para cerrar la venta.`,
       );
     }
-    // Parte de la base que corresponde a servicios (para poder excluirlos del descuento).
-    const baseSplit = repartirCobro(base, totalProductos, totalServ);
-    const descuentaServicios = dto.aplicarDescuentoServicios ?? true;
-    const cobro = calcularCobro({
-      base,
-      baseDescontable: totalServ > 0 && !descuentaServicios ? baseSplit.productos : base,
-      divisas: (await this.configuracion.descuentoMetodos()).includes(dto.metodoPago),
-      aplicarDescuento: dto.aplicarDescuento ?? true,
-      porcentaje: await this.configuracion.descuentoDivisasPct(),
-      montoManual: dto.montoCobrado,
-      tasa,
-    });
-    const monto = cobro.monto;
+    return this.finalizar(id, usuarioId);
+  }
 
-    // Lo cobrado se reparte entre productos (movimientos de inventario) y servicios (mano de obra).
-    // Con descuento solo sobre productos, los servicios se cobran completos.
-    const serviciosSinDescuento = totalServ > 0 && !descuentaServicios && cobro.descuentoPct !== null;
-    const reparto = repartirCobro(monto, totalProductos, totalServ, serviciosSinDescuento ? baseSplit.servicios : undefined);
+  /**
+   * Con todo cobrado: descuenta el stock y registra el ingreso, todo en la
+   * transacción del request. Si falta mercancía no descuenta nada: deja la venta
+   * en "pendiente por stock" con el detalle de lo que falta (el cobro se conserva).
+   */
+  private async finalizar(id: string, usuarioId?: string): Promise<SolicitudCarrito> {
+    const m = this.manager;
+    const solicitud = await this.findOne(id);
+    const totales = this.totalesDe(solicitud);
+    const pagos = solicitud.pagos ?? [];
+    const resumen = resumenCobro(totales, pagos);
 
-    let salidas;
+    // Lo cobrado en dinero: los servicios valen igual en cualquier método.
+    const monto = resumen.recibido;
+    const reparto = repartirCobro(monto, totales.productosBcv, totales.serviciosBcv, totales.serviciosBcv > 0 ? totales.serviciosBcv : undefined);
+
+    let planificado;
     try {
-      salidas = planificarSalidas(solicitud.items as any, reparto.productos);
+      planificado = planificarSalidas(solicitud.items as any, reparto.productos);
     } catch (error) {
       if (error instanceof CarritoNoCerrableError) throw new BadRequestException(error.message);
       throw error;
     }
+    const { variantes, faltantes } = await this.faltantesDe(solicitud, true);
 
-    const ids = salidas.map((s) => s.variante.id).sort();
-    // Un pedido solo de servicios no mueve inventario.
-    const variantes =
-      ids.length === 0
-        ? []
-        : await m
-            .getRepository(VarianteMaterial)
-            .createQueryBuilder('v')
-            .setLock('pessimistic_write')
-            .where('v.id IN (:...ids)', { ids })
-            .orderBy('v.id')
-            .getMany();
-    const stock = new Map(variantes.map((v) => [v.id, v.stock]));
-    const faltantes = calcularFaltantes(salidas, stock);
-
+    const principal = [...pagos].sort((a, b) => b.monto - a.monto)[0];
+    const bs = pagos.filter((p) => p.montoBs !== null && p.montoBs !== undefined);
+    const ultimaTasa = [...bs].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.tasaBcv ?? null;
     const datosPago = {
-      metodoPago: dto.metodoPago,
-      referenciaPago: dto.referenciaPago ?? null,
+      metodoPago: principal.metodo,
+      referenciaPago: principal.referencia ?? null,
       montoCobrado: monto,
       montoServicios: reparto.servicios,
-      descuentoIncluyeServicios: cobro.descuentoPct === null || totalServ === 0 ? null : !serviciosSinDescuento,
-      descuentoPct: cobro.descuentoPct,
-      descuentoMonto: cobro.descuentoMonto,
-      tasaBcv: tasa,
-      montoCobradoBs: cobro.montoBs,
+      descuentoIncluyeServicios: null,
+      descuentoPct: null,
+      descuentoMonto: null,
+      tasaBcv: ultimaTasa,
+      montoCobradoBs: bs.length ? Math.round(bs.reduce((x, p) => x + Number(p.montoBs), 0) * 100) / 100 : null,
     };
 
     if (faltantes.length > 0) {
@@ -532,7 +704,7 @@ export class CarritoService {
 
     const repoVar = m.getRepository(VarianteMaterial);
     const repoMov = m.getRepository(MovimientoInventario);
-    for (const s of salidas) {
+    for (const s of planificado) {
       const variante = variantes.find((v) => v.id === s.variante.id)!;
       variante.stock -= s.cantidad;
       await repoVar.save(variante);
@@ -552,10 +724,14 @@ export class CarritoService {
 
     await m.getRepository(SolicitudCarrito).update(
       { id },
-      { ...datosPago, estado: EstadoSolicitudCarrito.CERRADA, faltantes: null, cerradaAt: new Date() } as any,
+      { ...datosPago, estado: EstadoSolicitudCarrito.CERRADA, faltantes: null, cerradaAt: new Date(), reservaVenceAt: null } as any,
     );
     const cerrada = await this.findOne(id);
-    await this.registrarEvento(cerrada, 'cerrada', usuarioId, { ...datosPago, unidades: salidas.reduce((a, s) => a + s.cantidad, 0) });
+    await this.registrarEvento(cerrada, 'cerrada', usuarioId, {
+      ...datosPago,
+      pagos: pagos.length,
+      unidades: planificado.reduce((a, s) => a + s.cantidad, 0),
+    });
     return cerrada;
   }
 

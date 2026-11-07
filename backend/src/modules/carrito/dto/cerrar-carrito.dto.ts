@@ -1,39 +1,54 @@
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { MetodoPago } from '../entities/solicitud-carrito.entity';
 import { SanitizedText } from '../../../common/sanitize/sanitized-text.decorator';
 
-export class CerrarCarritoDto {
+export class PagoDto {
   @IsEnum(MetodoPago)
-  metodoPago: MetodoPago;
+  metodo: MetodoPago;
+
+  // Dinero recibido, en USD.
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  monto: number;
+
+  // Deuda (USD BCV) que cubre este pago. Si no viene: en divisas se calcula con el
+  // precio de divisas del pedido; en los demás métodos es igual al monto.
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @IsOptional()
+  abona?: number;
 
   @IsString()
   @IsOptional()
   @MaxLength(100)
   @SanitizedText()
-  referenciaPago?: string;
+  referencia?: string;
 
-  // Solo para forzar un monto distinto al calculado (descuento manual, ajuste).
-  // Si no viene, vale el total del pedido menos el descuento por divisas.
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  @IsOptional()
-  montoCobrado?: number;
-
-  // Aplica el descuento por divisas si el método lo permite (por defecto sí).
-  @IsBoolean()
-  @IsOptional()
-  aplicarDescuento?: boolean;
-
-  // Si el descuento por divisas también se aplica a los servicios (por defecto sí).
-  @IsBoolean()
-  @IsOptional()
-  aplicarDescuentoServicios?: boolean;
-
-  // Tasa BCV a registrar; si no viene se usa la vigente.
+  // Tasa BCV (Bs/USD) para métodos en bolívares; si no viene se usa la vigente.
   @IsNumber({ maxDecimalPlaces: 4 })
   @Min(0.0001)
   @IsOptional()
   tasaBcv?: number;
+}
+
+export class CerrarCarritoDto {
+  // Pagos a registrar justo antes de cerrar (cierre en un solo paso). Sin pagos
+  // cierra con lo ya abonado, siempre que esté todo cobrado.
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => PagoDto)
+  @IsOptional()
+  pagos?: PagoDto[];
+}
+
+export class ReservaDto {
+  // Días de reserva a partir de hoy.
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  dias: number;
 }
 
 export class CostoServiciosDto {

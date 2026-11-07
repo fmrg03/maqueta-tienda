@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { precioDivisasLinea } from '../carrito/precio-divisas';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
@@ -100,6 +101,8 @@ export class PresupuestosService {
       let descripcion = d.descripcion?.trim();
       let unidad = d.unidad?.trim();
       let precio = d.precioUnitario;
+      let divisasLista: number | null = null;
+      let precioLista: number | null = null;
 
       if (d.tipo === 'producto' || d.tipo === 'combo') {
         if (!Number.isInteger(d.cantidad)) {
@@ -114,14 +117,18 @@ export class PresupuestosService {
         base.varianteId = v.id;
         const detalle = textoAtributos(v.atributos);
         descripcion ||= detalle ? `${v.material.nombre} — ${detalle}` : v.material.nombre;
-        precio ??= Number(v.precioVenta);
+        precioLista = Number(v.precioVenta);
+        divisasLista = v.precioDivisas ?? null;
+        precio ??= precioLista;
       } else if (d.tipo === 'combo') {
         if (!d.comboId) throw new BadRequestException('Cada combo debe indicar su comboId');
         const c = await m.getRepository(Combo).findOne({ where: { id: d.comboId } });
         if (!c) throw new BadRequestException('Un combo del presupuesto ya no existe en el catálogo');
         base.comboId = c.id;
         descripcion ||= /^combo\b/i.test(c.nombre) ? c.nombre : `Combo ${c.nombre}`;
-        precio ??= Number(c.precioCombo);
+        precioLista = Number(c.precioCombo);
+        divisasLista = c.precioDivisas ?? null;
+        precio ??= precioLista;
       } else {
         if (d.servicioId) {
           const s = await m.getRepository(Servicio).findOne({ where: { id: d.servicioId } });
@@ -140,6 +147,7 @@ export class PresupuestosService {
         unidad: (unidad || 'unidad').slice(0, 30),
         cantidad: d.cantidad,
         precioUnitario: precio!,
+        precioDivisasUnitario: precioDivisasLinea(precio, precioLista, divisasLista),
       });
     }
     return salida;
@@ -258,6 +266,7 @@ export class PresupuestosService {
           comboId: i.comboId ?? undefined,
           cantidad: i.cantidad,
           precioUnitario: i.precioUnitario,
+          precioDivisasUnitario: i.precioDivisasUnitario ?? null,
         })),
         servicios: servicios.map((i) => ({
           servicioId: i.servicioId ?? undefined,

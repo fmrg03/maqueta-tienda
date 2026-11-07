@@ -1,10 +1,12 @@
 import {
+  IsInt,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
   Min,
   MaxLength,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateVarianteDto {
@@ -30,4 +32,21 @@ export class CreateVarianteDto {
   @IsNumber()
   @Min(0)
   precioCosto: number;
+
+  // Precio si paga en divisas (uso interno). Vacío = igual al precio de venta.
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  precioDivisas?: number | null;
+
+  // Proveedor que suministra esta presentación (opcional). Su costo es el
+  // `precioCosto` indicado arriba.
+  @IsUUID()
+  @IsOptional()
+  proveedorId?: string;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  tiempoEntregaDias?: number;
 }

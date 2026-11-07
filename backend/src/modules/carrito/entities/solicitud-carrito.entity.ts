@@ -190,6 +190,11 @@ export class ItemSolicitudCarrito {
   // Precio pactado por unidad (editable). null = a confirmar.
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   precioUnitario?: number | null;
+
+  // Lo que costaría la unidad si se paga en divisas (copia del precio interno al
+  // armar el pedido). null = igual a precioUnitario.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  precioDivisasUnitario?: number | null;
 }
 
 @Entity('servicios_solicitud')

@@ -17,6 +17,7 @@ import { UpdateVarianteDto } from './dto/update-variante.dto';
 import { RegistrarMovimientoDto } from './dto/registrar-movimiento.dto';
 import { ConsultaMovimientosDto } from './dto/consulta-movimientos.dto';
 import { getRlsManager } from '../../common/rls/request-context';
+import { MaterialProveedor } from './entities/material-proveedor.entity';
 import { Proveedor } from '../proveedores/entities/proveedor.entity';
 
 @Injectable()
@@ -61,9 +62,29 @@ export class InventarioService {
       stock: 0,
       precioVenta: dto.precioVenta,
       precioCosto: dto.precioCosto,
+      precioDivisas: dto.precioDivisas ?? null,
     });
 
+    if (dto.proveedorId) {
+      const existe = await (getRlsManager()?.getRepository(Proveedor) ?? this.dataSource.getRepository(Proveedor)).exist({
+        where: { id: dto.proveedorId },
+      });
+      if (!existe) throw new NotFoundException(`Proveedor ${dto.proveedorId} no encontrado`);
+    }
+
     const guardada = await this.varianteRepository.save(variante);
+
+    if (dto.proveedorId) {
+      const repo = getRlsManager()?.getRepository(MaterialProveedor) ?? this.dataSource.getRepository(MaterialProveedor);
+      await repo.save(
+        repo.create({
+          variante: guardada,
+          proveedor: { id: dto.proveedorId } as Proveedor,
+          precioCostoProveedor: dto.precioCosto,
+          tiempoEntregaDias: dto.tiempoEntregaDias ?? 0,
+        }),
+      );
+    }
 
     if (dto.stock && dto.stock > 0) {
       await this.registrarMovimiento(

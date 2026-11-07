@@ -38,6 +38,11 @@ export class CreateComboDto {
   @Min(0)
   precioCombo: number;
 
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  precioDivisas?: number | null;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })

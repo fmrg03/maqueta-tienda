@@ -20,4 +20,10 @@ export class UpdateVarianteDto {
   @Min(0)
   @IsOptional()
   precioCosto?: number;
+
+  // null quita el precio en divisas (vuelve a valer el precio de venta).
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  precioDivisas?: number | null;
 }

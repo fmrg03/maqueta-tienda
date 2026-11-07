@@ -43,6 +43,7 @@ export class CombosService {
       nombre: dto.nombre,
       descripcion: dto.descripcion,
       precioCombo: dto.precioCombo,
+      precioDivisas: dto.precioDivisas ?? null,
       items,
     });
     const guardado = await this.comboRepository.save(combo);
@@ -75,6 +76,7 @@ export class CombosService {
       if (dto.nombre !== undefined) combo.nombre = dto.nombre;
       if (dto.descripcion !== undefined) combo.descripcion = dto.descripcion;
       if (dto.precioCombo !== undefined) combo.precioCombo = dto.precioCombo;
+      if (dto.precioDivisas !== undefined) combo.precioDivisas = dto.precioDivisas;
       if (dto.activo !== undefined) combo.activo = dto.activo;
       if (nuevosItems) {
         await manager.delete(ComboItem, { combo: { id } });

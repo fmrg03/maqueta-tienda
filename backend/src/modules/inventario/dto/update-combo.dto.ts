@@ -29,6 +29,11 @@ export class UpdateComboDto {
   @Min(0)
   precioCombo?: number;
 
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  precioDivisas?: number | null;
+
   @IsOptional()
   @IsBoolean()
   activo?: boolean;

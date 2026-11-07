@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { precioDivisasLinea } from './precio-divisas';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import {
@@ -124,6 +125,7 @@ export class CarritoService {
           ['material'], // el nombre del producto va en la notificación
         );
         item.precioUnitario = Number(item.variante.precioVenta);
+        item.precioDivisasUnitario = precioDivisasLinea(item.precioUnitario, item.precioUnitario, item.variante.precioDivisas);
       } else if (itemDto.comboId) {
         item.combo = await this.buscarOFallar(
           this.comboRepository,
@@ -131,6 +133,7 @@ export class CarritoService {
           'Combo',
         );
         item.precioUnitario = Number(item.combo.precioCombo);
+        item.precioDivisasUnitario = precioDivisasLinea(item.precioUnitario, item.precioUnitario, item.combo.precioDivisas);
       }
 
       items.push(item);
@@ -173,7 +176,7 @@ export class CarritoService {
       clienteNombre: string;
       clienteTelefono: string;
       clienteEmail?: string;
-      items: Array<{ varianteId?: string; comboId?: string; cantidad: number; precioUnitario: number }>;
+      items: Array<{ varianteId?: string; comboId?: string; cantidad: number; precioUnitario: number; precioDivisasUnitario?: number | null }>;
       servicios?: Array<{ servicioId?: string; descripcion: string; unidad: string; cantidad: number; precioUnitario: number }>;
       totalFinal: number | null;
       notas: string;
@@ -184,6 +187,7 @@ export class CarritoService {
       const item = new ItemSolicitudCarrito();
       item.cantidad = d.cantidad;
       item.precioUnitario = d.precioUnitario;
+      item.precioDivisasUnitario = d.precioDivisasUnitario ?? null;
       if (d.varianteId) item.variante = { id: d.varianteId } as VarianteMaterial;
       else item.combo = { id: d.comboId } as Combo;
       return item;
@@ -325,13 +329,16 @@ export class CarritoService {
           (d.materialId && i.material?.id === d.materialId),
       );
       let precioLista: number | null = null;
+      let divisasLista: number | null = null;
 
       if (d.varianteId) {
         item.variante = await this.buscarOFallar(m.getRepository(VarianteMaterial), d.varianteId, 'Variante', ['material']);
         precioLista = Number(item.variante.precioVenta);
+        divisasLista = item.variante.precioDivisas ?? null;
       } else if (d.comboId) {
         item.combo = await this.buscarOFallar(m.getRepository(Combo), d.comboId, 'Combo');
         precioLista = Number(item.combo.precioCombo);
+        divisasLista = item.combo.precioDivisas ?? null;
       } else {
         item.material = await this.buscarOFallar(m.getRepository(Material), d.materialId!, 'Material');
       }
@@ -341,6 +348,7 @@ export class CarritoService {
           ? Number(previo.precioUnitario)
           : null;
       item.precioUnitario = d.precioUnitario ?? previoPrecio ?? precioLista;
+      item.precioDivisasUnitario = precioDivisasLinea(item.precioUnitario, precioLista, divisasLista);
       item.solicitud = { id } as SolicitudCarrito;
       nuevos.push(item);
     }

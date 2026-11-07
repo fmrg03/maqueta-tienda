@@ -37,4 +37,9 @@ export class VarianteMaterial {
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   precioCosto: number;
+
+  // Precio si el cliente paga en divisas (efectivo USD, Zelle, Binance). SOLO
+  // uso interno: nunca sale en el catálogo público. null = igual al precio de venta.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  precioDivisas?: number | null;
 }

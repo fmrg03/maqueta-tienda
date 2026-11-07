@@ -109,4 +109,8 @@ export class PresupuestoItem {
 
   @Column({ type: 'decimal', precision: 12, scale: 2, transformer: decimal })
   precioUnitario: number;
+
+  // Precio en divisas de la unidad (productos y combos). null = igual a precioUnitario.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, transformer: decimal })
+  precioDivisasUnitario?: number | null;
 }

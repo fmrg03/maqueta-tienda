@@ -21,6 +21,10 @@ export class Combo {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   precioCombo: number;
 
+  // Precio del combo si se paga en divisas (uso interno, no público). null = igual a precioCombo.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  precioDivisas?: number | null;
+
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 

@@ -10,16 +10,16 @@ import { VarianteMaterial } from '../inventario/entities/variante-material.entit
 // — es información interna del negocio (con el costo y el precio de venta
 // cualquiera calcularía el margen). Detectado al revisar la respuesta real
 // del catálogo público, no estaba cubierto por el pentest.
-export type VariantePublica = Omit<VarianteMaterial, 'precioCosto'>;
+export type VariantePublica = Omit<VarianteMaterial, 'precioCosto' | 'precioDivisas'>;
 export type MaterialPublico = Omit<Material, 'variantes'> & {
   variantes: VariantePublica[];
 };
-export type ComboPublico = Omit<Combo, 'items'> & {
+export type ComboPublico = Omit<Combo, 'items' | 'precioDivisas'> & {
   items: Array<Omit<Combo['items'][number], 'variante'> & { variante: VariantePublica }>;
 };
 
 function sinCosto(variante: VarianteMaterial): VariantePublica {
-  const { precioCosto: _costo, ...publica } = variante;
+  const { precioCosto: _costo, precioDivisas: _divisas, ...publica } = variante;
   return publica;
 }
 
@@ -31,8 +31,9 @@ function materialPublico(material: Material): MaterialPublico {
 }
 
 function comboPublico(combo: Combo): ComboPublico {
+  const { precioDivisas: _divisas, ...sinDivisas } = combo;
   return {
-    ...combo,
+    ...sinDivisas,
     items: (combo.items ?? []).map((item) => ({
       ...item,
       variante: sinCosto(item.variante),

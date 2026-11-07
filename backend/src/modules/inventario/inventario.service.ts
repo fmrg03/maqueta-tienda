@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { VarianteMaterial } from './entities/variante-material.entity';
 import { Material } from './entities/material.entity';
 import {
@@ -37,14 +37,14 @@ export class InventarioService {
     dto: CreateVarianteDto,
     usuarioId?: string,
   ): Promise<VarianteMaterial> {
-    const material = await this.materialRepository.findOne({
+    const material = await (getRlsManager()?.getRepository(Material) ?? this.materialRepository).findOne({
       where: { id: materialId },
     });
     if (!material) {
       throw new NotFoundException(`Material ${materialId} no encontrado`);
     }
 
-    const skuEnUso = await this.varianteRepository.findOne({
+    const skuEnUso = await (getRlsManager()?.getRepository(VarianteMaterial) ?? this.varianteRepository).findOne({
       where: { skuVariante: dto.skuVariante },
     });
     if (skuEnUso) {
@@ -53,7 +53,7 @@ export class InventarioService {
       );
     }
 
-    const variante = this.varianteRepository.create({
+    const variante = (getRlsManager()?.getRepository(VarianteMaterial) ?? this.varianteRepository).create({
       material,
       skuVariante: dto.skuVariante,
       atributos: dto.atributos ?? {},
@@ -72,19 +72,7 @@ export class InventarioService {
       if (!existe) throw new NotFoundException(`Proveedor ${dto.proveedorId} no encontrado`);
     }
 
-    const guardada = await this.varianteRepository.save(variante);
-
-    if (dto.proveedorId) {
-      const repo = getRlsManager()?.getRepository(MaterialProveedor) ?? this.dataSource.getRepository(MaterialProveedor);
-      await repo.save(
-        repo.create({
-          variante: guardada,
-          proveedor: { id: dto.proveedorId } as Proveedor,
-          precioCostoProveedor: dto.precioCosto,
-          tiempoEntregaDias: dto.tiempoEntregaDias ?? 0,
-        }),
-      );
-    }
+    const guardada = await (getRlsManager()?.getRepository(VarianteMaterial) ?? this.varianteRepository).save(variante);
 
     if (dto.stock && dto.stock > 0) {
       await this.registrarMovimiento(
@@ -97,6 +85,20 @@ export class InventarioService {
         usuarioId,
       );
       guardada.stock = dto.stock;
+    }
+
+    // Después del stock inicial: el movimiento usa otra conexión y bloquea la fila
+    // de la variante, que el FK de la asociación dejaría tomada por esta transacción.
+    if (dto.proveedorId) {
+      const repo = getRlsManager()?.getRepository(MaterialProveedor) ?? this.dataSource.getRepository(MaterialProveedor);
+      await repo.save(
+        repo.create({
+          variante: guardada,
+          proveedor: { id: dto.proveedorId } as Proveedor,
+          precioCostoProveedor: dto.precioCosto,
+          tiempoEntregaDias: dto.tiempoEntregaDias ?? 0,
+        }),
+      );
     }
 
     return guardada;
@@ -141,7 +143,11 @@ export class InventarioService {
     dto: RegistrarMovimientoDto,
     usuarioId?: string,
   ): Promise<MovimientoInventario> {
-    return this.dataSource.transaction(async (manager) => {
+    // Dentro de una petición ya hay una transacción (RLS): se une a ella, para que
+    // lo creado antes en la misma petición (importación masiva) sea visible.
+    const rls = getRlsManager();
+    const ejecutar = <T>(fn: (m: EntityManager) => Promise<T>) => (rls ? fn(rls) : this.dataSource.transaction(fn));
+    return ejecutar(async (manager) => {
       const variante = await manager
         .getRepository(VarianteMaterial)
         .createQueryBuilder('variante')

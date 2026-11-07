@@ -163,7 +163,27 @@ export class CarritoService {
     // notificaciones nunca lanza (captura y loguea cada canal por separado).
     void this.notificacionesService.notificarNuevaSolicitudCarrito(guardada);
 
-    return guardada;
+    return this.sinDatosInternos(guardada);
+  }
+
+  /** Respuesta para el cliente anónimo: sin costos ni precios en divisas. */
+  private sinDatosInternos(sol: SolicitudCarrito): SolicitudCarrito {
+    return {
+      ...sol,
+      items: sol.items.map((i) => {
+        const { precioDivisasUnitario: _d, ...resto } = i;
+        const salida: any = { ...resto };
+        if (i.variante) {
+          const { precioCosto: _c, precioDivisas: _v, ...v } = i.variante as any;
+          salida.variante = v;
+        }
+        if (i.combo) {
+          const { precioDivisas: _p, ...c } = i.combo as any;
+          salida.combo = c;
+        }
+        return salida;
+      }),
+    } as SolicitudCarrito;
   }
 
   /**

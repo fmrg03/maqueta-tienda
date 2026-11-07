@@ -18,6 +18,8 @@ import { CombosService } from './combos.service';
 import { CombosController } from './combos.controller';
 import { MaterialProveedorService } from './material-proveedor.service';
 import { MaterialProveedorController, ProveedorProductosController } from './material-proveedor.controller';
+import { ImportacionService } from './importacion.service';
+import { ImportacionController } from './importacion.controller';
 import { ProveedoresModule } from '../proveedores/proveedores.module';
 
 @Module({
@@ -41,6 +43,7 @@ import { ProveedoresModule } from '../proveedores/proveedores.module';
     CombosController,
     MaterialProveedorController,
     ProveedorProductosController,
+    ImportacionController,
   ],
   providers: [
     MaterialesService,
@@ -48,6 +51,7 @@ import { ProveedoresModule } from '../proveedores/proveedores.module';
     InventarioService,
     ReportesService,
     CombosService,
+    ImportacionService,
     MaterialProveedorService,
   ],
   exports: [TypeOrmModule, MaterialesService, InventarioService],

@@ -6,12 +6,13 @@ import { useEffect, useSyncExternalStore } from "react";
 import { clsx } from "clsx";
 import { Badge } from "@/components/ui/Badge";
 import {
-  ETIQUETA_ROL,
+  nombreRol,
+  refrescarPermisos,
   getUsuarioSesion,
   logout,
   suscribirSesion,
 } from "@/lib/auth/auth";
-import { itemDeRuta, menuParaRol } from "@/lib/panel/menu";
+import { itemDeRuta, menuParaUsuario, puedeVer } from "@/lib/panel/menu";
 
 export function PanelShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -21,6 +22,11 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   const usuario = useSyncExternalStore(suscribirSesion, getUsuarioSesion, () => null);
 
   const esPersonal = usuario !== null && usuario.rol !== "cliente";
+
+  // Los permisos pueden haber cambiado desde el último login.
+  useEffect(() => {
+    if (montado && usuario) void refrescarPermisos();
+  }, [montado, usuario?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sin sesión -> login. Cliente (sin panel) -> inicio.
   useEffect(() => {
@@ -37,9 +43,9 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const menu = menuParaRol(usuario.rol);
+  const menu = menuParaUsuario(usuario);
   const actual = itemDeRuta(pathname);
-  const permitido = !actual || actual.roles.includes(usuario.rol);
+  const permitido = !actual || puedeVer(usuario, actual);
 
   async function salir() {
     await logout();
@@ -96,7 +102,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             Hola, <strong>{usuario.nombre}</strong>
           </p>
           <div className="flex items-center gap-4">
-            <Badge tono="dorado">{ETIQUETA_ROL[usuario.rol]}</Badge>
+            <Badge tono="dorado">{nombreRol(usuario)}</Badge>
             <Link href="/panel/cuenta" className="text-sm underline hover:text-dorado-oscuro">Mi cuenta</Link>
             <button type="button" onClick={salir} className="text-sm underline hover:text-dorado-oscuro">
               Salir
@@ -110,7 +116,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           ) : (
             <div role="alert" className="max-w-md">
               <h1 className="font-serif text-xl font-semibold">No tienes acceso a esta sección</h1>
-              <p className="mt-2 text-[#4A4538]">Tu rol ({ETIQUETA_ROL[usuario.rol]}) no incluye este módulo.</p>
+              <p className="mt-2 text-[#4A4538]">Tu rol ({nombreRol(usuario)}) no incluye este módulo.</p>
               <Link href="/panel" className="mt-4 inline-block underline">
                 Volver al resumen
               </Link>

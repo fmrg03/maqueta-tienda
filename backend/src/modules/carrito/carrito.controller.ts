@@ -21,8 +21,7 @@ import { CancelarCarritoDto, CerrarCarritoDto, CostoServiciosDto, PagoDto, Reser
 import { ActualizarEstadoCarritoDto } from './dto/actualizar-estado-carrito.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 import { PhoneRateLimitGuard } from '../../common/rate-limit/phone-rate-limit.guard';
 import { CaptchaGuard } from '../../common/captcha/captcha.guard';
 
@@ -44,7 +43,7 @@ export class CarritoController {
   @Get('solicitudes')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.ver')
   findAll(@Query('estado') estado?: string) {
     return this.carritoService.findAll(estado);
   }
@@ -52,7 +51,7 @@ export class CarritoController {
   @Get('solicitudes/:id')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.ver')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.carritoService.findOne(id);
   }
@@ -60,7 +59,7 @@ export class CarritoController {
   @Patch('solicitudes/:id')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.gestionar')
   actualizarEstado(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ActualizarEstadoCarritoDto,
@@ -72,7 +71,7 @@ export class CarritoController {
   @Get('solicitudes/:id/historial')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.ver')
   historial(@Param('id', ParseUUIDPipe) id: string) {
     return this.carritoService.historial(id);
   }
@@ -80,7 +79,7 @@ export class CarritoController {
   @Put('solicitudes/:id/items')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.gestionar')
   editarItems(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: EditarItemsCarritoDto,
@@ -92,7 +91,7 @@ export class CarritoController {
   @Post('solicitudes/:id/enviar-detalle')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.gestionar')
   enviarDetalle(@Param('id', ParseUUIDPipe) id: string, @Req() request: any) {
     return this.carritoService.enviarDetalle(id, request.user?.id);
   }
@@ -100,7 +99,7 @@ export class CarritoController {
   @Post('solicitudes/:id/cerrar')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.gestionar')
   cerrar(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CerrarCarritoDto,
@@ -112,7 +111,7 @@ export class CarritoController {
   @Post('solicitudes/:id/pagos')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.gestionar')
   registrarPago(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: PagoDto,
@@ -124,7 +123,7 @@ export class CarritoController {
   @Delete('solicitudes/:id/pagos/:pagoId')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.gestionar')
   eliminarPago(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('pagoId', ParseUUIDPipe) pagoId: string,
@@ -136,7 +135,7 @@ export class CarritoController {
   @Patch('solicitudes/:id/reserva')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.gestionar')
   reserva(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReservaDto,
@@ -149,7 +148,7 @@ export class CarritoController {
   @Get('reservas')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.ver')
   reservas() {
     return this.carritoService.reservas();
   }
@@ -157,7 +156,7 @@ export class CarritoController {
   @Patch('solicitudes/:id/costo-servicios')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.gestionar')
   costoServicios(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CostoServiciosDto,
@@ -169,7 +168,7 @@ export class CarritoController {
   @Post('solicitudes/:id/cancelar')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('solicitudes.gestionar')
   cancelar(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CancelarCarritoDto,

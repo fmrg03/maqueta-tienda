@@ -13,7 +13,10 @@ export interface Usuario {
   id: string;
   nombre: string;
   email: string;
-  rol: "admin" | "ventas" | "asesor" | "cliente";
+  /** Clave del rol (los roles se configuran en el panel). */
+  rol: string;
+  rolNombre?: string;
+  permisos?: string[];
   telefono?: string;
   activo: boolean;
   protegido: boolean;
@@ -52,14 +55,33 @@ export async function logout(): Promise<void> {
 
 // --- Lectura reactiva de la sesión (para componentes cliente) ---
 
-export type RolUsuario = Usuario["rol"];
+export type RolUsuario = string;
 
-export const ETIQUETA_ROL: Record<RolUsuario, string> = {
-  admin: "Administrador",
-  ventas: "Ventas",
-  asesor: "Asesor",
-  cliente: "Cliente",
-};
+/** Nombre legible del rol de un usuario (rolNombre viene del servidor). */
+export function nombreRol(u: { rol: string; rolNombre?: string }): string {
+  return u.rolNombre ?? (u.rol === "admin" ? "Administrador" : u.rol);
+}
+
+/** Admin siempre; el resto según los permisos de su rol (el servidor vuelve a validar). */
+export function tienePermiso(u: Usuario | null | undefined, ...alguno: string[]): boolean {
+  if (!u) return false;
+  if (u.rol === "admin") return true;
+  return alguno.some((p) => u.permisos?.includes(p));
+}
+
+/** Trae los permisos vigentes del servidor y actualiza la sesión si cambiaron. */
+export async function refrescarPermisos(): Promise<void> {
+  const actual = getUsuarioSesion();
+  if (!actual) return;
+  try {
+    const r = await apiFetch<{ rol: string; rolNombre: string; permisos: string[] }>("/api/v1/auth/yo");
+    if (r.rol !== actual.rol || r.rolNombre !== actual.rolNombre || r.permisos.join() !== (actual.permisos ?? []).join()) {
+      setUsuarioSesion({ ...actual, rol: r.rol, rolNombre: r.rolNombre, permisos: r.permisos });
+    }
+  } catch {
+    // sin conexión: se conserva lo guardado
+  }
+}
 
 let cacheCrudo: string | null = null;
 let cacheUsuario: Usuario | null = null;

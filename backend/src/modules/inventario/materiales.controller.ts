@@ -15,11 +15,10 @@ import { CreateMaterialDto } from './dto/create-material.dto';
 import { UpdateMaterialDto } from './dto/update-material.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN)
+@Permisos('inventario.gestionar')
 @ApiTags('Materiales')
 @ApiBearerAuth('access-token')
 @Controller('api/v1/materiales')
@@ -32,6 +31,7 @@ export class MaterialesController {
   }
 
   @Get()
+  @Permisos('inventario.ver')
   findAll(
     @Query('categoria') categoriaId?: string,
     @Query('stock_bajo') stockBajoRaw?: string,
@@ -47,6 +47,7 @@ export class MaterialesController {
   }
 
   @Get(':id')
+  @Permisos('inventario.ver')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.materialesService.findOne(id);
   }

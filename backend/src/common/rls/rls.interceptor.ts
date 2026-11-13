@@ -7,6 +7,7 @@ import {
 import { DataSource } from 'typeorm';
 import { firstValueFrom, from, Observable } from 'rxjs';
 import { rlsStorage } from './request-context';
+import { RolesService } from '../../modules/roles/roles.service';
 
 interface UsuarioAutenticado {
   id: string;
@@ -32,7 +33,10 @@ interface UsuarioAutenticado {
  */
 @Injectable()
 export class RlsInterceptor implements NestInterceptor {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly roles: RolesService,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest();
@@ -58,6 +62,11 @@ export class RlsInterceptor implements NestInterceptor {
           `SELECT set_config('app.usuario_id', $1, true)`,
           [usuario.id],
         );
+        // Permisos del rol (las políticas RLS usan app_permiso('x')).
+        const permisos = await this.roles.permisosDeRol(usuario.rol);
+        await queryRunner.query(`SELECT set_config('app.permisos', $1, true)`, [
+          permisos.join(','),
+        ]);
       }
 
       const resultado = await rlsStorage.run(

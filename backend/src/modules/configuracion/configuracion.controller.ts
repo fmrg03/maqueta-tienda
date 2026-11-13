@@ -4,8 +4,7 @@ import { ConfiguracionService } from './configuracion.service';
 import { FijarReservaDto } from './dto/fijar-reserva.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 
 @ApiTags('Configuración')
 @Controller('api/v1/configuracion')
@@ -15,13 +14,13 @@ export class ConfiguracionController {
   constructor(private readonly configuracion: ConfiguracionService) {}
 
   @Get('reserva')
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('configuracion.ver')
   async reserva() {
     return { dias: await this.configuracion.reservaDias() };
   }
 
   @Put('reserva')
-  @Roles(RolUsuario.ADMIN)
+  @Permisos('configuracion.gestionar')
   async fijarReserva(@Body() dto: FijarReservaDto, @Req() request: any) {
     return { dias: await this.configuracion.fijarReservaDias(dto.dias, request.user?.id) };
   }

@@ -4,14 +4,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { Badge } from "@/components/ui/Badge";
-import { ETIQUETA_ROL, type RolUsuario } from "@/lib/auth/auth";
-import { listarUsuarios, ROLES_PANEL, type EstadoUsuario, type UsuarioAdmin } from "@/lib/panel/usuarios";
+import { useRoles } from "./useRoles";
+import { listarUsuarios, type EstadoUsuario, type UsuarioAdmin } from "@/lib/panel/usuarios";
 
 const ESTADOS: Array<[EstadoUsuario, string]> = [["activos", "Activos"], ["inactivos", "Inactivos"], ["todos", "Todos"]];
 
 export function ListaUsuarios() {
+  const { roles, nombre: nombreDeRol } = useRoles();
   const [estado, setEstado] = useState<EstadoUsuario>("activos");
-  const [rol, setRol] = useState<RolUsuario | "">("");
+  const [rol, setRol] = useState("");
   const [texto, setTexto] = useState("");
   const [buscar, setBuscar] = useState("");
   const [res, setRes] = useState<{ clave: string; datos: UsuarioAdmin[] | null } | null>(null);
@@ -54,9 +55,9 @@ export function ListaUsuarios() {
           ))}
         </div>
         <label className="text-sm">Rol
-          <select value={rol} onChange={(e) => setRol(e.target.value as RolUsuario | "")} className="mt-1 block rounded-sm border border-piedra-oscura bg-white px-2 py-1.5">
+          <select value={rol} onChange={(e) => setRol(e.target.value)} className="mt-1 block rounded-sm border border-piedra-oscura bg-white px-2 py-1.5">
             <option value="">Todos</option>
-            {ROLES_PANEL.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            {roles.map((r) => <option key={r.clave} value={r.clave}>{r.nombre}</option>)}
           </select>
         </label>
         <label className="text-sm">Buscar
@@ -77,7 +78,7 @@ export function ListaUsuarios() {
                   <p className="font-semibold">{u.nombre}</p>
                   <p className="text-xs text-[#8A8272]">{u.email}{u.telefono ? ` · ${u.telefono}` : ""}</p>
                 </div>
-                <p className="text-sm">{ETIQUETA_ROL[u.rol]}</p>
+                <p className="text-sm">{nombreDeRol(u.rol)}</p>
                 <div className="flex flex-wrap gap-1 sm:justify-end">
                   {u.protegido && <Badge tono="dorado">cuenta protegida</Badge>}
                   {!u.activo && <Badge>inactivo</Badge>}

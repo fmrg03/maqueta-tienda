@@ -6,11 +6,10 @@ import { construirLibro, SECCIONES, SeccionReporte } from './reportes-excel';
 import { ReporteQueryDto } from './dto/reporte-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN)
+@Permisos('reportes.ver')
 @ApiTags('Reportes')
 @ApiBearerAuth('access-token')
 @Controller('api/v1/reportes')

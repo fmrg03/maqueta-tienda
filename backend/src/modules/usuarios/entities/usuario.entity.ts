@@ -6,6 +6,7 @@ import {
   Index,
 } from 'typeorm';
 
+/** Claves de los roles de sistema. Los roles personalizados no están aquí. */
 export enum RolUsuario {
   ADMIN = 'admin',
   VENTAS = 'ventas',
@@ -29,8 +30,9 @@ export class Usuario {
   @Column({ type: 'varchar', length: 255, select: false })
   passwordHash: string;
 
-  @Column({ type: 'enum', enum: RolUsuario, default: RolUsuario.CLIENTE })
-  rol: RolUsuario;
+  // Clave de `roles` (configurable desde el panel); FK en BD.
+  @Column({ type: 'varchar', length: 40, default: RolUsuario.CLIENTE })
+  rol: string;
 
   @Column({ type: 'varchar', length: 30, nullable: true })
   telefono?: string;

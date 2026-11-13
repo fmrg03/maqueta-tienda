@@ -16,11 +16,10 @@ import { CreateProveedorDto } from './dto/create-proveedor.dto';
 import { UpdateProveedorDto } from './dto/update-proveedor.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN)
+@Permisos('proveedores.gestionar')
 @ApiTags('Proveedores')
 @ApiBearerAuth('access-token')
 @Controller('api/v1/proveedores')
@@ -33,6 +32,7 @@ export class ProveedoresController {
   }
 
   @Get()
+  @Permisos('proveedores.ver')
   findAll(@Query('estado') estado?: string) {
     return this.proveedoresService.findAll(
       estado === 'inactivos' || estado === 'todos' ? estado : 'activos',
@@ -40,6 +40,7 @@ export class ProveedoresController {
   }
 
   @Get(':id')
+  @Permisos('proveedores.ver')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.proveedoresService.findOne(id);
   }

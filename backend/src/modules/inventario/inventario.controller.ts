@@ -18,11 +18,10 @@ import { ConsultaMovimientosDto } from './dto/consulta-movimientos.dto';
 import { RegistrarMovimientoDto } from './dto/registrar-movimiento.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN)
+@Permisos('inventario.gestionar')
 @ApiTags('Inventario')
 @ApiBearerAuth('access-token')
 @Controller('api/v1')
@@ -58,6 +57,7 @@ export class InventarioController {
   }
 
   @Get('movimientos')
+  @Permisos('inventario.ver')
   listarMovimientos(@Query() filtros: ConsultaMovimientosDto) {
     return this.inventarioService.consultarMovimientos(filtros);
   }

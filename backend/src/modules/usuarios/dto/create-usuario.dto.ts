@@ -1,13 +1,11 @@
 import {
   IsEmail,
-  IsEnum,
   IsOptional,
   IsPhoneNumber,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { RolUsuario } from '../entities/usuario.entity';
 
 export class CreateUsuarioDto {
   @IsString()
@@ -24,9 +22,10 @@ export class CreateUsuarioDto {
   @MaxLength(72) // límite real de bcrypt
   password: string;
 
-  @IsEnum(RolUsuario)
+  @IsString()
+  @MaxLength(40)
   @IsOptional()
-  rol?: RolUsuario;
+  rol?: string;
 
   @IsPhoneNumber('VE', { message: 'El teléfono no es válido (ejemplo: 0414 1234567)' })
   @IsOptional()

@@ -4,12 +4,11 @@ import { CategoriasService } from './categorias.service';
 import { CategoriaDto } from './dto/categoria.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 
 // La lectura es pública (GET /catalogo/categorias); acá solo el alta y el renombre.
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN)
+@Permisos('inventario.gestionar')
 @ApiTags('Categorías')
 @ApiBearerAuth('access-token')
 @Controller('api/v1/categorias')

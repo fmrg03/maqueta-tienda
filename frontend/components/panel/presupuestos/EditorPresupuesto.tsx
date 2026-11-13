@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PrecioBs } from "@/components/ui/PrecioBs";
 import { ApiError } from "@/lib/api/client";
-import { getUsuarioSesion, suscribirSesion } from "@/lib/auth/auth";
+import { getUsuarioSesion, suscribirSesion, tienePermiso } from "@/lib/auth/auth";
 import { dinero, enlaceWhatsAppCliente, fechaCorta } from "@/lib/panel/carrito";
 import {
   calcularTotales,
@@ -68,7 +68,10 @@ const msg = (e: unknown) => (e instanceof ApiError ? e.message : "No pudimos com
 export function EditorPresupuesto({ id }: { id: string | null }) {
   const router = useRouter();
   const usuario = useSyncExternalStore(suscribirSesion, getUsuarioSesion, () => null);
-  const puedeGestionar = usuario?.rol === "admin" || usuario?.rol === "ventas";
+  const puedeVerSolicitud = tienePermiso(usuario, "solicitudes.ver");
+  const puedeConvertir = tienePermiso(usuario, "presupuestos.convertir");
+  const puedeEliminar = tienePermiso(usuario, "presupuestos.eliminar");
+  const puedeEditar = tienePermiso(usuario, "presupuestos.gestionar");
 
   const [guardado, setGuardado] = useState<Presupuesto | null>(null);
   const [fallo, setFallo] = useState(false);
@@ -112,7 +115,7 @@ export function EditorPresupuesto({ id }: { id: string | null }) {
     };
   }, [id]);
 
-  const bloqueado = guardado?.estado === "convertido";
+  const bloqueado = guardado?.estado === "convertido" || !puedeEditar;
   const marcar = <T,>(set: (v: T) => void) => (v: T) => {
     set(v);
     setSucio(true);
@@ -365,7 +368,7 @@ export function EditorPresupuesto({ id }: { id: string | null }) {
       {bloqueado && guardado?.solicitudId && (
         <p role="status" className="mb-4 border-l-4 border-esmeralda bg-white px-3 py-2 text-sm">
           Este presupuesto ya se convirtió en una solicitud de carrito y no se puede modificar.{" "}
-          {puedeGestionar && <Link href={`/panel/carrito/${guardado.solicitudId}`} className="underline">Ver la solicitud</Link>}
+          {puedeVerSolicitud && <Link href={`/panel/carrito/${guardado.solicitudId}`} className="underline">Ver la solicitud</Link>}
         </p>
       )}
       {error && <p role="alert" className="mb-4 text-vino">{error}</p>}
@@ -451,10 +454,10 @@ export function EditorPresupuesto({ id }: { id: string | null }) {
           {estado !== "aprobado" && <Button type="button" variante="secundario" disabled={ocupado !== null} onClick={() => cambiarEstado("aprobado")}>Marcar aprobado</Button>}
           {estado !== "rechazado" && <Button type="button" variante="secundario" disabled={ocupado !== null} onClick={() => cambiarEstado("rechazado")}>Marcar rechazado</Button>}
           {estado !== "borrador" && <Button type="button" variante="secundario" disabled={ocupado !== null} onClick={() => cambiarEstado("borrador")}>Volver a borrador</Button>}
-          {puedeGestionar && estado === "aprobado" && (
+          {puedeConvertir && estado === "aprobado" && (
             <Button type="button" disabled={ocupado !== null} onClick={() => setConfirmar("convertir")}>Convertir en solicitud</Button>
           )}
-          {puedeGestionar && <button type="button" disabled={ocupado !== null} onClick={() => setConfirmar("eliminar")} className="ml-auto text-sm text-vino underline">Eliminar presupuesto</button>}
+          {puedeEliminar && <button type="button" disabled={ocupado !== null} onClick={() => setConfirmar("eliminar")} className="ml-auto text-sm text-vino underline">Eliminar presupuesto</button>}
         </div>
       )}
 

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Asesor, DisponibilidadAsesor } from './entities/asesoria.entity';
 import { RolUsuario, Usuario } from '../usuarios/entities/usuario.entity';
+import { RolesService } from '../roles/roles.service';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { CrearAsesorDto } from './dto/crear-asesor.dto';
 import { ActualizarAsesorDto } from './dto/actualizar-asesor.dto';
@@ -47,7 +48,12 @@ export class AsesoresService {
     @InjectRepository(DisponibilidadAsesor)
     private readonly disponibilidadRepository: Repository<DisponibilidadAsesor>,
     private readonly usuariosService: UsuariosService,
+    private readonly roles: RolesService,
   ) {}
+
+  private async veTodas(usuario: { rol: string }): Promise<boolean> {
+    return (await this.roles.permisosDeRol(usuario.rol)).includes('asesorias.todas');
+  }
 
   /** `usuarios` y `solicitudes_asesoria` tienen RLS: el panel las lee con la sesión del admin. */
   private get manager() {
@@ -88,15 +94,15 @@ export class AsesoresService {
     return filas[0] ?? null;
   }
 
-  /** El admin gestiona cualquier agenda; un asesor, solo la suya. */
+  /** Quien tiene `asesorias.todas` gestiona cualquier agenda; un asesor, solo la suya. */
   async verificarAcceso(usuario: { id: string; rol: string }, asesorId: string): Promise<void> {
-    if (usuario.rol === RolUsuario.ADMIN) return;
+    if (await this.veTodas(usuario)) return;
     const filas = await this.manager.query(`SELECT 1 FROM asesores WHERE id = $1 AND "usuarioId" = $2`, [asesorId, usuario.id]);
     if (filas.length === 0) throw new ForbiddenException('Solo puedes gestionar tus propios horarios');
   }
 
   async verificarAccesoFranja(usuario: { id: string; rol: string }, franjaId: string): Promise<void> {
-    if (usuario.rol === RolUsuario.ADMIN) return;
+    if (await this.veTodas(usuario)) return;
     const filas = await this.manager.query(
       `SELECT 1 FROM disponibilidad_asesor d JOIN asesores a ON a.id = d."asesorId" WHERE d.id = $1 AND a."usuarioId" = $2`,
       [franjaId, usuario.id],

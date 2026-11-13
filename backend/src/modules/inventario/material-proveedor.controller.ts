@@ -5,11 +5,10 @@ import { AsociarProveedorDto } from './dto/asociar-proveedor.dto';
 import { ActualizarAsociacionDto, AsociarProductoDto } from './dto/proveedor-producto.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN)
+@Permisos('inventario.gestionar')
 @ApiTags('Materiales-Proveedores')
 @ApiBearerAuth('access-token')
 @Controller('api/v1/variantes/:id/proveedores')
@@ -25,6 +24,7 @@ export class MaterialProveedorController {
   }
 
   @Get()
+  @Permisos('inventario.ver')
   listar(@Param('id', ParseUUIDPipe) varianteId: string) {
     return this.materialProveedorService.listarPorVariante(varianteId);
   }
@@ -32,7 +32,7 @@ export class MaterialProveedorController {
 
 /** Lo mismo, visto desde el proveedor (lo que usa el panel). */
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN)
+@Permisos('inventario.gestionar')
 @ApiTags('Materiales-Proveedores')
 @ApiBearerAuth('access-token')
 @Controller('api/v1')
@@ -40,6 +40,7 @@ export class ProveedorProductosController {
   constructor(private readonly service: MaterialProveedorService) {}
 
   @Get('proveedores/:id/productos')
+  @Permisos('inventario.ver')
   listar(@Param('id', ParseUUIDPipe) proveedorId: string) {
     return this.service.listarPorProveedor(proveedorId);
   }

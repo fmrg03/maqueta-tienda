@@ -6,8 +6,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/lib/api/client";
-import type { RolUsuario } from "@/lib/auth/auth";
-import { actualizarUsuario, crearUsuario, ROLES_PANEL, type UsuarioAdmin } from "@/lib/panel/usuarios";
+import { actualizarUsuario, crearUsuario, type UsuarioAdmin } from "@/lib/panel/usuarios";
+import { useRoles } from "./useRoles";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -21,10 +21,11 @@ export function FormularioUsuario({
   onGuardado?: (u: UsuarioAdmin) => void;
 }) {
   const router = useRouter();
+  const { roles } = useRoles();
   const [nombre, setNombre] = useState(inicial?.nombre ?? "");
   const [email, setEmail] = useState(inicial?.email ?? "");
   const [telefono, setTelefono] = useState(inicial?.telefono ?? "");
-  const [rol, setRol] = useState<RolUsuario>(inicial?.rol ?? "ventas");
+  const [rol, setRol] = useState(inicial?.rol ?? "ventas");
   const [password, setPassword] = useState("");
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
@@ -68,11 +69,12 @@ export function FormularioUsuario({
       <Input label="Teléfono (opcional)" name="telefono" value={telefono} maxLength={30} placeholder="0414 1234567" onChange={(e) => setTelefono(e.target.value)} />
       <div className="flex flex-col gap-1.5">
         <label htmlFor="rol-usuario" className="text-sm font-medium">Rol</label>
-        <select id="rol-usuario" value={rol} disabled={rolBloqueado} onChange={(e) => setRol(e.target.value as RolUsuario)} className="rounded-sm border border-piedra-oscura bg-white px-3 py-2.5 text-sm disabled:opacity-60">
-          {ROLES_PANEL.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        <select id="rol-usuario" value={rol} disabled={rolBloqueado} onChange={(e) => setRol(e.target.value)} className="rounded-sm border border-piedra-oscura bg-white px-3 py-2.5 text-sm disabled:opacity-60">
+          {roles.length === 0 && <option value={rol}>{rol}</option>}
+          {roles.map((r) => <option key={r.clave} value={r.clave}>{r.nombre}</option>)}
         </select>
         {rolBloqueado && <p className="text-xs text-[#8A8272]">{inicial?.protegido ? "La cuenta protegida no puede cambiar de rol." : "No puedes cambiar tu propio rol."}</p>}
-        <p className="text-xs text-[#8A8272]">Administrador: todo el panel. Ventas: solicitudes de carrito y catálogo. Asesor: sus citas. Cliente: sin acceso al panel.</p>
+        <p className="text-xs text-[#8A8272]">Lo que puede hacer cada rol se configura en Roles y permisos.</p>
       </div>
       {!inicial && (
         <Input label="Contraseña inicial" name="password" type="text" autoComplete="off" value={password} maxLength={72} onChange={(e) => setPassword(e.target.value)} error={errores.password} />

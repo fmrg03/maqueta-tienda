@@ -5,6 +5,7 @@ import { AsesoresService } from './asesores.service';
 import { Asesor, DisponibilidadAsesor } from './entities/asesoria.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { UsuariosService } from '../usuarios/usuarios.service';
+import { RolesService } from '../roles/roles.service';
 
 const createMockRepository = () => ({
   create: jest.fn(),
@@ -25,6 +26,7 @@ describe('AsesoresService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AsesoresService,
+        { provide: RolesService, useValue: { permisosDeRol: jest.fn(async (r: string) => (r === 'admin' ? ['asesorias.todas', 'asesorias.propias'] : ['asesorias.propias'])) } },
         { provide: getRepositoryToken(Asesor), useValue: createMockRepository() },
         { provide: getRepositoryToken(Usuario), useValue: createMockRepository() },
         { provide: getRepositoryToken(DisponibilidadAsesor), useValue: createMockRepository() },

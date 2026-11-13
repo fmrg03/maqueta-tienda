@@ -19,8 +19,8 @@ import { DisponibilidadLoteDto } from './dto/disponibilidad-lote.dto';
 import { CrearDisponibilidadDto } from './dto/crear-disponibilidad.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
 
 @ApiTags('Asesores')
 @Controller('api/v1/asesores')
@@ -30,7 +30,7 @@ export class AsesoresController {
   @Post()
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
+  @Roles('admin')
   crearAsesor(@Body() dto: CrearAsesorDto) {
     return this.asesoresService.crearAsesor(dto);
   }
@@ -39,7 +39,7 @@ export class AsesoresController {
   @Get('admin')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
+  @Roles('admin')
   listarAdmin(@Query('estado') estado?: string) {
     return this.asesoresService.listarAdmin(
       estado === 'inactivos' || estado === 'todos' ? estado : 'activos',
@@ -50,7 +50,7 @@ export class AsesoresController {
   @Get('yo')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ASESOR)
+  @Permisos('asesorias.propias')
   miPerfil(@Req() req: any) {
     return this.asesoresService.miPerfil(req.user.id);
   }
@@ -58,7 +58,7 @@ export class AsesoresController {
   @Delete('disponibilidad/:franjaId')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   async eliminarFranja(@Param('franjaId', ParseUUIDPipe) franjaId: string, @Req() req: any) {
     await this.asesoresService.verificarAccesoFranja(req.user, franjaId);
     return this.asesoresService.eliminarFranja(franjaId);
@@ -67,7 +67,7 @@ export class AsesoresController {
   @Patch(':id')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
+  @Roles('admin')
   actualizar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ActualizarAsesorDto) {
     return this.asesoresService.actualizar(id, dto);
   }
@@ -75,7 +75,7 @@ export class AsesoresController {
   @Get(':id/agenda')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   async agenda(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     await this.asesoresService.verificarAcceso(req.user, id);
     return this.asesoresService.agenda(id);
@@ -84,7 +84,7 @@ export class AsesoresController {
   @Post(':id/disponibilidad/lote')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   async agregarLote(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DisponibilidadLoteDto, @Req() req: any) {
     await this.asesoresService.verificarAcceso(req.user, id);
     return this.asesoresService.agregarDisponibilidadLote(id, dto);
@@ -93,7 +93,7 @@ export class AsesoresController {
   @Post(':id/disponibilidad')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   async agregarDisponibilidad(
     @Param('id', ParseUUIDPipe) asesorId: string,
     @Body() dto: CrearDisponibilidadDto,

@@ -217,6 +217,16 @@ Como control adicional descubierto en el camino: el DTO de registro público ace
 ### Documentación interactiva (Swagger/OpenAPI)
 Expuesta en `/api/docs` vía `@nestjs/swagger`, deshabilitada automáticamente cuando `NODE_ENV=production` (es documentación de desarrollo, no un endpoint pensado para estar público). Los controladores llevan `@ApiTags` por módulo y `@ApiBearerAuth` en los endpoints protegidos por JWT — incluyendo, a nivel de método (no de clase), los controladores mixtos que combinan endpoints públicos y protegidos (`carrito`, `asesorias`, `asesores`).
 
+### Roles y permisos configurables
+
+- Tabla `roles` (`clave`, `nombre`, `permisos text[]`, `sistema`). `usuarios.rol` es la clave del rol (varchar con FK). Roles base: `admin` (inmutable, todos los permisos), `ventas`, `asesor`, `almacen`, `contabilidad`, y `cliente` (sin panel). El admin puede crear roles propios y editar los permisos de cualquiera salvo `admin`.
+- Catálogo de permisos en `backend/src/modules/roles/permisos.ts` (`solicitudes.ver|gestionar`, `presupuestos.ver|gestionar|convertir|eliminar`, `servicios.*`, `asesorias.propias|todas`, `inventario.*`, `proveedores.*`, `reportes.ver`, `tasas.gestionar`, `configuracion.*`). `X.gestionar` incluye `X.ver`.
+- **Solo el admin** administra usuarios, roles y permisos: se valida por nombre de rol (`@Roles('admin')`), no es un permiso asignable.
+- Endpoints: `@Permisos(...)` (basta uno) y `RolesGuard`. Los permisos se leen en cada request (caché de 30 s, invalidada al editar el rol), así que un cambio aplica de inmediato y no hay que cerrar sesiones.
+- RLS: las políticas usan `app_permiso('x')` (función SQL; `admin` siempre pasa), alimentada por `app.permisos`, que el `RlsInterceptor` fija junto a `app.rol`. Las asesorías mantienen la regla "solo las propias" (`asesorias.propias`) o todas (`asesorias.todas`).
+- Panel: `GET /auth/yo` devuelve los permisos vigentes; el menú y los botones se ocultan según ellos (el servidor vuelve a validar). Pantalla "Roles y permisos" solo para el admin.
+- Migración `1789400000000-RolesPermisos` (irreversible: convierte el enum en varchar y reescribe políticas).
+
 ### Cuenta admin fundacional (`protegido`), en vez de un rol jerárquico nuevo
 Se evaluó agregar un rol `master`/`root` por encima de `admin` (que pudiera eliminar admins, mientras que un admin no puede eliminar a otro admin ni al master). Se descartó por ahora: la empresa va a operar con un solo admin al inicio (aunque puede haber varios admins a futuro, todos con el mismo nivel de poder entre sí) — un rol jerárquico nuevo hubiera significado tocar el enum `RolUsuario`, los guards, y las políticas de RLS en varios lugares sin que hubiera, todavía, alguien de quien proteger esa cuenta.
 

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -23,7 +24,7 @@ import { UsuarioResponseDto } from './dto/usuario-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from './entities/usuario.entity';
+import { RolesService } from '../roles/roles.service';
 
 @UseInterceptors(ClassSerializerInterceptor)
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -31,24 +32,35 @@ import { RolUsuario } from './entities/usuario.entity';
 @ApiBearerAuth('access-token')
 @Controller('api/v1/usuarios')
 export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) {}
+  constructor(
+    private readonly usuariosService: UsuariosService,
+    private readonly roles: RolesService,
+  ) {}
+
+  private async validarRol(rol?: string): Promise<void> {
+    if (rol === undefined) return;
+    if (!(await this.roles.clavesAsignables()).includes(rol)) {
+      throw new BadRequestException('El rol indicado no existe');
+    }
+  }
 
   @Post()
-  @Roles(RolUsuario.ADMIN)
+  @Roles('admin')
   async create(@Body() dto: CreateUsuarioDto): Promise<UsuarioResponseDto> {
+    await this.validarRol(dto.rol);
     const usuario = await this.usuariosService.create(dto);
     return new UsuarioResponseDto(usuario);
   }
 
   @Get()
-  @Roles(RolUsuario.ADMIN)
+  @Roles('admin')
   async findAll(@Query() consulta: ConsultaUsuariosDto): Promise<UsuarioResponseDto[]> {
     const usuarios = await this.usuariosService.findAll(consulta);
     return usuarios.map((u) => new UsuarioResponseDto(u));
   }
 
   @Get(':id')
-  @Roles(RolUsuario.ADMIN)
+  @Roles('admin')
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<UsuarioResponseDto> {
@@ -57,18 +69,19 @@ export class UsuariosController {
   }
 
   @Patch(':id')
-  @Roles(RolUsuario.ADMIN)
+  @Roles('admin')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUsuarioDto,
     @Req() request: any,
   ): Promise<UsuarioResponseDto> {
+    await this.validarRol(dto.rol);
     const usuario = await this.usuariosService.update(id, dto, request.user?.id);
     return new UsuarioResponseDto(usuario);
   }
 
   @Post(':id/restablecer-password')
-  @Roles(RolUsuario.ADMIN)
+  @Roles('admin')
   restablecerPassword(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RestablecerPasswordDto,
@@ -78,7 +91,7 @@ export class UsuariosController {
   }
 
   @Delete(':id')
-  @Roles(RolUsuario.ADMIN)
+  @Roles('admin')
   async desactivar(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.usuariosService.desactivar(id);
   }

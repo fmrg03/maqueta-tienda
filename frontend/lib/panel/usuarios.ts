@@ -37,4 +37,20 @@ export const restablecerPassword = (id: string, password?: string) =>
     body: JSON.stringify(password ? { password } : {}),
   });
 
-export const ROLES_PANEL: Array<[RolUsuario, string]> = [["admin", "Administrador"], ["ventas", "Ventas"], ["asesor", "Asesor"], ["cliente", "Cliente"]];
+export interface RolPanel {
+  id: string;
+  clave: string;
+  nombre: string;
+  descripcion: string | null;
+  permisos: string[];
+  sistema: boolean;
+  usuarios: number;
+}
+export interface PermisoDef { clave: string; etiqueta: string; grupo: string }
+
+export const listarRoles = () => apiFetch<{ roles: RolPanel[]; catalogo: PermisoDef[] }>("/api/v1/roles");
+export const crearRol = (d: { clave: string; nombre: string; descripcion?: string; permisos: string[] }) =>
+  apiFetch<RolPanel>("/api/v1/roles", { method: "POST", body: JSON.stringify(d) });
+export const actualizarRol = (id: string, d: { nombre?: string; descripcion?: string; permisos?: string[] }) =>
+  apiFetch<RolPanel>(`/api/v1/roles/${id}`, { method: "PATCH", body: JSON.stringify(d) });
+export const eliminarRol = (id: string) => apiFetch<{ ok: boolean }>(`/api/v1/roles/${id}`, { method: "DELETE" });

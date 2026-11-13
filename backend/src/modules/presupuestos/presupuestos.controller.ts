@@ -21,12 +21,11 @@ import { PresupuestosService } from './presupuestos.service';
 import { EstadoPresupuestoDto, GuardarPresupuestoDto } from './dto/guardar-presupuesto.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 import { ESTADOS_PRESUPUESTO } from './entities/presupuesto.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN, RolUsuario.VENTAS, RolUsuario.ASESOR)
+@Permisos('presupuestos.ver')
 @ApiTags('Presupuestos')
 @ApiBearerAuth('access-token')
 @Controller('api/v1/presupuestos')
@@ -40,6 +39,7 @@ export class PresupuestosController {
   }
 
   @Post()
+  @Permisos('presupuestos.gestionar')
   crear(@Body() dto: GuardarPresupuestoDto, @Req() req: any) {
     return this.presupuestos.crear(dto, req.user?.id);
   }
@@ -50,30 +50,33 @@ export class PresupuestosController {
   }
 
   @Put(':id')
+  @Permisos('presupuestos.gestionar')
   actualizar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: GuardarPresupuestoDto) {
     return this.presupuestos.actualizar(id, dto);
   }
 
   @Patch(':id/estado')
+  @Permisos('presupuestos.gestionar')
   cambiarEstado(@Param('id', ParseUUIDPipe) id: string, @Body() dto: EstadoPresupuestoDto) {
     return this.presupuestos.cambiarEstado(id, dto.estado);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('presupuestos.eliminar')
   eliminar(@Param('id', ParseUUIDPipe) id: string) {
     return this.presupuestos.eliminar(id);
   }
 
   @Post(':id/enviar')
+  @Permisos('presupuestos.gestionar')
   enviar(@Param('id', ParseUUIDPipe) id: string) {
     return this.presupuestos.enviar(id);
   }
 
-  // La solicitud de carrito solo la ven admin y ventas (RLS), por eso los asesores no convierten.
+  // Convertir crea una solicitud de carrito: requiere permiso de convertir.
   @Post(':id/convertir')
-  @Roles(RolUsuario.ADMIN, RolUsuario.VENTAS)
+  @Permisos('presupuestos.convertir')
   convertir(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.presupuestos.convertir(id, req.user?.id);
   }

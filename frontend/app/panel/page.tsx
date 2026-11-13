@@ -2,21 +2,21 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
-import { ETIQUETA_ROL, getUsuarioSesion, suscribirSesion } from "@/lib/auth/auth";
-import { menuParaRol } from "@/lib/panel/menu";
+import { nombreRol, getUsuarioSesion, suscribirSesion } from "@/lib/auth/auth";
+import { menuParaUsuario } from "@/lib/panel/menu";
 
 export default function PanelInicio() {
   const usuario = useSyncExternalStore(suscribirSesion, getUsuarioSesion, () => null);
   if (!usuario) return null;
 
-  const modulos = menuParaRol(usuario.rol).filter((i) => i.href !== "/panel");
+  const modulos = menuParaUsuario(usuario).filter((i) => i.href !== "/panel");
 
   return (
     <div className="max-w-4xl">
       <h1 className="font-serif text-[26px] font-semibold">Resumen</h1>
       <div className="my-3.5 h-0.5 w-12 bg-gradient-to-r from-dorado-claro to-dorado-oscuro" />
       <p className="mb-8 text-[#8A8272]">
-        Estás ingresando como <strong>{ETIQUETA_ROL[usuario.rol]}</strong>. Estos son los módulos
+        Estás ingresando como <strong>{nombreRol(usuario)}</strong>. Estos son los módulos
         de tu rol.
       </p>
 

@@ -18,8 +18,7 @@ import { RegistrarLlamadaDto } from './dto/registrar-llamada.dto';
 import { EstadoSolicitudAsesoria } from './entities/asesoria.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 import { PhoneRateLimitGuard } from '../../common/rate-limit/phone-rate-limit.guard';
 import { CaptchaGuard } from '../../common/captcha/captcha.guard';
 
@@ -41,7 +40,7 @@ export class AsesoriasController {
   @Get('solicitudes')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   findAll(@Query('estado') estado?: EstadoSolicitudAsesoria) {
     return this.asesoriasService.findAll(estado);
   }
@@ -49,7 +48,7 @@ export class AsesoriasController {
   @Get('solicitudes/:id')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.asesoriasService.findOne(id);
   }
@@ -57,7 +56,7 @@ export class AsesoriasController {
   @Patch('solicitudes/:id/registrar-llamada')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   registrarLlamada(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RegistrarLlamadaDto,
@@ -68,7 +67,7 @@ export class AsesoriasController {
   @Patch('solicitudes/:id/marcar-visita-pactada')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   marcarVisitaPactada(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RegistrarLlamadaDto,
@@ -79,7 +78,7 @@ export class AsesoriasController {
   @Patch('solicitudes/:id/marcar-no-procede')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   marcarNoProcede(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RegistrarLlamadaDto,
@@ -90,7 +89,7 @@ export class AsesoriasController {
   @Patch('solicitudes/:id/reagendar')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   reagendar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReagendarDto) {
     return this.asesoriasService.reagendar(id, dto);
   }
@@ -98,7 +97,7 @@ export class AsesoriasController {
   @Patch('solicitudes/:id/cancelar')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN, RolUsuario.ASESOR)
+  @Permisos('asesorias.propias', 'asesorias.todas')
   cancelar(@Param('id', ParseUUIDPipe) id: string) {
     return this.asesoriasService.cancelar(id);
   }

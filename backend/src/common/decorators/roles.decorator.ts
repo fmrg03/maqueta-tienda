@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import { RolUsuario } from '../../modules/usuarios/entities/usuario.entity';
 
 export const ROLES_KEY = 'roles';
-export const Roles = (...roles: RolUsuario[]) => SetMetadata(ROLES_KEY, roles);
+/** Restringe por nombre de rol. Úsalo solo para lo exclusivo del admin. */
+export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);

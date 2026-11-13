@@ -3,8 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../modules/auth/guards/roles.guard';
-import { Roles } from '../decorators/roles.decorator';
-import { RolUsuario } from '../../modules/usuarios/entities/usuario.entity';
+import { Permisos } from '../decorators/permisos.decorator';
 import { StorageService } from './storage.service';
 
 export const MAX_BYTES_IMAGEN = 3 * 1024 * 1024;
@@ -18,7 +17,7 @@ export class UploadsController {
   @Post('imagenes')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
+  @Permisos('inventario.gestionar', 'servicios.gestionar')
   @UseInterceptors(FileInterceptor('archivo', { limits: { fileSize: MAX_BYTES_IMAGEN, files: 1 } }))
   async subir(@UploadedFile() archivo?: { buffer: Buffer }) {
     if (!archivo?.buffer) throw new BadRequestException('Falta el archivo de la imagen.');

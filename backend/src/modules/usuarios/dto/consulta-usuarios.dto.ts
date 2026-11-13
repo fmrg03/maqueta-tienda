@@ -1,10 +1,10 @@
-import { IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
-import { RolUsuario } from '../entities/usuario.entity';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ConsultaUsuariosDto {
   @IsOptional()
-  @IsEnum(RolUsuario)
-  rol?: RolUsuario;
+  @IsString()
+  @MaxLength(40)
+  rol?: string;
 
   @IsOptional()
   @IsIn(['activos', 'inactivos', 'todos'])

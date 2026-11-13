@@ -1,5 +1,4 @@
 import { Exclude, Expose } from 'class-transformer';
-import { RolUsuario } from '../entities/usuario.entity';
 
 // Se usa con ClassSerializerInterceptor para garantizar que
 // passwordHash nunca salga en una respuesta HTTP, sin depender
@@ -16,7 +15,7 @@ export class UsuarioResponseDto {
   email: string;
 
   @Expose()
-  rol: RolUsuario;
+  rol: string;
 
   @Expose()
   telefono?: string;
@@ -38,7 +37,7 @@ export class UsuarioResponseDto {
     id: string;
     nombre: string;
     email: string;
-    rol: RolUsuario;
+    rol: string;
     telefono?: string;
     activo: boolean;
     protegido: boolean;

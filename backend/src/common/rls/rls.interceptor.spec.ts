@@ -35,7 +35,7 @@ describe('RlsInterceptor', () => {
     };
     dataSource = { createQueryRunner: jest.fn().mockReturnValue(queryRunner) };
 
-    interceptor = new RlsInterceptor(dataSource as any);
+    interceptor = new RlsInterceptor(dataSource as any, { permisosDeRol: jest.fn().mockResolvedValue(['x.ver']) } as any);
   });
 
   it('abre y commitea una transacción para una request exitosa', async () => {

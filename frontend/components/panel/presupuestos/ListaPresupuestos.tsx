@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { clsx } from "clsx";
 import { Badge } from "@/components/ui/Badge";
 import { PrecioBs } from "@/components/ui/PrecioBs";
+import { getUsuarioSesion, suscribirSesion, tienePermiso } from "@/lib/auth/auth";
 import { dinero, fechaCorta } from "@/lib/panel/carrito";
 import {
   ETIQUETA_ESTADO_PRESUPUESTO,
@@ -25,6 +26,8 @@ const FILTROS: Array<[EstadoPresupuesto | "", string]> = [
 ];
 
 export function ListaPresupuestos() {
+  const usuarioSesion = useSyncExternalStore(suscribirSesion, getUsuarioSesion, () => null);
+  const puedeCrear = tienePermiso(usuarioSesion, "presupuestos.gestionar");
   const [estado, setEstado] = useState<EstadoPresupuesto | "">("");
   const [buscar, setBuscar] = useState("");
   const [consulta, setConsulta] = useState("");
@@ -55,9 +58,9 @@ export function ListaPresupuestos() {
     <div className="max-w-5xl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="font-serif text-[26px] font-semibold">Presupuestos</h1>
-        <Link href="/panel/presupuestos/nuevo" className="rounded-sm bg-gradient-to-br from-dorado-claro to-dorado-oscuro px-5 py-2.5 text-sm font-semibold text-negro hover:brightness-105">
+        {puedeCrear && <Link href="/panel/presupuestos/nuevo" className="rounded-sm bg-gradient-to-br from-dorado-claro to-dorado-oscuro px-5 py-2.5 text-sm font-semibold text-negro hover:brightness-105">
           Nuevo presupuesto
-        </Link>
+        </Link>}
       </div>
       <div className="my-3.5 h-0.5 w-12 bg-gradient-to-r from-dorado-claro to-dorado-oscuro" />
       <p className="mb-6 text-[#8A8272]">Cotizaciones a medida con productos del catálogo y servicios como demolición, pegado de cerámica o montaje de porcelanato.</p>

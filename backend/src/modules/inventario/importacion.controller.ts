@@ -16,13 +16,12 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 import { ImportacionService } from './importacion.service';
 import { ImportarProductosDto } from './dto/importar-productos.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN)
+@Permisos('inventario.gestionar')
 @ApiTags('Inventario')
 @ApiBearerAuth('access-token')
 @Controller('api/v1/inventario/importacion')

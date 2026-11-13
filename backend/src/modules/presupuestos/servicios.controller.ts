@@ -4,11 +4,10 @@ import { ServiciosService } from './servicios.service';
 import { CreateServicioDto, UpdateServicioDto } from './dto/servicio.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolUsuario.ADMIN, RolUsuario.VENTAS, RolUsuario.ASESOR)
+@Permisos('servicios.ver', 'presupuestos.ver')
 @ApiTags('Servicios')
 @ApiBearerAuth('access-token')
 @Controller('api/v1/servicios')
@@ -21,20 +20,20 @@ export class ServiciosController {
   }
 
   @Post()
-  @Roles(RolUsuario.ADMIN)
+  @Permisos('servicios.gestionar')
   crear(@Body() dto: CreateServicioDto) {
     return this.servicios.crear(dto);
   }
 
   @Patch(':id')
-  @Roles(RolUsuario.ADMIN)
+  @Permisos('servicios.gestionar')
   actualizar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateServicioDto) {
     return this.servicios.actualizar(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  @Roles(RolUsuario.ADMIN)
+  @Permisos('servicios.gestionar')
   desactivar(@Param('id', ParseUUIDPipe) id: string) {
     return this.servicios.desactivar(id);
   }

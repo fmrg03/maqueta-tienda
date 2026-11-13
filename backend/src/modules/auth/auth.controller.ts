@@ -1,6 +1,7 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { RolesService } from '../roles/roles.service';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CambiarPasswordDto } from './dto/cambiar-password.dto';
@@ -14,6 +15,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usuariosService: UsuariosService,
+    private readonly roles: RolesService,
   ) {}
 
   // Cualquier persona con sesión cambia SU contraseña; se cierran sus sesiones
@@ -36,7 +38,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60_000 } }) // mitiga fuerza bruta
   async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+    const r = await this.authService.login(dto);
+    return { ...r, usuario: { ...r.usuario, ...(await this.roles.resumenDeRol(r.usuario.rol)) } };
+  }
+
+  // Rol y permisos vigentes del usuario en sesión (el panel los usa para el
+  // menú y para ocultar acciones; el backend vuelve a validar en cada request).
+  @Get('yo')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  async yo(@Req() request: any) {
+    return { rol: request.user.rol, ...(await this.roles.resumenDeRol(request.user.rol)) };
   }
 
   @Post('refresh')

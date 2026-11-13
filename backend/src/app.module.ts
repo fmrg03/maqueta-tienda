@@ -17,6 +17,7 @@ import { AsesoriasModule } from './modules/asesorias/asesorias.module';
 import { PresupuestosModule } from './modules/presupuestos/presupuestos.module';
 import { RlsInterceptor } from './common/rls/rls.interceptor';
 import { HealthModule } from './health/health.module';
+import { RolesModule } from './modules/roles/roles.module';
 import { RedisModule } from './common/redis/redis.module';
 
 @Module({
@@ -48,6 +49,7 @@ import { RedisModule } from './common/redis/redis.module';
       ),
     }),
     RedisModule,
+    RolesModule,
     UsuariosModule,
     AuthModule,
     ProveedoresModule,

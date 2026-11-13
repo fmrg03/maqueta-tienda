@@ -5,8 +5,7 @@ import { TasasService } from './tasas.service';
 import { FijarTasaDto } from './dto/fijar-tasa.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolUsuario } from '../usuarios/entities/usuario.entity';
+import { Permisos } from '../../common/decorators/permisos.decorator';
 
 @ApiTags('Tasas')
 @Controller('api/v1/tasas')
@@ -25,7 +24,7 @@ export class TasasController {
   @Get('historial')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
+  @Permisos('tasas.gestionar')
   historial() {
     return this.tasas.historial();
   }
@@ -33,7 +32,7 @@ export class TasasController {
   @Post('actualizar')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
+  @Permisos('tasas.gestionar')
   async actualizar() {
     await this.tasas.refrescar();
     return this.tasas.vigente();
@@ -42,7 +41,7 @@ export class TasasController {
   @Post('manual')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolUsuario.ADMIN)
+  @Permisos('tasas.gestionar')
   fijarManual(@Body() dto: FijarTasaDto, @Req() request: any) {
     return this.tasas.fijarManual(dto.valor, request.user?.id);
   }
